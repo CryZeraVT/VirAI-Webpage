@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viri.TTS - AI-Powered Twitch TTS Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #0f0816;
+            --surface: #1e1433;
+            --surface-variant: #2d1b4e;
+            --primary: #d946ef;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            padding: 40px 20px;
+            text-align: center;
+            background: rgba(30, 20, 51, 0.5);
+            border-bottom: 1px solid rgba(217, 70, 239, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            text-shadow: 0 0 20px rgba(217, 70, 239, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+        
+        main {
+            flex: 1;
+            padding: 60px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-variant);
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(217, 70, 239, 0.15);
+        }
+        
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.3));
+        }
+        
+        .feature-card h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: rgba(15, 8, 22, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+        
+        .cta-section {
+            margin-top: 60px;
+            padding: 40px;
+            background: linear-gradient(180deg, rgba(217, 70, 239, 0.05) 0%, transparent 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(217, 70, 239, 0.2);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            text-align: left;
+        }
+
+        .cta-left {
+            padding-right: 20px;
+        }
+
+        .cta-right {
+            border-left: 1px solid rgba(217, 70, 239, 0.2);
+            padding-left: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .cta-section h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .live-badge {
+            display: inline-block;
+            background-color: #ef4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .cta-section {
+                grid-template-columns: 1fr;
+            }
+            .cta-right {
+                border-left: none;
+                border-top: 1px solid rgba(217, 70, 239, 0.2);
+                padding-left: 0;
+                padding-top: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="images/virittsplusmascot.png" alt="Viri.TTS Logo" style="height: 250px; margin-bottom: 20px; filter: drop-shadow(0 0 25px rgba(217, 70, 239, 0.5));">
+        <p class="subtitle">AI-Powered Twitch TTS Companion</p>
+    </header>
+    
+    <main>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Smart AI Responses</h3>
+                <p>Powered by OpenAI, Grok, or Gemini - your AI companion responds naturally to chat with customizable personality.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🔊</div>
+                <h3>Premium TTS</h3>
+                <p>Multiple TTS engines including ElevenLabs and OpenAI for high-quality voice synthesis.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>PNG Tuber</h3>
+                <p>Animated PNG character that reacts to audio with multiple animation styles.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-time Chat</h3>
+                <p>Seamless Twitch integration with blacklist filtering and customizable triggers.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>User Memory</h3>
+                <p>Remembers facts about your viewers for personalized interactions.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">✨</div>
+                <h3>Modern UI</h3>
+                <p>Beautiful Flet-based interface with a stunning neon theme.</p>
+            </div>
+        </div>
+        
+        <div class="cta-section">
+            <div class="cta-left">
+                <h2>Learn about the builder of Viri.TTS!</h2>
+                <p>Check me out live!</p>
+                <p style="margin-top: 10px; color: var(--text-secondary);">Viri.TTS is a private tool built by CryZera.</p>
+            </div>
+            
+            <div class="cta-right">
+                <div class="live-badge">🔴 LIVE NOW</div>
+                <h2>Ask me live!</h2>
+                <p style="margin-bottom: 20px;">Have questions? Come hang out on Twitch!</p>
+                
+                <!-- Twitch Embed -->
+                <div id="twitch-embed"></div>
+                <script src="https://embed.twitch.tv/embed/v1.js"></script>
+                <script type="text/javascript">
+                  new Twitch.Embed("twitch-embed", {
+                    width: "100%",
+                    height: 300,
+                    channel: "cryzera",
+                    layout: "video",
+                    autoplay: true,
+                    parent: ["cryze.github.io", "localhost"] // Replace with your actual domain
+                  });
+                </script>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Viri.TTS © 2026 | Built by CryZera</p>
+    </footer>
+</body>
+</html>

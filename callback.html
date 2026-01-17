@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viri.TTS - Twitch Connected!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #0f0816;
+            --surface: #1e1433;
+            --surface-variant: #2d1b4e;
+            --primary: #d946ef;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #22c55e;
+            --error: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(217, 70, 239, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+        
+        .container {
+            background: var(--surface);
+            padding: 50px;
+            border-radius: 24px;
+            border: 1px solid rgba(217, 70, 239, 0.2);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(217, 70, 239, 0.1);
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Glass glow effect at top */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.5;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(217, 70, 239, 0.3);
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        #token {
+            background: rgba(15, 8, 22, 0.6);
+            border: 1px solid var(--primary);
+            padding: 25px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            word-break: break-all;
+            margin: 25px 0;
+            color: var(--accent);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        #token:hover {
+            background: rgba(15, 8, 22, 0.9);
+            box-shadow: 0 0 15px rgba(217, 70, 239, 0.2);
+        }
+        
+        button {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(217, 70, 239, 0.5);
+            filter: brightness(1.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .success {
+            color: var(--success);
+            font-weight: 600;
+            margin-top: 15px;
+            font-size: 16px;
+            animation: fadeIn 0.3s ease-in;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .instructions {
+            background: var(--surface-variant);
+            padding: 25px;
+            border-radius: 16px;
+            margin-top: 30px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .instructions strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .instructions ol {
+            padding-left: 25px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+        }
+        
+        .instructions li strong {
+            display: inline;
+            color: var(--text-primary);
+            font-size: inherit;
+            margin: 0;
+            text-transform: none;
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 20px;
+            border-radius: 12px;
+        }
+        
+        .logo {
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 15px rgba(217, 70, 239, 0.4));
+        }
+        
+        .logo img {
+            height: 80px;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="images/virittsplusmascot.png" alt="Viri.TTS Logo">
+        </div>
+        <h1>Twitch Connected!</h1>
+        <p class="subtitle">Your access token is ready</p>
+        
+        <div id="token">Loading token...</div>
+        
+        <button onclick="copyToken()">Copy Token</button>
+        <div id="copied" class="success" style="display:none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Token copied to clipboard!
+        </div>
+        
+        <div class="instructions">
+            <strong>Next Steps</strong>
+            <ol>
+                <li>Go back to <strong>Viri.TTS Settings</strong></li>
+                <li>Find the <strong>"Twitch OAuth Token"</strong> field</li>
+                <li>Paste the token you just copied</li>
+                <li>Click <strong>"Save Settings"</strong></li>
+                <li>You're all set! Close this page 🎉</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Extract token from URL fragment (#access_token=...)
+        function getToken() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            return params.get('access_token');
+        }
+
+        // Display token or error message
+        const token = getToken();
+        const tokenElement = document.getElementById('token');
+        
+        if (token) {
+            tokenElement.textContent = token;
+            tokenElement.style.cursor = 'pointer';
+            tokenElement.title = 'Click to select all';
+            
+            // Allow clicking the token box to select all text
+            tokenElement.onclick = function() {
+                const range = document.createRange();
+                range.selectNodeContents(tokenElement);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            };
+        } else {
+            tokenElement.className = 'error';
+            tokenElement.textContent = '❌ No token found in URL. Please try connecting again from Viri.TTS Settings.';
+        }
+
+        // Copy token to clipboard
+        function copyToken() {
+            if (!token) return;
+            
+            navigator.clipboard.writeText(token).then(() => {
+                const copiedMsg = document.getElementById('copied');
+                copiedMsg.style.display = 'flex';
+                
+                setTimeout(() => {
+                    copiedMsg.style.display = 'none';
+                }, 3000);
+            }).catch(err => {
+                alert('Failed to copy. Please select and copy manually.');
+            });
+        }
+    </script>
+</body>
+</html>
