@@ -132,6 +132,7 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const PASSWORD_RESET_REDIRECT = "https://www.viritts.com/account.html";
 
     const statusEl = document.getElementById("auth-status");
     const keysList = document.getElementById("keys-list");
@@ -272,8 +273,7 @@
       const email = emailEl.value.trim();
       if (!email) return setStatus("Enter your email to reset password.", true);
 
-      const redirectTo = `${window.location.origin}/account.html`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: PASSWORD_RESET_REDIRECT });
       if (error) return setStatus(error.message, true);
       setStatus("Password reset email sent. Check your inbox.");
     });
