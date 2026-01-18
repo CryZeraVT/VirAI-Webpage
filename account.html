@@ -36,7 +36,7 @@
           <input id="password" type="password" placeholder="Password" class="auth-input">
         </div>
 
-        <div class="auth-actions">
+        <div class="auth-actions" id="auth-actions">
           <button id="sign-in" class="btn">Sign In</button>
           <button id="sign-up" class="btn btn-outline">Create Account</button>
           <button id="sign-out" class="btn btn-outline">Sign Out</button>
@@ -138,6 +138,8 @@
     const emailEl = document.getElementById("email");
     const passwordEl = document.getElementById("password");
     const resetPanel = document.getElementById("reset-panel");
+    const authActions = document.getElementById("auth-actions");
+    const resetButton = document.getElementById("reset-password");
     const newPasswordEl = document.getElementById("new-password");
     const confirmPasswordEl = document.getElementById("confirm-password");
 
@@ -160,13 +162,32 @@
       }
     }
 
+    function enterRecoveryMode() {
+      resetPanel.classList.remove("hidden");
+      authActions.classList.add("hidden");
+      resetButton.classList.add("hidden");
+      setStatus("Please set a new password below.");
+    }
+
+    function exitRecoveryMode() {
+      resetPanel.classList.add("hidden");
+      authActions.classList.remove("hidden");
+      resetButton.classList.remove("hidden");
+    }
+
     // Show reset panel if this page is opened from a recovery link
     supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
-        resetPanel.classList.remove("hidden");
-        setStatus("Please set a new password below.");
+        enterRecoveryMode();
       }
     });
+
+    // If the recovery token is in the URL hash, show the reset panel immediately
+    if (window.location.hash.includes("type=recovery")) {
+      enterRecoveryMode();
+    } else {
+      exitRecoveryMode();
+    }
 
     async function loadKeys() {
       const { data: userData } = await supabase.auth.getUser();
@@ -266,7 +287,7 @@
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) return setStatus(error.message, true);
       setStatus("Password updated successfully. Redirecting to login...");
-      resetPanel.classList.add("hidden");
+      exitRecoveryMode();
       setTimeout(() => {
         window.location.href = "/account.html";
       }, 1200);
