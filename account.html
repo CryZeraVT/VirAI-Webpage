@@ -42,6 +42,10 @@
           <button id="sign-out" class="btn btn-outline">Sign Out</button>
         </div>
 
+        <p class="auth-helper">
+          Use the same email you purchased with. New accounts may require email confirmation.
+        </p>
+
         <div class="auth-divider"></div>
 
         <div class="auth-keys">
@@ -156,9 +160,14 @@
       const password = passwordEl.value.trim();
       if (!email || !password) return setStatus("Enter email and password.", true);
 
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) return setStatus(error.message, true);
-      setStatus("Account created. Check your email if confirmation is required.");
+      if (data?.session) {
+        setStatus("Account created and signed in.");
+        loadKeys();
+      } else {
+        setStatus("Account created. Please confirm your email, then sign in.");
+      }
     });
 
     document.getElementById("sign-out").addEventListener("click", async () => {
