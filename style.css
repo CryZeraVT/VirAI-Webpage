@@ -345,6 +345,13 @@ nav a:hover {
     box-shadow: 0 5px 15px rgba(157, 78, 221, 0.4);
 }
 
+.btn.disabled,
+.btn:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    filter: grayscale(0.2);
+}
+
 .btn-outline {
     background: transparent !important;
     border: 2px solid var(--primary) !important;
