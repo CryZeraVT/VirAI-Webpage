@@ -48,6 +48,15 @@
 
         <button id="reset-password" class="btn btn-outline auth-reset">Reset Password</button>
 
+        <div id="reset-panel" class="reset-panel hidden">
+          <h3>Set a New Password</h3>
+          <div class="auth-row">
+            <input id="new-password" type="password" placeholder="New password" class="auth-input">
+            <input id="confirm-password" type="password" placeholder="Confirm new password" class="auth-input">
+          </div>
+          <button id="update-password" class="btn">Update Password</button>
+        </div>
+
         <div class="auth-divider"></div>
 
         <div class="auth-keys">
@@ -128,6 +137,9 @@
     const keysList = document.getElementById("keys-list");
     const emailEl = document.getElementById("email");
     const passwordEl = document.getElementById("password");
+    const resetPanel = document.getElementById("reset-panel");
+    const newPasswordEl = document.getElementById("new-password");
+    const confirmPasswordEl = document.getElementById("confirm-password");
 
     const setStatus = (msg, isError = false) => {
       statusEl.textContent = msg;
@@ -147,6 +159,14 @@
         clearStatus();
       }
     }
+
+    // Show reset panel if this page is opened from a recovery link
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        resetPanel.classList.remove("hidden");
+        setStatus("Please set a new password below.");
+      }
+    });
 
     async function loadKeys() {
       const { data: userData } = await supabase.auth.getUser();
@@ -235,6 +255,18 @@
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) return setStatus(error.message, true);
       setStatus("Password reset email sent. Check your inbox.");
+    });
+
+    document.getElementById("update-password").addEventListener("click", async () => {
+      const newPassword = newPasswordEl.value.trim();
+      const confirmPassword = confirmPasswordEl.value.trim();
+      if (!newPassword || !confirmPassword) return setStatus("Enter your new password twice.", true);
+      if (newPassword !== confirmPassword) return setStatus("Passwords do not match.", true);
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) return setStatus(error.message, true);
+      setStatus("Password updated successfully.");
+      resetPanel.classList.add("hidden");
     });
 
     document.getElementById("load-keys").addEventListener("click", loadKeys);

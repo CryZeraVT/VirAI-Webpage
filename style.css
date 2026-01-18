@@ -478,6 +478,23 @@ footer {
     margin-bottom: 1.5rem;
 }
 
+.reset-panel {
+    margin: 1.5rem 0 0;
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: #1a0f2b;
+    border: 1px solid var(--primary-dark);
+}
+
+.reset-panel h3 {
+    margin-top: 0;
+    color: var(--primary-light);
+}
+
+.hidden {
+    display: none;
+}
+
 .auth-divider {
     height: 1px;
     background: rgba(157, 78, 221, 0.2);
