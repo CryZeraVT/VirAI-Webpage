@@ -9,6 +9,32 @@ CREATE TABLE public.purchases (
     expires_at TIMESTAMPTZ NOT NULL
 );
 
+-- License keys for app activation
+CREATE TABLE public.licenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    license_key TEXT UNIQUE NOT NULL,
+    email TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_at TIMESTAMPTZ,
+    machine_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_seen TIMESTAMPTZ
+);
+
+-- Ensure email column exists for older deployments
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Enable RLS for licenses
+ALTER TABLE public.licenses ENABLE ROW LEVEL SECURITY;
+
+-- Allow authenticated users to view their own licenses
+CREATE POLICY "Users can view their own licenses"
+ON public.licenses
+FOR SELECT
+USING (email = auth.email());
+
+CREATE INDEX IF NOT EXISTS idx_licenses_email ON public.licenses (email);
+
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
 

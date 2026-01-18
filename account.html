@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ViriTTS - Account</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="interactive-bg"></div>
+
+  <div class="container">
+    <header>
+      <a href="index.html" class="logo">
+        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
+        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
+      </a>
+      <nav>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="index.html#about">About Me</a>
+        <a href="account.html">Account</a>
+      </nav>
+    </header>
+
+    <section class="auth-section">
+      <div class="auth-card">
+        <h2>Your License Portal</h2>
+        <p class="auth-subtitle">Log in to view your ViriTTS license keys anytime.</p>
+
+        <div class="auth-status" id="auth-status"></div>
+
+        <div class="auth-row">
+          <input id="email" type="email" placeholder="Email" class="auth-input">
+          <input id="password" type="password" placeholder="Password" class="auth-input">
+        </div>
+
+        <div class="auth-actions">
+          <button id="sign-in" class="btn">Sign In</button>
+          <button id="sign-up" class="btn btn-outline">Create Account</button>
+          <button id="sign-out" class="btn btn-outline">Sign Out</button>
+        </div>
+
+        <div class="auth-divider"></div>
+
+        <div class="auth-keys">
+          <div class="auth-keys-header">
+            <h3>Your License Keys</h3>
+            <button id="load-keys" class="btn">Refresh</button>
+          </div>
+          <div id="keys-list" class="keys-list">No keys loaded yet.</div>
+        </div>
+
+        <p class="auth-note">
+          Need help? Visit <a href="https://www.viritts.com" target="_blank">www.viritts.com</a>.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // TODO: Fill these in with your project values
+    // Use the project URL (NOT the Edge Function URL)
+    const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const statusEl = document.getElementById("auth-status");
+    const keysList = document.getElementById("keys-list");
+    const emailEl = document.getElementById("email");
+    const passwordEl = document.getElementById("password");
+
+    const setStatus = (msg, isError = false) => {
+      statusEl.textContent = msg;
+      statusEl.className = "auth-status " + (isError ? "error" : "success");
+    };
+
+    const clearStatus = () => {
+      statusEl.textContent = "";
+      statusEl.className = "auth-status";
+    };
+
+    async function refreshSession() {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) {
+        setStatus(`Signed in as ${data.user.email}`);
+      } else {
+        clearStatus();
+      }
+    }
+
+    async function loadKeys() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (!user) {
+        keysList.textContent = "Please sign in to view your keys.";
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("licenses")
+        .select("license_key,status,expires_at,created_at")
+        .eq("email", user.email)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        keysList.textContent = "Error loading keys.";
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        keysList.textContent = "No licenses found for this account.";
+        return;
+      }
+
+      keysList.innerHTML = data.map((row) => {
+        const expires = row.expires_at ? new Date(row.expires_at).toLocaleDateString() : "No expiry";
+        return `
+          <div class="key-item">
+            <div class="key-info">
+              <div class="key-value">${row.license_key}</div>
+              <div class="key-meta">Status: ${row.status} • Expires: ${expires}</div>
+            </div>
+            <button class="btn btn-outline copy-btn" data-key="${row.license_key}">Copy</button>
+          </div>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".copy-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-key") || "";
+          navigator.clipboard.writeText(key);
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy"), 1000);
+        });
+      });
+    }
+
+    document.getElementById("sign-in").addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passwordEl.value.trim();
+      if (!email || !password) return setStatus("Enter email and password.", true);
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return setStatus(error.message, true);
+      setStatus("Signed in successfully.");
+      loadKeys();
+    });
+
+    document.getElementById("sign-up").addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passwordEl.value.trim();
+      if (!email || !password) return setStatus("Enter email and password.", true);
+
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return setStatus(error.message, true);
+      setStatus("Account created. Check your email if confirmation is required.");
+    });
+
+    document.getElementById("sign-out").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      setStatus("Signed out.");
+      keysList.textContent = "Please sign in to view your keys.";
+    });
+
+    document.getElementById("load-keys").addEventListener("click", loadKeys);
+
+    refreshSession();
+  </script>
+</body>
+</html>

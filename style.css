@@ -420,6 +420,136 @@ footer {
     margin-top: 4rem;
 }
 
+/* ACCOUNT / LICENSE PORTAL */
+.auth-section {
+    padding: 4rem 0 6rem;
+}
+
+.auth-card {
+    max-width: 820px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--primary-dark);
+    border-radius: 20px;
+    padding: 3rem;
+    box-shadow: 0 0 30px rgba(157, 78, 221, 0.2);
+}
+
+.auth-card h2 {
+    margin-top: 0;
+    color: var(--primary-light);
+}
+
+.auth-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.auth-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.auth-input {
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--primary-dark);
+    background: #1a0f2b;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.auth-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.auth-divider {
+    height: 1px;
+    background: rgba(157, 78, 221, 0.2);
+    margin: 2rem 0;
+}
+
+.auth-status {
+    margin: 0 0 1rem;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.auth-status.success {
+    color: var(--success);
+}
+
+.auth-status.error {
+    color: var(--error);
+}
+
+.auth-keys-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.keys-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.key-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    background: #1a0f2b;
+    border: 1px solid var(--primary-dark);
+}
+
+.key-value {
+    font-weight: 600;
+    color: var(--primary-light);
+}
+
+.key-meta {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.auth-note {
+    margin-top: 2rem;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.auth-note a {
+    color: var(--primary-light);
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .auth-row {
+        grid-template-columns: 1fr;
+    }
+    .auth-actions {
+        flex-direction: column;
+    }
+    .auth-keys-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .key-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 /* Status Messages */
 .status-box {
     background: var(--surface);
