@@ -474,6 +474,10 @@ footer {
     color: var(--text-secondary);
 }
 
+.auth-reset {
+    margin-bottom: 1.5rem;
+}
+
 .auth-divider {
     height: 1px;
     background: rgba(157, 78, 221, 0.2);

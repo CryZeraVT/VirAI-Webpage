@@ -46,6 +46,8 @@
           Use the same email you purchased with. New accounts may require email confirmation.
         </p>
 
+        <button id="reset-password" class="btn btn-outline auth-reset">Reset Password</button>
+
         <div class="auth-divider"></div>
 
         <div class="auth-keys">
@@ -62,6 +64,55 @@
       </div>
     </section>
   </div>
+
+  <!-- Mouse Reactive Background Script -->
+  <script>
+    const bg = document.getElementById('interactive-bg');
+    const particles = [];
+    const particleCount = 25;
+
+    // Initialize particles
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+
+      // Random properties
+      const size = Math.random() * 100 + 50;
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.left = `${x}%`;
+      p.style.top = `${y}%`;
+
+      // Store original position for parallax calculation
+      particles.push({
+        el: p,
+        x: x,
+        y: y,
+        speed: Math.random() * 0.05 + 0.02 // Depth factor
+      });
+
+      bg.appendChild(p);
+    }
+
+    // Mouse move handler
+    document.addEventListener('mousemove', (e) => {
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      particles.forEach(p => {
+        const moveX = (mouseX - centerX) * p.speed;
+        const moveY = (mouseY - centerY) * p.speed;
+
+        // Using transform for performance
+        p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      });
+    });
+  </script>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -174,6 +225,16 @@
       await supabase.auth.signOut();
       setStatus("Signed out.");
       keysList.textContent = "Please sign in to view your keys.";
+    });
+
+    document.getElementById("reset-password").addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      if (!email) return setStatus("Enter your email to reset password.", true);
+
+      const redirectTo = `${window.location.origin}/account.html`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) return setStatus(error.message, true);
+      setStatus("Password reset email sent. Check your inbox.");
     });
 
     document.getElementById("load-keys").addEventListener("click", loadKeys);
