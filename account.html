@@ -265,8 +265,11 @@
 
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) return setStatus(error.message, true);
-      setStatus("Password updated successfully.");
+      setStatus("Password updated successfully. Redirecting to login...");
       resetPanel.classList.add("hidden");
+      setTimeout(() => {
+        window.location.href = "/account.html";
+      }, 1200);
     });
 
     document.getElementById("load-keys").addEventListener("click", loadKeys);
