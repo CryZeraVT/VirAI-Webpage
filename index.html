@@ -3,256 +3,349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viri.TTS - AI-Powered Twitch TTS Bot</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --bg: #0f0816;
-            --surface: #1e1433;
-            --surface-variant: #2d1b4e;
-            --primary: #d946ef;
-            --secondary: #8b5cf6;
-            --accent: #06b6d4;
-            --text-primary: #ffffff;
-            --text-secondary: #a1a1aa;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        header {
-            padding: 40px 20px;
-            text-align: center;
-            background: rgba(30, 20, 51, 0.5);
-            border-bottom: 1px solid rgba(217, 70, 239, 0.2);
-            backdrop-filter: blur(10px);
-        }
-        
-        h1 {
-            font-size: 48px;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            text-shadow: 0 0 20px rgba(217, 70, 239, 0.3);
-        }
-        
-        .subtitle {
-            font-size: 20px;
-            color: var(--text-secondary);
-        }
-        
-        main {
-            flex: 1;
-            padding: 60px 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-        
-        .feature-card {
-            background: var(--surface);
-            border: 1px solid var(--surface-variant);
-            border-radius: 16px;
-            padding: 30px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
-            box-shadow: 0 10px 30px rgba(217, 70, 239, 0.15);
-        }
-        
-        .feature-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 0 8px rgba(217, 70, 239, 0.3));
-        }
-        
-        .feature-card h3 {
-            color: var(--primary);
-            margin-bottom: 15px;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        
-        .feature-card p {
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 30px;
-            background: rgba(15, 8, 22, 0.8);
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-secondary);
-        }
-        
-        .cta-section {
-            margin-top: 60px;
-            padding: 40px;
-            background: linear-gradient(180deg, rgba(217, 70, 239, 0.05) 0%, transparent 100%);
-            border-radius: 20px;
-            border: 1px solid rgba(217, 70, 239, 0.2);
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            text-align: left;
-        }
-
-        .cta-left {
-            padding-right: 20px;
-        }
-
-        .cta-right {
-            border-left: 1px solid rgba(217, 70, 239, 0.2);
-            padding-left: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .cta-section h2 {
-            font-size: 32px;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-        }
-
-        .live-badge {
-            display: inline-block;
-            background-color: #ef4444;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            .cta-section {
-                grid-template-columns: 1fr;
-            }
-            .cta-right {
-                border-left: none;
-                border-top: 1px solid rgba(217, 70, 239, 0.2);
-                padding-left: 0;
-                padding-top: 40px;
-            }
-        }
-    </style>
+    <title>ViriTTS - AI Stream Companion</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <img src="images/virittsplusmascot.png" alt="Viri.TTS Logo" style="height: 250px; margin-bottom: 20px; filter: drop-shadow(0 0 25px rgba(217, 70, 239, 0.5));">
-        <p class="subtitle">AI-Powered Twitch TTS Companion</p>
-    </header>
+    <div id="interactive-bg"></div>
     
-    <main>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🤖</div>
-                <h3>Smart AI Responses</h3>
-                <p>Powered by OpenAI, Grok, or Gemini - your AI companion responds naturally to chat with customizable personality.</p>
+    <!-- Lightbox Overlay -->
+    <div id="lightbox">
+        <img id="lightbox-img" src="" alt="Enlarged Image">
+    </div>
+
+    <div class="container">
+        <header>
+            <a href="index.html" class="logo">
+                <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
+                <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
+            </a>
+            <nav>
+                <a href="#about">About Me</a>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="https://discord.gg/yourdiscord" target="_blank">Support</a>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <div class="hero-container">
+                <!-- Image Side (Left) -->
+                <div class="hero-image-wrapper">
+                    <img src="images/UI.png" alt="ViriTTS Dashboard Interface" class="hero-image">
+                </div>
+
+                <!-- Text Side (Right) -->
+                <div class="hero-content">
+                    <h1>Your AI Stream Companion</h1>
+                    <p>Engage your chat with a personality-driven AI that reacts, jokes, and manages your stream in real-time.</p>
+                    <div class="hero-btns">
+                        <a href="#pricing" class="btn">Get Started</a>
+                        <a href="#features" class="btn btn-outline" style="background: transparent; border: 2px solid var(--primary); margin-left: 1rem;">Learn More</a>
+                    </div>
+                </div>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🔊</div>
-                <h3>Premium TTS</h3>
-                <p>Multiple TTS engines including ElevenLabs and OpenAI for high-quality voice synthesis.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🎨</div>
-                <h3>PNG Tuber</h3>
-                <p>Animated PNG character that reacts to audio with multiple animation styles.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>Real-time Chat</h3>
-                <p>Seamless Twitch integration with blacklist filtering and customizable triggers.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <h3>User Memory</h3>
-                <p>Remembers facts about your viewers for personalized interactions.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">✨</div>
-                <h3>Modern UI</h3>
-                <p>Beautiful Flet-based interface with a stunning neon theme.</p>
+        </section>
+
+        <!-- Marquee Carousel -->
+        <div class="marquee-container">
+            <div class="marquee-content">
+                <span class="marquee-item">Works with Twitch</span>
+                <span class="marquee-item">Built-In AI</span>
+                <span class="marquee-item">Low Latency</span>
+                <span class="marquee-item">Easy Config</span>
+                <span class="marquee-item">ElevenLabs Compatible</span>
+                <span class="marquee-item">Streamer Friendly</span>
+                <span class="marquee-item">Custom Personas</span>
+                <span class="marquee-item">Interactive TTS</span>
+                <!-- Duplicate for seamless loop -->
+                <span class="marquee-item">Works with Twitch</span>
+                <span class="marquee-item">Built-In AI</span>
+                <span class="marquee-item">Low Latency</span>
+                <span class="marquee-item">Easy Config</span>
+                <span class="marquee-item">ElevenLabs Compatible</span>
+                <span class="marquee-item">Streamer Friendly</span>
+                <span class="marquee-item">Custom Personas</span>
+                <span class="marquee-item">Interactive TTS</span>
             </div>
         </div>
-        
-        <div class="cta-section">
-            <div class="cta-left">
-                <h2>Learn about the builder of Viri.TTS!</h2>
-                <p>Check me out live!</p>
-                <p style="margin-top: 10px; color: var(--text-secondary);">Viri.TTS is a private tool built by CryZera.</p>
-            </div>
+
+        <!-- SPOTLIGHT SECTION (Community Memory) -->
+        <section class="spotlight">
+            <h3>Community Memory: The AI That Remembers</h3>
+            <p>Viri isn't just a chatbot; it's a long-term companion. It remembers what your viewers love, hate, and talk about, creating personalized interactions that deepen over time.</p>
             
-            <div class="cta-right">
-                <div class="live-badge">🔴 LIVE NOW</div>
-                <h2>Ask me live!</h2>
-                <p style="margin-bottom: 20px;">Have questions? Come hang out on Twitch!</p>
+            <div class="spotlight-grid">
+                <!-- Step 1 -->
+                <div class="spotlight-card">
+                    <div class="showcase-img-wrapper tilt-left">
+                        <img src="images/communitymemory1.png" alt="User shares preference" class="showcase-img">
+                    </div>
+                    <div class="spotlight-caption">1. Chatter shares a detail</div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="spotlight-arrow">➜</div>
+
+                <!-- Step 2 -->
+                <div class="spotlight-card">
+                    <div class="showcase-img-wrapper tilt-right">
+                        <img src="images/communitymemory2.png" alt="Viri remembers" class="showcase-img">
+                    </div>
+                    <div class="spotlight-caption">2. Viri remembers forever</div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- APP SHOWCASE SECTION -->
+        <section class="showcase">
+            <!-- 1. Custom Commands -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper">
+                    <img src="images/CustomcommandsUI.png" alt="Custom Commands Interface" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Custom Command Power</h3>
+                    <p>Create powerful custom commands that trigger AI responses, sound effects, or Twitch actions. Configure permissions (Everyone/Mods), set keywords, and define exactly what Rye should do.</p>
+                </div>
+            </div>
+
+            <!-- 2. AI Persona Settings -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper">
+                    <img src="images/simpleaipersonasettingsui.png" alt="AI Persona Settings" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Fine-Tune Your AI</h3>
+                    <p>Easily configure your AI's personality. Choose between built-in no-cost AI or bring your own keys. Adjust creativity, tone, and responsiveness to match your stream's vibe perfectly.</p>
+                </div>
+            </div>
+
+            <!-- 3. TTS Pet Setup -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper">
+                    <img src="images/ttspetsetupui.png" alt="TTS Pet Setup" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Interactive TTS Pet</h3>
+                    <p>Bring your AI to life with a reactive PNG Tuber! Features a <strong>built-in local server</strong> for super simple operation—no external apps needed. Upload your idle/talking states, and it syncs perfectly with TTS audio.</p>
+                </div>
+            </div>
+
+            <!-- 4. Moderation Support -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper">
+                    <img src="images/ModerationSupportui.png" alt="Moderation Support" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Smart Moderation</h3>
+                    <p>Let Rye help keep your chat safe. Configure moderation levels, blocked words, and response guidelines. The AI understands context and can assist your mod team in real-time.</p>
+                </div>
+            </div>
+
+            <!-- 5. Voice Control (STT) -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper small-showcase-img">
+                    <img src="images/STTUI.png" alt="Voice Control Interface" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Real-Time Voice Control</h3>
+                    <p>While your chat communicates with Viri, Viri also listens to <strong>YOU</strong> in real-time! Simply say <em>"Hey Viri, shoutout the last raider"</em> and Viri will execute the command instantly. No need to alt-tab or interrupt your gameplay.</p>
+                </div>
+            </div>
+
+            <!-- 6. Real-Time Command Execution -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper small-showcase-img">
+                    <img src="images/shoutoutui.png" alt="Command Execution Interface" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Unified Activity Log</h3>
+                    <p>Everything in one place. Watch Viri execute chat commands like <code>!so</code> and speak your TTS messages via <code>!say</code> in a single, real-time feed.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- WHY SUBSCRIPTION SECTION -->
+        <section id="about" class="about-section">
+            <div class="about-container">
+                <div class="about-mascot-wrapper">
+                    <img src="images/virittsplusmascot.png" alt="ViriTTS Mascot" class="about-mascot">
+                </div>
+                <div class="about-content">
+                    <h2>Who am I, and why a Subscription?</h2>
+                    <p>I'm a small Vtuber Content Creator that decided one day to fix the little problems I had by building it myself! My name's <a href="https://www.twitch.tv/cryzera" target="_blank" style="color: var(--cyan); text-decoration: none; font-weight: bold;">CryZera</a>. I'm what you call a Scuff Vtuber, and in my streams, I often found that existing tools weren't built for my needs or didn't work well together. So, I decided to build new ones that work perfectly for me!</p>
+                    
+                    <p>My goal is to make this tool as easy as possible to understand and get a lot of the technical sides of AI out of the way. I made the decision to implement AI directly into the software so it's ready to use as soon as you get it! I truly believe that AI, when used correctly, can be a powerful and fun tool for content creation.</p>
+                    
+                    <p>However, providing built-in AI comes with a monthly cost per person. To be able to support the product for the long term, cover these API costs, and continue developing new features, a monthly subscription model is necessary. Thank you for supporting independent development!</p>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ROADMAP SECTION -->
+        <section class="roadmap-section">
+            <div class="roadmap-container">
+                <h2>🚀 Future Roadmap</h2>
+                <div class="roadmap-timeline">
+                    
+                    <div class="roadmap-item">
+                        <div class="roadmap-marker"></div>
+                        <div class="roadmap-content">
+                            <h3>🎭 Expressive Avatars</h3>
+                            <p>Upgrading the PNG Pet system to support 5-8 distinct emotional states. When Viri uses emojis like "Smug", the avatar will react with specific emotional image swaps instead of just open/close mouth animations.</p>
+                        </div>
+                    </div>
+
+                    <div class="roadmap-item">
+                        <div class="roadmap-marker"></div>
+                        <div class="roadmap-content">
+                            <h3>🛡️ Enhanced Moderation Suite</h3>
+                            <p>Expanding built-in moderation tools to give Viri more granular control and automated protection capabilities directly from the dashboard.</p>
+                        </div>
+                    </div>
+
+                    <div class="roadmap-item">
+                        <div class="roadmap-marker"></div>
+                        <div class="roadmap-content">
+                            <h3>📡 VirCast Ecosystem</h3>
+                            <p>Seamless integration with <strong>VirCast</strong> (my custom audio tool) to make 2-PC audio routing effortless and high-quality.</p>
+                        </div>
+                    </div>
+
+                    <div class="roadmap-item">
+                        <div class="roadmap-marker"></div>
+                        <div class="roadmap-content">
+                            <h3>📺 Multi-Stream Support (Future)</h3>
+                            <p>Bringing Viri's presence beyond Twitch. Full integration for YouTube streaming is planned for a future update.</p>
+                        </div>
+                    </div>
+
+                    <div class="roadmap-item">
+                        <div class="roadmap-marker"></div>
+                        <div class="roadmap-content">
+                            <h3>🌐 Cross-Chat Intelligence</h3>
+                            <p>Viri will be able to moderate and bridge conversations across multiple platforms simultaneously, keeping your community connected.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="pricing">
+
+        <section id="pricing" class="pricing">
+            <h2>Simple Pricing</h2>
+            <div class="price-card">
+                <h3>ViriTTS Pro</h3>
+                <div class="price">$12<span>/month</span></div>
+                <ul class="features-list">
+                    <li>Unlimited AI Chat Responses</li>
+                    <li>Built-in No Cost to You AI</li>
+                    <li>Custom TTS Voices</li>
+                    <li>Stream Overlay & PNG Tuber</li>
+                    <li>Priority Support</li>
+                </ul>
+                <a href="buy.html" class="btn">ViriTTS</a>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    Secure payment via Stripe. Cancel anytime.
+                </p>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 ViriTTS. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Mouse Reactive Background Script -->
+    <script>
+        const bg = document.getElementById('interactive-bg');
+        const particles = [];
+        const particleCount = 25;
+
+        // Initialize particles
+        for (let i = 0; i < particleCount; i++) {
+            const p = document.createElement('div');
+            p.classList.add('particle');
+            
+            // Random properties
+            const size = Math.random() * 100 + 50;
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
+            
+            p.style.width = `${size}px`;
+            p.style.height = `${size}px`;
+            p.style.left = `${x}%`;
+            p.style.top = `${y}%`;
+            
+            // Store original position for parallax calculation
+            particles.push({
+                el: p,
+                x: x,
+                y: y,
+                speed: Math.random() * 0.05 + 0.02 // Depth factor
+            });
+            
+            bg.appendChild(p);
+        }
+
+        // Mouse move handler
+        document.addEventListener('mousemove', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            particles.forEach(p => {
+                const moveX = (mouseX - centerX) * p.speed;
+                const moveY = (mouseY - centerY) * p.speed;
                 
-                <!-- Twitch Embed -->
-                <div id="twitch-embed"></div>
-                <script src="https://embed.twitch.tv/embed/v1.js"></script>
-                <script type="text/javascript">
-                  new Twitch.Embed("twitch-embed", {
-                    width: "100%",
-                    height: 300,
-                    channel: "cryzera",
-                    layout: "video",
-                    autoplay: true,
-                    parent: ["cryze.github.io", "localhost"] // Replace with your actual domain
-                  });
-                </script>
-            </div>
-        </div>
-    </main>
-    
-    <footer>
-        <p>Viri.TTS © 2026 | Built by CryZera</p>
-    </footer>
+                // Move AWAY from mouse or WITH mouse (parallax)
+                // Using transform for performance
+                p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            });
+        });
+
+        // Scroll Animation Observer
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px"
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                } else {
+                    entry.target.classList.remove('visible'); // Reset animation
+                }
+            });
+        }, observerOptions);
+
+        // Elements to animate
+        document.querySelectorAll('.feature-card, .showcase-item, .pricing, .spotlight, .about-section, .roadmap-section').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Lightbox Logic
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+
+        document.querySelectorAll('.hero-image, .showcase-img').forEach(img => {
+            img.addEventListener('click', () => {
+                lightboxImg.src = img.src;
+                lightbox.classList.add('active');
+            });
+        });
+
+        lightbox.addEventListener('click', () => {
+            lightbox.classList.remove('active');
+        });
+    </script>
 </body>
 </html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Payment...</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        // REPLACE THIS LINK WITH YOUR ACTUAL STRIPE PAYMENT LINK
+        const STRIPE_LINK = "https://buy.stripe.com/test_your_link_here";
+        
+        function redirectToStripe() {
+            window.location.href = STRIPE_LINK;
+        }
+        
+        // Auto-redirect after 3 seconds
+        setTimeout(redirectToStripe, 2000);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="status-box">
+            <div class="spinner"></div>
+            <h2>Redirecting to Stripe...</h2>
+            <p>You are being transferred to our secure payment processor.</p>
+            <button onclick="redirectToStripe()" class="btn" style="margin-top: 1rem;">Click if not redirected</button>
+        </div>
+    </div>
+</body>
+</html>

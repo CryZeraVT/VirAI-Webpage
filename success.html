@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful! - ViriTTS</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="logo">ViriTTS</a>
+        </header>
+
+        <div class="status-box">
+            <div class="status-icon">🎉</div>
+            <h2>Payment Successful!</h2>
+            <p>Thank you for subscribing to ViriTTS Pro.</p>
+            
+            <div id="loading">
+                <div class="spinner"></div>
+                <p>Verifying purchase and preparing download...</p>
+            </div>
+
+            <div id="success-content" style="display: none;">
+                <p>We've sent a receipt to your email.</p>
+                <div id="download-area" style="margin: 2rem 0;">
+                    <!-- Download button injected here -->
+                </div>
+                <p style="font-size: 0.9rem; color: #00ff9d;">
+                    This download link is valid for 24 hours.
+                </p>
+            </div>
+
+            <div id="error-content" style="display: none;">
+                <p style="color: var(--error);">We couldn't verify your purchase automatically.</p>
+                <p>Please check your email for the download link.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION - REPLACE THESE!
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_PUBLIC_ANON_KEY';
+
+        async function checkPurchase() {
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('session_id');
+
+            if (!sessionId) {
+                // If no session ID, maybe they just navigated here?
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-content').style.display = 'block';
+                return;
+            }
+
+            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Poll for the purchase record (webhook might take a few seconds)
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            const poll = setInterval(async () => {
+                attempts++;
+                const { data, error } = await supabase
+                    .from('purchases')
+                    .select('download_token')
+                    .eq('stripe_session_id', sessionId)
+                    .single();
+
+                if (data) {
+                    clearInterval(poll);
+                    showDownload(data.download_token);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(poll);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error-content').style.display = 'block';
+                }
+            }, 2000); // Check every 2 seconds
+        }
+
+        function showDownload(token) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('success-content').style.display = 'block';
+            document.getElementById('download-area').innerHTML = `
+                <a href="download.html?token=${token}" class="btn">
+                    Download ViriTTS Installer
+                </a>
+            `;
+        }
+
+        checkPurchase();
+    </script>
+</body>
+</html>

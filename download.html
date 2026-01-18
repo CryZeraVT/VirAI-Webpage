@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloading ViriTTS...</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="status-box">
+            <div id="status-icon" class="spinner"></div>
+            <h2 id="status-title">Verifying Token...</h2>
+            <p id="status-msg">Please wait while we prepare your secure download.</p>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION - REPLACE THESE!
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_PUBLIC_ANON_KEY';
+
+        async function initDownload() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+
+            if (!token) {
+                showError("No download token provided.");
+                return;
+            }
+
+            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            try {
+                // Call the Supabase Edge Function to get the signed URL
+                const { data, error } = await supabase.rpc('get_download_url', { token: token });
+
+                if (error) {
+                    console.error(error);
+                    showError("Invalid or expired token. Please check your email for a fresh link.");
+                } else {
+                    showSuccess();
+                    // Start download
+                    window.location.href = data.signed_url;
+                }
+            } catch (err) {
+                console.error(err);
+                showError("Connection error. Please try again.");
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('status-icon').className = 'status-icon';
+            document.getElementById('status-icon').innerText = '❌';
+            document.getElementById('status-title').innerText = 'Download Failed';
+            document.getElementById('status-title').style.color = 'var(--error)';
+            document.getElementById('status-msg').innerText = msg;
+        }
+
+        function showSuccess() {
+            document.getElementById('status-icon').className = 'status-icon';
+            document.getElementById('status-icon').innerText = '⬇️';
+            document.getElementById('status-title').innerText = 'Download Starting...';
+            document.getElementById('status-title').style.color = 'var(--success)';
+            document.getElementById('status-msg').innerText = 'Your download should begin automatically.';
+        }
+
+        initDownload();
+    </script>
+</body>
+</html>
