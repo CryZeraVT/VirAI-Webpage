@@ -25,6 +25,7 @@
 
             <div id="success-content" style="display: none;">
                 <p>We've sent a receipt to your email.</p>
+                <div id="license-area" style="margin: 1.5rem 0;"></div>
                 <div id="download-area" style="margin: 2rem 0;">
                     <!-- Download button injected here -->
                 </div>
@@ -41,9 +42,9 @@
     </div>
 
     <script>
-        // CONFIGURATION - REPLACE THESE!
-        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-        const SUPABASE_ANON_KEY = 'YOUR_PUBLIC_ANON_KEY';
+        // Supabase configuration
+        const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
 
         async function checkPurchase() {
             const params = new URLSearchParams(window.location.search);
@@ -56,7 +57,7 @@
                 return;
             }
 
-            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             // Poll for the purchase record (webhook might take a few seconds)
             let attempts = 0;
@@ -64,15 +65,15 @@
 
             const poll = setInterval(async () => {
                 attempts++;
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('purchases')
-                    .select('download_token')
+                    .select('download_token, license_key')
                     .eq('stripe_session_id', sessionId)
                     .single();
 
                 if (data) {
                     clearInterval(poll);
-                    showDownload(data.download_token);
+                    showDownload(data.download_token, data.license_key);
                 } else if (attempts >= maxAttempts) {
                     clearInterval(poll);
                     document.getElementById('loading').style.display = 'none';
@@ -81,9 +82,18 @@
             }, 2000); // Check every 2 seconds
         }
 
-        function showDownload(token) {
+        function showDownload(token, licenseKey) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('success-content').style.display = 'block';
+            if (licenseKey) {
+                document.getElementById('license-area').innerHTML = `
+                    <div style="background:#1a0f2b; border:1px solid #5a189a; border-radius:12px; padding:1rem;">
+                        <div style="font-size:0.9rem; color:#9d4edd;">Your License Key</div>
+                        <div style="font-size:1.1rem; color:#c77dff; font-weight:bold; margin:0.3rem 0;">${licenseKey}</div>
+                        <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${licenseKey}')">Copy Key</button>
+                    </div>
+                `;
+            }
             document.getElementById('download-area').innerHTML = `
                 <a href="download.html?token=${token}" class="btn">
                     Download ViriTTS Installer

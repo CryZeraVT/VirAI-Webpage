@@ -3,6 +3,10 @@ CREATE TABLE public.purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     stripe_session_id TEXT UNIQUE NOT NULL,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    stripe_price_id TEXT,
+    license_key TEXT,
     download_token UUID UNIQUE NOT NULL,
     download_used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -34,6 +38,12 @@ FOR SELECT
 USING (email = auth.email());
 
 CREATE INDEX IF NOT EXISTS idx_licenses_email ON public.licenses (email);
+
+-- Ensure purchases columns exist for older deployments
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS stripe_price_id TEXT;
+ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS license_key TEXT;
 
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
