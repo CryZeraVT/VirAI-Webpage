@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VirCast - Professional Audio Networking</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7950f2;
+            --primary-dark: #5f3dc4;
+            --primary-light: #9775fa;
+            --accent: #4dabf7;
+            --background: #0f0f11;
+            --surface: #1a1b1e;
+            --text: #ffffff;
+            --text-secondary: #909296;
+            --success: #40c057;
+        }
+
+        /* Specific overrides for VirCast flavor */
+        body {
+            background-color: var(--background);
+        }
+
+        #interactive-bg {
+            background: radial-gradient(circle at center, #1b1c22 0%, #0f0f11 100%);
+        }
+
+        .particle {
+            background: radial-gradient(circle, rgba(121, 80, 242, 0.4) 0%, transparent 70%);
+        }
+
+        .hero h1 {
+            background: linear-gradient(45deg, #ffffff, var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), #5c7cfa);
+        }
+
+        .btn-outline {
+            border-color: var(--accent) !important;
+            color: var(--accent) !important;
+        }
+
+        .showcase-text h3,
+        .roadmap-content h3 {
+            color: var(--accent);
+        }
+
+        .price-card {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(121, 80, 242, 0.2);
+        }
+
+        /* Above-the-fold tightening */
+        .hero {
+            padding: 3rem 0 !important;
+            min-height: auto !important;
+        }
+
+        .hero-image-wrapper {
+            max-width: 70% !important;
+            /* Made smaller to stop the crunch */
+            margin: 0 auto;
+        }
+
+        .hero-container {
+            gap: 3rem !important;
+            padding-top: 0.5rem;
+        }
+
+        .marquee-container {
+            margin-bottom: 0 !important;
+            padding: 0.5rem 0 !important;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem !important;
+        }
+
+        /* Zig-Zag Section Logic */
+        .showcase-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 0;
+            margin-bottom: 2rem;
+        }
+
+        /* Standard: Text Left, Image Right */
+        .showcase-item .showcase-text {
+            order: 1;
+        }
+
+        .showcase-item .showcase-img-wrapper {
+            order: 2;
+        }
+
+        /* Zig-Zag: Image Left, Text Right on EVEN items */
+        .showcase-item:nth-child(even) .showcase-text {
+            order: 2;
+        }
+
+        .showcase-item:nth-child(even) .showcase-img-wrapper {
+            order: 1;
+        }
+
+        /* Animation base for all major blocks */
+        .showcase-item,
+        .pricing,
+        .spotlight,
+        .spotlight-card,
+        .feature-card {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .showcase-item.visible,
+        .pricing.visible,
+        .spotlight.visible,
+        .spotlight-card.visible,
+        .feature-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="interactive-bg"></div>
+
+    <div id="lightbox">
+        <img id="lightbox-img" src="" alt="Enlarged Image">
+    </div>
+
+    <div class="container">
+        <header>
+            <nav style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 2rem; align-items: center;">
+                    <a href="index.html" class="logo" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="images/logo.png" alt="VirCast Logo" style="height: 50px;">
+                        <div style="display: flex; flex-direction: column; line-height: 1;">
+                            <span
+                                style="background: linear-gradient(45deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; font-size: 1.5rem;">VirCast</span>
+                            <span
+                                style="background: var(--accent); color: #000; font-size: 0.65rem; font-weight: 900; padding: 2px 4px; border-radius: 3px; display: inline-block; width: fit-content; margin-top: 2px; letter-spacing: 0.5px;">DIRECT</span>
+                        </div>
+                    </a>
+                </div>
+                <nav>
+                    <a href="index.html">Viri.TTS</a>
+                    <a href="#features">Features</a>
+                    <a href="https://discord.gg/yourdiscord" target="_blank">Support</a>
+                </nav>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <div class="hero-container">
+                <div class="hero-image-wrapper">
+                    <img src="images/VirCast.png" alt="VirCast Dashboard Interface" class="hero-image">
+                </div>
+                <div class="hero-content">
+                    <h1>Pro Audio. <br>Zero Latency.</h1>
+                    <p>The ultimate 2-PC audio routing solution. No virtual cables, no complex mixers—just pure UDP
+                        stream links between machines.</p>
+                    <div class="hero-btns">
+                        <a href="#download" class="btn">Download VirCast</a>
+                        <a href="#features" class="btn btn-outline">How it works</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marquee Carousel - Updated color to Cyan/Accent theme -->
+        <div class="marquee-container"
+            style="background: rgba(77, 171, 247, 0.1); border-top: 1px solid rgba(77, 171, 247, 0.2); border-bottom: 1px solid rgba(77, 171, 247, 0.2);">
+            <div class="marquee-content">
+                <span class="marquee-item" style="color: var(--accent);">UDP Direct Streaming</span>
+                <span class="marquee-item" style="color: var(--accent);">6 Independent Lanes</span>
+                <span class="marquee-item" style="color: var(--accent);">Sub-50ms Latency</span>
+                <span class="marquee-item" style="color: var(--accent);">Local Mixer Support</span>
+                <span class="marquee-item" style="color: var(--accent);">Mono/Stereo Toggle</span>
+                <span class="marquee-item" style="color: var(--accent);">Auto-Discovery</span>
+                <span class="marquee-item" style="color: var(--accent);">Glassmorphism UI</span>
+                <span class="marquee-item" style="color: var(--accent);">WASAPI & WDM-KS</span>
+                <span class="marquee-item" style="color: #fff; font-weight: 800;">Works great with WaveLink 3.0</span>
+                <!-- Duplicate -->
+                <span class="marquee-item" style="color: var(--accent);">UDP Direct Streaming</span>
+                <span class="marquee-item" style="color: var(--accent);">6 Independent Lanes</span>
+                <span class="marquee-item" style="color: var(--accent);">Sub-50ms Latency</span>
+                <span class="marquee-item" style="color: var(--accent);">Local Mixer Support</span>
+                <span class="marquee-item" style="color: var(--accent);">Mono/Stereo Toggle</span>
+                <span class="marquee-item" style="color: var(--accent);">Auto-Discovery</span>
+                <span class="marquee-item" style="color: var(--accent);">Glassmorphism UI</span>
+                <span class="marquee-item" style="color: var(--accent);">WASAPI & WDM-KS</span>
+                <span class="marquee-item" style="color: #fff; font-weight: 800;">Works great with WaveLink 3.0</span>
+            </div>
+        </div>
+
+        <!-- Moved How it Works to the Top -->
+        <section class="spotlight" style="padding: 2rem 0;">
+            <h3>How it Works: The Direct Link</h3>
+            <p>Whether you're bridging two machines or building a massive multi-PC studio, VirCast makes audio
+                networking effortless. Set a lane on your primary PC and its exact opposite on your target—it's that
+                simple.</p>
+            <p style="color: var(--accent); font-weight: bold; margin-top: -1.5rem;">Each color connects to the same
+                color on the target PC.</p>
+
+            <div class="spotlight-grid" style="margin-top: 4rem;">
+                <!-- Step 1 -->
+                <div class="spotlight-card">
+                    <div class="showcase-img-wrapper tilt-left" style="border-color: var(--primary);">
+                        <img src="images/VirCast.png" alt="Gaming PC Sender" class="showcase-img">
+                    </div>
+                    <div class="spotlight-caption">1. Gaming PC (Sender - Purple Lane)</div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="spotlight-arrow">➜</div>
+
+                <!-- Step 2 -->
+                <div class="spotlight-card">
+                    <div class="showcase-img-wrapper tilt-right" style="border-color: var(--primary);">
+                        <img src="images/VirCast.png" alt="Streaming PC Receiver" class="showcase-img">
+                    </div>
+                    <div class="spotlight-caption">2. Streaming PC (Receiver - Purple Lane)</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="showcase">
+            <!-- 1. Mono Fix (Text Left, Image Right) -->
+            <div class="showcase-item">
+                <div class="showcase-text">
+                    <h3>The One-Click "Mono" Fix</h3>
+                    <p>Stop fighting with Windows Control Panel. Many pro audio interfaces send microphone data on a
+                        single channel, leaving your stream with audio on only one side. With VirCast's <strong>Smart
+                            Mono Toggle</strong>, you can instantly upmix your input to stereo with a single click. No
+                        driver hacks, no registry edits—just perfect, centered audio.</p>
+                </div>
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--accent); box-shadow: 0 0 40px rgba(77, 171, 247, 0.3);">
+                    <img src="images/The One-Click Mono Fix.png" alt="Mono Toggle Feature" class="showcase-img">
+                </div>
+            </div>
+
+            <!-- 2. Discovery (Image Left, Text Right) -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--primary); box-shadow: 0 0 40px rgba(121, 80, 242, 0.3);">
+                    <img src="images/Scanyourlocalnetwork.png" alt="Network Discovery Scan" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Smart Network Discovery</h3>
+                    <p>Stop typing IP addresses manually. VirCast automatically scans your local network to find other
+                        machines running the app. Just click "Scan Network," pick your target, and you're paired in
+                        seconds.</p>
+                </div>
+            </div>
+
+            <!-- 3. LocalMixer (Text Left, Image Right) -->
+            <div class="showcase-item">
+                <div class="showcase-text">
+                    <h3>LocalMixer Routing</h3>
+                    <p>The built-in <strong>LocalMixer</strong> allows you to route your physical microphone to a
+                        virtual output device instantly. Bridge the gap between your hardware and streaming software
+                        with zero measurable overhead.</p>
+                </div>
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--success); box-shadow: 0 0 40px rgba(64, 192, 87, 0.3);">
+                    <img src="images/localmixer.png" alt="LocalMixer Interface" class="showcase-img">
+                </div>
+            </div>
+
+            <!-- 4. Channel Labeling (Image Left, Text Right) -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--accent); box-shadow: 0 0 40px rgba(77, 171, 247, 0.3);">
+                    <img src="images/Labeling.png" alt="Audio Channel Labeling" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Custom Channel Labeling</h3>
+                    <p>Never lose track of your audio streams again. VirCast allows you to give each of the 6 lanes a
+                        custom
+                        name—Game, Music, Discord, or Microphone. Stay organized and keep your focus on the mix, not the
+                        mapping.</p>
+                </div>
+            </div>
+
+            <!-- 5. Profile Saving (Text Left, Image Right) -->
+            <div class="showcase-item">
+                <div class="showcase-text">
+                    <h3>Instant Profile Saving</h3>
+                    <p>Configure once, use forever. Whether you have different audio needs for streaming, gaming
+                        sessions,
+                        or recording podcasts, you can save your entire routing setup into custom profiles and swap
+                        between
+                        them with zero downtime.</p>
+                </div>
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--primary); box-shadow: 0 0 40px rgba(121, 80, 242, 0.3); max-width: 70%; margin-left: auto;">
+                    <img src="images/SetupProfiles.png" alt="Profile Saving System" class="showcase-img">
+                </div>
+            </div>
+
+            <!-- 6. Multi-PC Scaling (Image Left, Text Right) -->
+            <div class="showcase-item">
+                <div class="showcase-img-wrapper"
+                    style="border: 2px solid var(--accent); box-shadow: 0 0 40px rgba(77, 171, 247, 0.3);">
+                    <img src="images/multiple PC setup.png" alt="Multi-PC Setup" class="showcase-img">
+                </div>
+                <div class="showcase-text">
+                    <h3>Enterprise Scaling: Up to 6 PCs</h3>
+                    <p>VirCast isn't just for 2 computers. By utilizing custom lane parameters and unique port
+                        configurations,
+                        you can scale your audio network to up to 6 machines. Bridge your gaming PC to your Media PC,
+                        link your music production rig, and pipe it all into a dedicated recording machine
+                        simultaneously.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="spotlight" style="padding: 6rem 0;">
+            <h2
+                style="font-size: 3rem; margin-bottom: 1rem; background: linear-gradient(45deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                Why VirCast Wins</h2>
+            <p style="font-size: 1.25rem; color: var(--text-secondary); max-width: 800px; margin: 0 auto 4rem;">Tired of
+                fighting with "Virtual Cables" and crashing mixers? VirCast replaces the overcomplicated mess with a
+                sleek, one-click audio bridge designed for creators.</p>
+
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2.5rem; text-align: left;">
+                <div class="feature-card"
+                    style="padding: 2.5rem; background: rgba(26, 27, 30, 0.5); border: 1px solid rgba(121, 80, 242, 0.3); border-radius: 20px; backdrop-filter: blur(10px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                    <div
+                        style="width: 45px; height: 45px; background: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 20px rgba(121, 80, 242, 0.4);">
+                        <span style="font-size: 1.5rem;">✂️</span>
+                    </div>
+                    <h4 style="font-size: 1.5rem; color: #fff; margin-bottom: 1rem;">Ditch the Virtual Mess</h4>
+                    <p style="color: var(--text-secondary); line-height: 1.6;">Say goodbye to complex routing software
+                        that breaks every time Windows updates. No more spider-webs of virtual cables—just direct,
+                        digital links.</p>
+                </div>
+
+                <div class="feature-card"
+                    style="padding: 2.5rem; background: rgba(26, 27, 30, 0.5); border: 1px solid rgba(121, 80, 242, 0.3); border-radius: 20px; backdrop-filter: blur(10px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                    <div
+                        style="width: 45px; height: 45px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 20px rgba(77, 171, 247, 0.4);">
+                        <span style="font-size: 1.5rem;">🎙️</span>
+                    </div>
+                    <h4 style="font-size: 1.5rem; color: #fff; margin-bottom: 1rem;">The Creator's Solution</h4>
+                    <p style="color: var(--text-secondary); line-height: 1.6;">Perfect for 2-PC setups. Separately route
+                        Game, Music, Discord, and Mic with zero lag, so your stream mix is always perfectly balanced.
+                    </p>
+                </div>
+
+                <div class="feature-card"
+                    style="padding: 2.5rem; background: rgba(26, 27, 30, 0.5); border: 1px solid rgba(121, 80, 242, 0.3); border-radius: 20px; backdrop-filter: blur(10px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                    <div
+                        style="width: 45px; height: 45px; background: var(--success); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 20px rgba(64, 192, 87, 0.4);">
+                        <span style="font-size: 1.5rem;">🧘</span>
+                    </div>
+                    <h4 style="font-size: 1.5rem; color: #fff; margin-bottom: 1rem;">Audio Peace of Mind</h4>
+                    <p style="color: var(--text-secondary); line-height: 1.6;">VirCast handles the heavy lifting with
+                        auto-discovery and color-coded lanes. Spend more time creating and less time troubleshooting
+                        your audio deck.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="download" class="pricing">
+            <h2>Get Started</h2>
+            <div class="price-card">
+                <h3>VirCast Standalone</h3>
+                <div class="price">TBD<span></span></div>
+                <ul class="features-list">
+                    <li>Full 6-Lane UDP Direct</li>
+                    <li>Local Mixer & Routing</li>
+                    <li>Viri.TTS Pro Integration</li>
+                    <li>No Limits, All High Quality</li>
+                </ul>
+                <a class="btn" href="#">Price TBD</a>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 VirCast Audio. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Copying animation logic from index.html for consistency
+        const bg = document.getElementById('interactive-bg');
+        const particles = [];
+        const particleCount = 20;
+
+        for (let i = 0; i < particleCount; i++) {
+            const p = document.createElement('div');
+            p.classList.add('particle');
+            const size = Math.random() * 80 + 40;
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
+            p.style.width = `${size}px`;
+            p.style.height = `${size}px`;
+            p.style.left = `${x}%`;
+            p.style.top = `${y}%`;
+            particles.push({ el: p, x: x, y: y, speed: Math.random() * 0.04 + 0.01 });
+            bg.appendChild(p);
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            particles.forEach(p => {
+                const moveX = (mouseX - centerX) * p.speed;
+                const moveY = (mouseY - centerY) * p.speed;
+                p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            });
+        });
+
+        // Standard Scroll Observer (Animate In ONLY)
+        const observerOptions = {
+            threshold: 0.15,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target); // Stop observing after it becomes visible
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.showcase-item, .pricing, .spotlight, .spotlight-card, .feature-card').forEach(el => observer.observe(el));
+
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        document.querySelectorAll('.hero-image, .showcase-img').forEach(img => {
+            img.addEventListener('click', () => {
+                lightboxImg.src = img.src;
+                lightbox.classList.add('active');
+            });
+        });
+        lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
+    </script>
+</body>
+
+</html>
