@@ -105,7 +105,22 @@
 
         <div class="auth-divider"></div>
 
-        <h3>Recent Announcements</h3>
+        <h3>Global Built-in AI Control</h3>
+        <p class="auth-helper">Switch the AI provider and model used by all 'Built-in AI' users instantly.</p>
+        <div class="form-group">
+          <label>Provider</label>
+          <select id="ai-provider" class="form-input">
+            <option value="openai">OpenAI</option>
+            <option value="grok">Grok (X.AI)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
+        </div>
+        <button id="update-ai-config" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4;">Update Global AI Engine</button>
+
+        <div class="auth-divider"></div>
         <div id="announcements-list">Loading...</div>
       </div>
     </div>
@@ -121,6 +136,8 @@
     const statusEl = document.getElementById("admin-status");
     const contentEl = document.getElementById("admin-content");
     const listEl = document.getElementById("announcements-list");
+    const aiProviderEl = document.getElementById("ai-provider");
+    const aiModelEl = document.getElementById("ai-model");
 
     async function checkAdmin() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -145,6 +162,20 @@
       statusEl.className = "auth-status success";
       contentEl.classList.remove("hidden");
       loadAnnouncements();
+      loadAIConfig();
+    }
+
+    async function loadAIConfig() {
+      const { data, error } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "builtin_ai_provider")
+        .single();
+
+      if (data) {
+        aiProviderEl.value = data.value.provider;
+        aiModelEl.value = data.value.model;
+      }
     }
 
     async function loadAnnouncements() {
@@ -215,6 +246,30 @@
         document.getElementById("ann-content").value = "";
         document.getElementById("ann-url").value = "";
         loadAnnouncements();
+      }
+    });
+
+    document.getElementById("update-ai-config").addEventListener("click", async () => {
+      const provider = aiProviderEl.value;
+      const model = aiModelEl.value.trim();
+
+      if (!model) {
+        alert("Please enter a model name.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("system_config")
+        .upsert({ 
+          key: "builtin_ai_provider", 
+          value: { provider, model },
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        alert("Error updating AI config: " + error.message);
+      } else {
+        alert("Global AI Engine updated! All apps will switch on next launch.");
       }
     });
 
