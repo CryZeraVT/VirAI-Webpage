@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ViriTTS - What's New</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    .changelog-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .changelog-item {
+      background: rgba(30, 20, 51, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(157, 78, 221, 0.2);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+    .changelog-item:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+    }
+    .changelog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(157, 78, 221, 0.1);
+      padding-bottom: 15px;
+    }
+    .version-tag {
+      background: var(--primary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-weight: 800;
+      font-size: 0.9em;
+    }
+    .date-tag {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+    }
+    .changelog-title {
+      font-size: 1.8rem;
+      color: var(--cyan);
+      margin: 10px 0;
+    }
+    .changelog-content {
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    .changelog-content ul {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+    .changelog-content li {
+      margin-bottom: 8px;
+      list-style-type: none;
+      position: relative;
+    }
+    .changelog-content li::before {
+      content: "•";
+      color: var(--primary-light);
+      font-weight: bold;
+      position: absolute;
+      left: -15px;
+    }
+    .critical-badge {
+      background: #ff0055;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      font-weight: bold;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div id="interactive-bg"></div>
+
+  <div class="container">
+    <header>
+      <a href="index.html" class="logo">
+        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
+        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
+      </a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="account.html">Account</a>
+      </nav>
+    </header>
+
+    <div class="changelog-container">
+      <h1 style="font-size: 3rem; margin-bottom: 10px; text-align: center;">What's New</h1>
+      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 50px;">Follow the latest updates and improvements to ViriTTS.</p>
+      
+      <div id="changelog-list">
+        <div style="text-align: center; padding: 50px;">
+          <div class="spinner"></div>
+          <p>Fetching latest updates...</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>&copy; 2026 ViriTTS. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const listEl = document.getElementById("changelog-list");
+
+    async function loadChangelog() {
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .eq("active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        listEl.innerHTML = `<p style="text-align: center; color: var(--error);">Error loading updates. Please try again later.</p>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = `<p style="text-align: center;">No updates posted yet. Stay tuned!</p>`;
+        return;
+      }
+
+      listEl.innerHTML = data.map(ann => {
+        const date = new Date(ann.created_at).toLocaleDateString('en-US', { 
+          year: 'numeric', month: 'long', day: 'numeric' 
+        });
+        
+        // Simple "markdown-ish" bullet point converter
+        // Converts lines starting with - or * into <li> tags
+        let formattedContent = ann.content;
+        if (formattedContent.includes('\n-') || formattedContent.includes('\n*')) {
+            const lines = formattedContent.split('\n');
+            let inList = false;
+            let newContent = '';
+            
+            lines.forEach(line => {
+                if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                    if (!inList) {
+                        newContent += '<ul>';
+                        inList = true;
+                    }
+                    newContent += `<li>${line.trim().substring(2)}</li>`;
+                } else {
+                    if (inList) {
+                        newContent += '</ul>';
+                        inList = false;
+                    }
+                    newContent += line + '\n';
+                }
+            });
+            if (inList) newContent += '</ul>';
+            formattedContent = newContent;
+        }
+
+        return `
+          <div class="changelog-item">
+            <div class="changelog-header">
+              <span class="version-tag">v${ann.version}</span>
+              <span class="date-tag">${date}</span>
+            </div>
+            <h2 class="changelog-title">${ann.title} ${ann.is_critical ? '<span class="critical-badge">CRITICAL</span>' : ''}</h2>
+            <div class="changelog-content">${formattedContent}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    loadChangelog();
+  </script>
+
+  <!-- Mouse Reactive Background Script -->
+  <script>
+    const bg = document.getElementById('interactive-bg');
+    const particles = [];
+    const particleCount = 25;
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      const size = Math.random() * 100 + 50;
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+      p.style.width = `${size}px`; p.style.height = `${size}px`;
+      p.style.left = `${x}%`; p.style.top = `${y}%`;
+      particles.push({ el: p, x: x, y: y, speed: Math.random() * 0.05 + 0.02 });
+      bg.appendChild(p);
+    }
+    document.addEventListener('mousemove', (e) => {
+      const mouseX = e.clientX; const mouseY = e.clientY;
+      const centerX = window.innerWidth / 2; const centerY = window.innerHeight / 2;
+      particles.forEach(p => {
+        const moveX = (mouseX - centerX) * p.speed;
+        const moveY = (mouseY - centerY) * p.speed;
+        p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      });
+    });
+  </script>
+</body>
+</html>
