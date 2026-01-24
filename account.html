@@ -221,8 +221,12 @@
             <div class="key-info">
               <div class="key-value">${row.license_key}</div>
               <div class="key-meta">Status: ${row.status} • Expires: ${expires}</div>
+              <div class="key-note" style="font-size: 0.8em; color: #888; margin-top: 4px;">1-PC License</div>
             </div>
-            <button class="btn btn-outline copy-btn" data-key="${row.license_key}">Copy</button>
+            <div class="key-actions" style="display: flex; gap: 8px;">
+              <button class="btn btn-outline copy-btn" data-key="${row.license_key}">Copy</button>
+              <button class="btn btn-outline reset-btn" data-key="${row.license_key}" style="border-color: #ff4444; color: #ff4444;">Reset PC</button>
+            </div>
           </div>
         `;
       }).join("");
@@ -233,6 +237,46 @@
           navigator.clipboard.writeText(key);
           btn.textContent = "Copied!";
           setTimeout(() => (btn.textContent = "Copy"), 1000);
+        });
+      });
+
+      document.querySelectorAll(".reset-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-key") || "";
+          if (!confirm(`Are you sure you want to reset the machine binding for license ${key}? This will allow you to activate it on a new computer.`)) {
+            return;
+          }
+
+          btn.disabled = true;
+          btn.textContent = "Resetting...";
+
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+
+          try {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/reset-license`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({ license_key: key })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              alert(result.message);
+              loadKeys();
+            } else {
+              alert("Error: " + result.message);
+            }
+          } catch (err) {
+            console.error("Reset error:", err);
+            alert("Failed to reset license. Please try again later.");
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Reset PC";
+          }
         });
       });
     }
