@@ -212,6 +212,18 @@
         return;
       }
 
+      // Fetch active version download URL
+      let downloadUrl = null;
+      const { data: versionData } = await supabase
+        .from("r2_versions")
+        .select("download_url, version")
+        .eq("is_active", true)
+        .single();
+      
+      if (versionData) {
+        downloadUrl = versionData.download_url;
+      }
+
       const { data, error } = await supabase
         .from("licenses")
         .select("license_key,status,expires_at,created_at")
@@ -230,14 +242,20 @@
 
       keysList.innerHTML = data.map((row) => {
         const expires = row.expires_at ? new Date(row.expires_at).toLocaleDateString() : "No expiry";
+        const isActive = row.status === "active";
+        const downloadButton = isActive && downloadUrl 
+          ? `<a href="${downloadUrl}" class="btn" style="background: linear-gradient(135deg, #d946ef, #06b6d4); text-decoration: none; padding: 8px 16px;">⬇️ Download</a>`
+          : '';
+        
         return `
           <div class="key-item">
             <div class="key-info">
               <div class="key-value">${row.license_key}</div>
-              <div class="key-meta">Status: ${row.status} • Expires: ${expires}</div>
+              <div class="key-meta">Status: <span style="color: ${isActive ? '#22c55e' : '#ff4444'}; font-weight: 600;">${row.status.toUpperCase()}</span> • Expires: ${expires}</div>
               <div class="key-note" style="font-size: 0.8em; color: #888; margin-top: 4px;">1-PC License</div>
             </div>
-            <div class="key-actions" style="display: flex; gap: 8px;">
+            <div class="key-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${downloadButton}
               <button class="btn btn-outline copy-btn" data-key="${row.license_key}">Copy</button>
               <button class="btn btn-outline reset-btn" data-key="${row.license_key}" style="border-color: #ff4444; color: #ff4444;">Reset PC</button>
             </div>
