@@ -258,15 +258,103 @@
 
         <!-- Tabs -->
         <div class="nav-tabs">
-          <button class="nav-tab active" data-tab="users">By User</button>
+          <button class="nav-tab active" data-tab="revenue" style="border-color: #22c55e; color: #22c55e;">💰 Revenue</button>
+          <button class="nav-tab" data-tab="users">By User</button>
           <button class="nav-tab" data-tab="daily">Daily Breakdown</button>
           <button class="nav-tab" data-tab="models">By Model</button>
-          <button class="nav-tab" data-tab="openai" style="border-color: #10a37f; color: #10a37f;">OpenAI Billing</button>
+          <button class="nav-tab" data-tab="costs" style="border-color: #06b6d4; color: #06b6d4;">API Costs</button>
           <button class="nav-tab" data-tab="pricing" style="border-color: #f59e0b; color: #f59e0b;">Model Pricing</button>
         </div>
 
+        <!-- Revenue Tab -->
+        <div class="tab-content active" id="tab-revenue">
+          <h3 class="section-title" style="color: #22c55e;">Monthly Business Metrics</h3>
+          
+          <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
+            <label style="color: #a1a1aa;">Billing Month:</label>
+            <select id="revenue-month" style="background: #0f0816; border: 1px solid #22c55e; border-radius: 6px; padding: 8px 12px; color: white;">
+              <option value="0">Current Month</option>
+            </select>
+            <button class="refresh-btn" id="refresh-revenue" style="border-color: #22c55e; color: #22c55e;">↻ Refresh</button>
+          </div>
+
+          <div class="stats-grid" id="revenue-stats">
+            <div class="stat-card" style="border-color: #22c55e;">
+              <p class="stat-value" id="active-subs" style="color: #22c55e;">-</p>
+              <p class="stat-label">Active Subscribers</p>
+            </div>
+            <div class="stat-card" style="border-color: #22c55e;">
+              <p class="stat-value cost" id="gross-revenue">-</p>
+              <p class="stat-label">Gross Revenue</p>
+            </div>
+            <div class="stat-card" style="border-color: #ef4444;">
+              <p class="stat-value" id="api-costs" style="color: #ef4444;">-</p>
+              <p class="stat-label">API Costs (Projected)</p>
+            </div>
+            <div class="stat-card" style="border-color: #22c55e; background: linear-gradient(135deg, #0f2e1a 0%, #0f0816 100%);">
+              <p class="stat-value cost" id="net-profit">-</p>
+              <p class="stat-label">Net Profit</p>
+            </div>
+          </div>
+
+          <div class="stats-grid" style="margin-top: 20px;">
+            <div class="stat-card" style="border-color: #8b5cf6;">
+              <p class="stat-value" id="profit-margin" style="color: #8b5cf6;">-</p>
+              <p class="stat-label">Profit Margin</p>
+            </div>
+            <div class="stat-card" style="border-color: #06b6d4;">
+              <p class="stat-value" id="cost-per-user" style="color: #06b6d4;">-</p>
+              <p class="stat-label">Cost Per User</p>
+            </div>
+            <div class="stat-card" style="border-color: #f59e0b;">
+              <p class="stat-value" id="price-per-sub" style="color: #f59e0b;">-</p>
+              <p class="stat-label">Price Per Sub</p>
+            </div>
+            <div class="stat-card" style="border-color: #a1a1aa;">
+              <p class="stat-value" id="billing-period" style="color: #a1a1aa; font-size: 1rem;">-</p>
+              <p class="stat-label">Billing Period</p>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; padding: 20px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px;">
+            <h4 style="color: #22c55e; margin: 0 0 15px 0;">💡 Subscription Plan Settings</h4>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+              <div>
+                <label style="color: #a1a1aa; font-size: 0.85rem;">Plan Name</label>
+                <input type="text" id="plan-name" placeholder="ViriTTS Monthly" style="display: block; background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 180px; margin-top: 5px;">
+              </div>
+              <div>
+                <label style="color: #a1a1aa; font-size: 0.85rem;">Monthly Price ($)</label>
+                <input type="number" id="plan-price" placeholder="9.99" step="0.01" style="display: block; background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px; margin-top: 5px;">
+              </div>
+              <button class="refresh-btn" id="save-plan" style="border-color: #22c55e; color: #22c55e; margin-top: 20px;">💾 Update Plan</button>
+            </div>
+            <p id="plan-id" style="display: none;"></p>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <h4 style="color: #06b6d4; margin-bottom: 15px;">Daily API Costs This Month</h4>
+            <div class="table-container" style="max-height: 300px;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Requests</th>
+                    <th>Input Tokens</th>
+                    <th>Output Tokens</th>
+                    <th>Cost</th>
+                  </tr>
+                </thead>
+                <tbody id="revenue-daily-body">
+                  <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- User Usage Tab -->
-        <div class="tab-content active" id="tab-users">
+        <div class="tab-content" id="tab-users">
           <h3 class="section-title">Usage by User</h3>
           <div class="table-container">
             <table class="data-table" id="user-table">
@@ -328,60 +416,54 @@
           </div>
         </div>
 
-        <!-- OpenAI Billing Tab -->
-        <div class="tab-content" id="tab-openai">
-          <h3 class="section-title" style="color: #10a37f;">OpenAI Official Usage (Current Billing Cycle)</h3>
-          <p style="color: #a1a1aa; margin-bottom: 20px;">Data pulled directly from OpenAI's API. Updates in real-time.</p>
+        <!-- API Costs Tab -->
+        <div class="tab-content" id="tab-costs">
+          <h3 class="section-title" style="color: #06b6d4;">API Cost Breakdown by Model</h3>
+          <p style="color: #a1a1aa; margin-bottom: 20px;">Real-time cost tracking from your VirAI application usage.</p>
           
-          <div class="stats-grid" id="openai-stats">
-            <div class="stat-card" style="border-color: #10a37f;">
-              <p class="stat-value" id="openai-total-tokens" style="color: #10a37f;">-</p>
+          <div class="stats-grid" id="costs-stats">
+            <div class="stat-card" style="border-color: #06b6d4;">
+              <p class="stat-value" id="costs-total-tokens" style="color: #06b6d4;">-</p>
               <p class="stat-label">Total Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #10a37f;">
-              <p class="stat-value" id="openai-input-tokens" style="color: #10a37f;">-</p>
+            <div class="stat-card" style="border-color: #06b6d4;">
+              <p class="stat-value" id="costs-input-tokens" style="color: #06b6d4;">-</p>
               <p class="stat-label">Input Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #10a37f;">
-              <p class="stat-value" id="openai-output-tokens" style="color: #10a37f;">-</p>
+            <div class="stat-card" style="border-color: #06b6d4;">
+              <p class="stat-value" id="costs-output-tokens" style="color: #06b6d4;">-</p>
               <p class="stat-label">Output Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #22c55e;">
-              <p class="stat-value cost" id="openai-total-cost">-</p>
-              <p class="stat-label">Estimated Cost</p>
+            <div class="stat-card" style="border-color: #ef4444;">
+              <p class="stat-value" id="costs-total-cost" style="color: #ef4444;">-</p>
+              <p class="stat-label">Total Cost (MTD)</p>
             </div>
           </div>
 
           <div style="margin: 20px 0;">
-            <button class="refresh-btn" id="refresh-openai" style="border-color: #10a37f; color: #10a37f;">↻ Refresh OpenAI Data</button>
-            <span id="openai-period" style="margin-left: 15px; color: #a1a1aa; font-size: 0.9rem;"></span>
+            <button class="refresh-btn" id="refresh-costs" style="border-color: #06b6d4; color: #06b6d4;">↻ Refresh Costs</button>
+            <span id="costs-period" style="margin-left: 15px; color: #a1a1aa; font-size: 0.9rem;"></span>
           </div>
 
+          <h4 style="color: #06b6d4; margin: 20px 0 10px;">Cost by Model</h4>
           <div class="table-container">
-            <table class="data-table" id="openai-table">
+            <table class="data-table" id="costs-table">
               <thead>
                 <tr>
-                  <th>Date</th>
                   <th>Model</th>
+                  <th>Requests</th>
                   <th>Input Tokens</th>
                   <th>Output Tokens</th>
-                  <th>Requests</th>
+                  <th>Cost</th>
                 </tr>
               </thead>
-              <tbody id="openai-table-body">
-                <tr><td colspan="5" class="loading">Click "Refresh OpenAI Data" to load...</td></tr>
+              <tbody id="costs-table-body">
+                <tr><td colspan="5" class="loading">Loading...</td></tr>
               </tbody>
             </table>
           </div>
           
-          <div id="openai-error" style="display: none; margin-top: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444;"></div>
-          
-          <div style="margin-top: 20px; padding: 15px; background: rgba(16, 163, 127, 0.1); border: 1px solid rgba(16, 163, 127, 0.3); border-radius: 8px;">
-            <p style="color: #10a37f; margin: 0; font-weight: 600;">Setup Required:</p>
-            <p style="color: #a1a1aa; margin: 5px 0 0 0; font-size: 0.9rem;">
-              Add your OpenAI API key as <code style="background: #1a112e; padding: 2px 6px; border-radius: 4px;">OPENAI_API_KEY</code> or Admin key as <code style="background: #1a112e; padding: 2px 6px; border-radius: 4px;">OPENAI_ADMIN_KEY</code> in Supabase Edge Function secrets.
-            </p>
-          </div>
+          <div id="costs-error" style="display: none; margin-top: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444;"></div>
         </div>
 
         <!-- Model Pricing Tab -->
@@ -672,22 +754,21 @@
         loadUserUsage(),
         loadDailyUsage(),
         loadModelUsage(),
-        loadPricing()
+        loadPricing(),
+        loadRevenue()
       ]);
     }
 
-    // Load OpenAI official usage
-    async function loadOpenAIUsage() {
-      const tbody = document.getElementById("openai-table-body");
-      const errorDiv = document.getElementById("openai-error");
-      errorDiv.style.display = "none";
-      tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading usage data...</td></tr>`;
+    // Load Revenue & Business Metrics
+    async function loadRevenue(monthsAgo = 0) {
+      const tbody = document.getElementById("revenue-daily-body");
+      tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading...</td></tr>`;
 
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=usage`, {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=usage&month=${monthsAgo}`, {
           headers: {
             "apikey": SUPABASE_ANON_KEY,
             "Authorization": `Bearer ${token}`,
@@ -698,98 +779,125 @@
         const result = await response.json();
 
         if (!response.ok || result.error) {
-          errorDiv.textContent = result.error + (result.note ? " " + result.note : "");
-          errorDiv.style.display = "block";
-          tbody.innerHTML = `<tr><td colspan="5">Failed to load OpenAI data. See error above.</td></tr>`;
+          console.error("Revenue error:", result.error);
+          tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
           return;
         }
 
-        // Display period
-        document.getElementById("openai-period").textContent = 
-          `Billing Period: ${new Date(result.period.start).toLocaleDateString()} - ${new Date(result.period.end).toLocaleDateString()}`;
-
-        // Parse usage data
-        if (result.source === "usage_api" && result.data?.data) {
-          const buckets = result.data.data;
-          let totalInput = 0, totalOutput = 0, totalRequests = 0;
-          const rows = [];
-
-          buckets.forEach(bucket => {
-            const date = new Date(bucket.start_time * 1000).toLocaleDateString();
-            bucket.results?.forEach(r => {
-              totalInput += r.input_tokens || 0;
-              totalOutput += r.output_tokens || 0;
-              totalRequests += r.num_model_requests || 0;
-              rows.push({
-                date,
-                model: r.model_id || "unknown",
-                input: r.input_tokens || 0,
-                output: r.output_tokens || 0,
-                requests: r.num_model_requests || 0
-              });
-            });
-          });
-
-          document.getElementById("openai-total-tokens").textContent = (totalInput + totalOutput).toLocaleString();
-          document.getElementById("openai-input-tokens").textContent = totalInput.toLocaleString();
-          document.getElementById("openai-output-tokens").textContent = totalOutput.toLocaleString();
-          
-          // Estimate cost (rough estimate)
-          const estimatedCost = (totalInput / 1000000 * 0.15) + (totalOutput / 1000000 * 0.60);
-          document.getElementById("openai-total-cost").textContent = "$" + estimatedCost.toFixed(4);
-
-          if (rows.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5">No usage data for this billing period.</td></tr>`;
-          } else {
-            tbody.innerHTML = rows.map(r => `
-              <tr>
-                <td>${r.date}</td>
-                <td><span class="model-badge">${r.model}</span></td>
-                <td>${r.input.toLocaleString()}</td>
-                <td>${r.output.toLocaleString()}</td>
-                <td>${r.requests.toLocaleString()}</td>
-              </tr>
-            `).join("");
-          }
-        } else if (result.source === "local_database") {
-          // Local database tracking (from VirAI app)
-          const totals = result.totals;
-          document.getElementById("openai-total-tokens").textContent = (totals.total_tokens || 0).toLocaleString();
-          document.getElementById("openai-input-tokens").textContent = (totals.input_tokens || 0).toLocaleString();
-          document.getElementById("openai-output-tokens").textContent = (totals.output_tokens || 0).toLocaleString();
-          document.getElementById("openai-total-cost").textContent = "$" + parseFloat(totals.cost_usd || 0).toFixed(4);
-
-          // Build rows from by_model data
-          const modelData = result.by_model || {};
-          const rows = Object.entries(modelData).map(([model, stats]) => ({
-            model,
-            input: stats.input,
-            output: stats.output,
-            cost: stats.cost,
-            requests: stats.requests
-          }));
-
-          if (rows.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5">No usage data for this billing period.</td></tr>`;
-          } else {
-            tbody.innerHTML = rows.map(r => `
-              <tr>
-                <td>This Month</td>
-                <td><span class="model-badge">${r.model}</span></td>
-                <td>${r.input.toLocaleString()}</td>
-                <td>${r.output.toLocaleString()}</td>
-                <td>${r.requests.toLocaleString()} req / $${r.cost.toFixed(4)}</td>
-              </tr>
-            `).join("");
-          }
-        } else {
-          tbody.innerHTML = `<tr><td colspan="5">Unexpected response format.</td></tr>`;
+        // Update revenue stats
+        const rev = result.revenue || {};
+        document.getElementById("active-subs").textContent = rev.active_subscribers || 0;
+        document.getElementById("gross-revenue").textContent = "$" + (rev.gross_monthly || 0).toFixed(2);
+        document.getElementById("api-costs").textContent = "-$" + (rev.api_costs || 0).toFixed(4);
+        document.getElementById("net-profit").textContent = "$" + (rev.net_profit || 0).toFixed(2);
+        document.getElementById("profit-margin").textContent = (rev.profit_margin || 0).toFixed(1) + "%";
+        document.getElementById("cost-per-user").textContent = "$" + (rev.cost_per_user || 0).toFixed(4);
+        document.getElementById("price-per-sub").textContent = "$" + (rev.price_per_sub || 0).toFixed(2);
+        
+        // Update billing period
+        const period = result.billing_period;
+        document.getElementById("billing-period").textContent = period?.month_name || "-";
+        
+        // Load plan settings
+        const { data: plans } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("is_active", true)
+          .limit(1);
+        
+        if (plans?.length) {
+          document.getElementById("plan-name").value = plans[0].name || "";
+          document.getElementById("plan-price").value = plans[0].price_monthly || "";
+          document.getElementById("plan-id").textContent = plans[0].id;
         }
+
+        // Daily breakdown
+        const daily = result.daily || [];
+        if (daily.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5">No usage data for this period.</td></tr>`;
+        } else {
+          tbody.innerHTML = daily.map(d => `
+            <tr>
+              <td>${new Date(d.date).toLocaleDateString()}</td>
+              <td>${d.requests.toLocaleString()}</td>
+              <td>${d.input.toLocaleString()}</td>
+              <td>${d.output.toLocaleString()}</td>
+              <td style="color: #ef4444;">$${d.cost.toFixed(4)}</td>
+            </tr>
+          `).join("");
+        }
+        
+        // Also update costs tab data
+        updateCostsTab(result);
+        
       } catch (err) {
-        console.error("OpenAI usage error:", err);
-        errorDiv.textContent = "Error fetching OpenAI data: " + err.message;
-        errorDiv.style.display = "block";
-        tbody.innerHTML = `<tr><td colspan="5">Error loading data.</td></tr>`;
+        console.error("Revenue error:", err);
+        tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
+      }
+    }
+    
+    // Update Costs Tab with same data
+    function updateCostsTab(result) {
+      const totals = result.totals || {};
+      const costsTbody = document.getElementById("costs-table-body");
+      
+      document.getElementById("costs-total-tokens").textContent = (totals.total_tokens || 0).toLocaleString();
+      document.getElementById("costs-input-tokens").textContent = (totals.input_tokens || 0).toLocaleString();
+      document.getElementById("costs-output-tokens").textContent = (totals.output_tokens || 0).toLocaleString();
+      document.getElementById("costs-total-cost").textContent = "$" + (totals.cost_usd || 0).toFixed(4);
+      
+      const period = result.billing_period;
+      document.getElementById("costs-period").textContent = 
+        `${period?.month_name || ""} (${period?.days_elapsed || 0} days)`;
+      
+      // Model breakdown
+      const models = result.by_model || {};
+      const rows = Object.entries(models)
+        .sort((a, b) => b[1].cost - a[1].cost)
+        .map(([model, stats]) => ({
+          model,
+          requests: stats.requests,
+          input: stats.input,
+          output: stats.output,
+          cost: stats.cost
+        }));
+      
+      if (rows.length === 0) {
+        costsTbody.innerHTML = `<tr><td colspan="5">No cost data yet.</td></tr>`;
+      } else {
+        costsTbody.innerHTML = rows.map(r => `
+          <tr>
+            <td><span class="model-badge">${r.model}</span></td>
+            <td>${r.requests.toLocaleString()}</td>
+            <td>${r.input.toLocaleString()}</td>
+            <td>${r.output.toLocaleString()}</td>
+            <td style="color: #ef4444;">$${r.cost.toFixed(4)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+    
+    // Save subscription plan
+    async function savePlan() {
+      const planId = document.getElementById("plan-id").textContent;
+      const name = document.getElementById("plan-name").value;
+      const price = parseFloat(document.getElementById("plan-price").value);
+      
+      if (!planId) {
+        alert("No plan found to update");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("subscription_plans")
+        .update({ name, price_monthly: price, updated_at: new Date().toISOString() })
+        .eq("id", planId);
+      
+      if (error) {
+        alert("Failed to update plan: " + error.message);
+      } else {
+        alert("Plan updated!");
+        loadRevenue();
       }
     }
 
@@ -913,18 +1021,59 @@
     // Refresh button
     document.getElementById("refresh-btn").addEventListener("click", loadAllData);
 
-    // OpenAI refresh button
-    document.getElementById("refresh-openai").addEventListener("click", loadOpenAIUsage);
+    // Revenue refresh button
+    document.getElementById("refresh-revenue").addEventListener("click", () => {
+      const month = document.getElementById("revenue-month").value;
+      loadRevenue(parseInt(month));
+    });
+    
+    // Month selector change
+    document.getElementById("revenue-month").addEventListener("change", (e) => {
+      loadRevenue(parseInt(e.target.value));
+    });
+    
+    // Save plan button
+    document.getElementById("save-plan").addEventListener("click", savePlan);
+    
+    // Costs refresh button
+    document.getElementById("refresh-costs").addEventListener("click", () => loadRevenue(0));
 
     // Pricing buttons
     document.getElementById("refresh-pricing").addEventListener("click", loadPricing);
     document.getElementById("save-pricing").addEventListener("click", savePricing);
     document.getElementById("add-model").addEventListener("click", addModelPricing);
 
+    // Load available months for selector
+    async function loadMonthSelector() {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=months`, {
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        const result = await response.json();
+        const select = document.getElementById("revenue-month");
+        
+        if (result.months?.length) {
+          select.innerHTML = result.months.map(m => 
+            `<option value="${m.value}">${m.label}${m.is_current ? " (Current)" : ""}</option>`
+          ).join("");
+        }
+      } catch (err) {
+        console.error("Error loading months:", err);
+      }
+    }
+
     // Initialize
     async function init() {
       const isAdmin = await checkAdmin();
       if (isAdmin) {
+        await loadMonthSelector();
         await loadAllData();
       }
     }
