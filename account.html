@@ -312,12 +312,28 @@
       if (!email || !password) return setStatus("Enter email and password.", true);
 
       const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) return setStatus(error.message, true);
+      
+      if (error) {
+        // Check for common "already exists" error messages
+        if (error.message.toLowerCase().includes("already") || 
+            error.message.toLowerCase().includes("registered") ||
+            error.message.toLowerCase().includes("exists")) {
+          return setStatus("An account with this email already exists. Please sign in instead.", true);
+        }
+        return setStatus(error.message, true);
+      }
+      
+      // Supabase returns a user but no session if email already exists (security feature)
+      // Check if user was actually created by looking at identities
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        return setStatus("An account with this email already exists. Please sign in instead.", true);
+      }
+      
       if (data?.session) {
         setStatus("Account created and signed in.");
         loadKeys();
       } else {
-        setStatus("Account created. Please confirm your email, then sign in.");
+        setStatus("Account created. Please check your email to confirm, then sign in.");
       }
     });
 
