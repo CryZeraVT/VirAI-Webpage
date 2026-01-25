@@ -437,7 +437,7 @@
       document.getElementById("versions-list").innerHTML = 
         `<p style="color: var(--error);">Unexpected error: ${err.message}</p>`;
     }
-    }
+  }
 
     window.setActiveVersion = async function(versionId) {
       // First, deactivate all versions
@@ -486,7 +486,6 @@
         }
       }
     };
-    }
 
     async function loadR2Config() {
       try {
@@ -588,7 +587,7 @@
       console.error("Unexpected error in loadAnnouncements:", err);
       listEl.textContent = "Unexpected error: " + err.message;
     }
-    }
+  }
 
     document.getElementById("save-announcement").addEventListener("click", async () => {
       const version = document.getElementById("manual-version").value.trim();
