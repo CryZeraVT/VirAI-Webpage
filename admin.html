@@ -51,6 +51,10 @@
     }
     .badge-critical { background: #ef4444; color: white; }
     .badge-active { background: #22c55e; color: white; }
+    
+    input[type="radio"] {
+      accent-color: #22c55e;
+    }
 
     /* Tab Styles */
     .nav-tabs {
@@ -152,52 +156,46 @@
 
         <!-- Tab: Publish Update -->
         <div class="tab-content active" id="tab-publish">
-          <h3>Publish New Update</h3>
-          <p class="auth-helper">Upload a new .exe or .zip and update the version for all users.</p>
+          <h3>Published Versions</h3>
+          <p class="auth-helper">Select which version users should download. Only one version can be active at a time.</p>
           
-          <div class="form-group">
-            <label>Version</label>
-            <input id="ann-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          <div id="versions-list" style="margin-top: 20px;">
+            <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
+              Loading versions...
+            </div>
           </div>
-          <div class="form-group">
-            <label>Title</label>
-            <input id="ann-title" type="text" placeholder="Update Title" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Content / Changelog</label>
-            <textarea id="ann-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
-          </div>
-          
-          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
-            <label style="margin-bottom: 0;">
-              <input id="ann-critical" type="checkbox"> Critical Update
-            </label>
-          </div>
-
-          <div class="form-group">
-            <label>Select Update File</label>
-            <input id="update-file" type="file" class="form-input">
-          </div>
-          
-          <div id="publish-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
-          <button id="publish-to-r2" class="btn" style="width: 100%; background: linear-gradient(135deg, #d946ef, #06b6d4);">🚀 Upload & Publish to R2</button>
         </div>
 
         <!-- Tab: Announcements -->
         <div class="tab-content" id="tab-announcements">
           <h3>Create Manual Announcement</h3>
-          <p class="auth-helper">Post a notice without uploading a new file.</p>
+          <p class="auth-helper">Post a notice without uploading a new file (for non-version announcements).</p>
           
           <div class="form-group">
+            <label>Version</label>
+            <input id="manual-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input id="manual-title" type="text" placeholder="Announcement Title" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Content</label>
+            <textarea id="manual-content" placeholder="Announcement content..." class="form-input form-textarea"></textarea>
+          </div>
+          <div class="form-group">
             <label>Download URL (Optional)</label>
-            <input id="ann-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
+            <input id="manual-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
           </div>
           <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
             <label style="margin-bottom: 0;">
-              <input id="ann-active" type="checkbox" checked> Active
+              <input id="manual-critical" type="checkbox"> Critical
+            </label>
+            <label style="margin-bottom: 0;">
+              <input id="manual-active" type="checkbox" checked> Active
             </label>
           </div>
-          <button id="save-announcement" class="btn" style="margin-bottom: 30px;">Post Announcement</button>
+          <button id="save-announcement" class="btn" style="margin-bottom: 30px; width: 100%;">Post Announcement</button>
 
           <div class="auth-divider"></div>
           <h3>Existing Announcements</h3>
@@ -247,6 +245,38 @@
             <input id="r2-public-url" type="text" placeholder="https://..." class="form-input">
           </div>
           <button id="save-r2-config" class="btn btn-outline" style="border-color: #22c55e; color: #22c55e; width: 100%;">Save R2 Settings</button>
+
+          <div class="auth-divider"></div>
+
+          <h3>Upload New Version to R2</h3>
+          <p class="auth-helper">Upload a new .exe or .zip file to your R2 bucket.</p>
+          
+          <div class="form-group">
+            <label>Version</label>
+            <input id="upload-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input id="upload-title" type="text" placeholder="Update Title" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Content / Changelog</label>
+            <textarea id="upload-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
+          </div>
+          
+          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
+            <label style="margin-bottom: 0;">
+              <input id="upload-critical" type="checkbox"> Critical Update
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>Select Update File</label>
+            <input id="update-file" type="file" class="form-input">
+          </div>
+          
+          <div id="upload-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
+          <button id="upload-to-r2" class="btn" style="width: 100%; background: linear-gradient(135deg, #d946ef, #06b6d4);">☁️ Upload to R2 Storage</button>
         </div>
       </div>
     </div>
@@ -269,7 +299,6 @@
     const r2SecretKeyEl = document.getElementById("r2-secret-key");
     const r2BucketNameEl = document.getElementById("r2-bucket-name");
     const r2PublicUrlEl = document.getElementById("r2-public-url");
-    const publishStatusEl = document.getElementById("publish-status");
 
     async function checkAdmin() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -296,6 +325,122 @@
       loadAnnouncements();
       loadAIConfig();
       loadR2Config();
+      loadVersions();
+    }
+
+    async function loadVersions() {
+      const listEl = document.getElementById("versions-list");
+      
+      const { data, error } = await supabase
+        .from("r2_versions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        listEl.innerHTML = `<p style="color: var(--error);">Error loading versions: ${error.message}</p>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 30px;">No versions uploaded yet. Go to Storage tab to upload your first version.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = data.map(ver => `
+        <div class="announcement-item" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <div class="announcement-info" style="flex: 1;">
+              <h4 style="display: flex; align-items: center; gap: 10px;">
+                v${ver.version}: ${ver.title}
+                ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ''}
+                ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background: #2d1b4e;">INACTIVE</span>'}
+              </h4>
+              <p>${ver.content ? ver.content.substring(0, 100) : 'No changelog'}${ver.content && ver.content.length > 100 ? '...' : ''}</p>
+              <p style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">
+                📦 ${ver.file_name} • Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+              <input type="radio" name="active-version" value="${ver.id}" ${ver.is_active ? 'checked' : ''} 
+                onchange="setActiveVersion('${ver.id}')" 
+                style="width: 20px; height: 20px; cursor: pointer;">
+              <span style="color: #22c55e; font-weight: 600;">Set as Active</span>
+            </label>
+          </div>
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <a href="${ver.download_url}" target="_blank" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; padding: 8px 16px; font-size: 0.85em; text-decoration: none;">
+              ⬇️ Download
+            </a>
+            <button class="btn btn-outline delete-version-btn" data-id="${ver.id}" style="border-color: #ff4444; color: #ff4444; padding: 8px 16px; font-size: 0.85em;">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      `).join("");
+
+      // Add delete handlers
+      document.querySelectorAll(".delete-version-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          if (!confirm("Are you sure you want to delete this version?")) return;
+          
+          const { error } = await supabase.from("r2_versions").delete().eq("id", id);
+          if (error) {
+            alert("Error deleting: " + error.message);
+          } else {
+            loadVersions();
+          }
+        });
+      });
+    }
+
+    window.setActiveVersion = async function(versionId) {
+      // First, deactivate all versions
+      await supabase
+        .from("r2_versions")
+        .update({ is_active: false })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      
+      // Then activate the selected one
+      const { error } = await supabase
+        .from("r2_versions")
+        .update({ is_active: true })
+        .eq("id", versionId);
+
+      if (error) {
+        alert("Error setting active version: " + error.message);
+      } else {
+        // Reload to reflect changes
+        loadVersions();
+        
+        // Also update announcement to match
+        const { data: version } = await supabase
+          .from("r2_versions")
+          .select("*")
+          .eq("id", versionId)
+          .single();
+        
+        if (version) {
+          // Deactivate old announcements
+          await supabase
+            .from("announcements")
+            .update({ active: false })
+            .neq("id", "00000000-0000-0000-0000-000000000000");
+          
+          // Create/update announcement for this version
+          await supabase.from("announcements").upsert({
+            version: version.version,
+            title: version.title,
+            content: version.content,
+            download_url: version.download_url,
+            is_critical: version.is_critical,
+            active: true
+          }, { onConflict: "version" });
+          
+          alert(`Version ${version.version} is now active!`);
+        }
+      }
+    };
     }
 
     async function loadR2Config() {
@@ -369,12 +514,12 @@
     }
 
     document.getElementById("save-announcement").addEventListener("click", async () => {
-      const version = document.getElementById("ann-version").value.trim();
-      const title = document.getElementById("ann-title").value.trim();
-      const content = document.getElementById("ann-content").value.trim();
-      const url = document.getElementById("ann-url").value.trim();
-      const is_critical = document.getElementById("ann-critical").checked;
-      const active = document.getElementById("ann-active").checked;
+      const version = document.getElementById("manual-version").value.trim();
+      const title = document.getElementById("manual-title").value.trim();
+      const content = document.getElementById("manual-content").value.trim();
+      const url = document.getElementById("manual-url").value.trim();
+      const is_critical = document.getElementById("manual-critical").checked;
+      const active = document.getElementById("manual-active").checked;
 
       if (!version || !title || !content) {
         alert("Please fill in version, title, and content.");
@@ -390,10 +535,10 @@
       } else {
         alert("Announcement posted!");
         // Clear form
-        document.getElementById("ann-version").value = "";
-        document.getElementById("ann-title").value = "";
-        document.getElementById("ann-content").value = "";
-        document.getElementById("ann-url").value = "";
+        document.getElementById("manual-version").value = "";
+        document.getElementById("manual-title").value = "";
+        document.getElementById("manual-content").value = "";
+        document.getElementById("manual-url").value = "";
         loadAnnouncements();
       }
     });
@@ -433,20 +578,21 @@
       else alert("R2 Configuration saved!");
     });
 
-    document.getElementById("publish-to-r2").addEventListener("click", async () => {
+    document.getElementById("upload-to-r2").addEventListener("click", async () => {
       const file = document.getElementById("update-file").files[0];
-      const version = document.getElementById("ann-version").value.trim();
-      const title = document.getElementById("ann-title").value.trim();
-      const content = document.getElementById("ann-content").value.trim();
-      const is_critical = document.getElementById("ann-critical").checked;
+      const version = document.getElementById("upload-version").value.trim();
+      const title = document.getElementById("upload-title").value.trim();
+      const content = document.getElementById("upload-content").value.trim();
+      const is_critical = document.getElementById("upload-critical").checked;
+      const statusEl = document.getElementById("upload-status");
 
       if (!file || !version || !title || !content) {
         alert("Please fill in version, title, content and select a file.");
         return;
       }
 
-      publishStatusEl.textContent = "⏳ Initializing upload...";
-      publishStatusEl.style.color = "var(--text-secondary)";
+      statusEl.textContent = "⏳ Initializing upload...";
+      statusEl.style.color = "var(--text-secondary)";
 
       try {
         const { S3Client, PutObjectCommand } = window["@aws-sdk/client-s3"];
@@ -462,7 +608,7 @@
 
         // 1. Upload the main file
         const remotePath = `updates/${version}/${file.name}`;
-        publishStatusEl.textContent = `⏳ Uploading ${file.name}...`;
+        statusEl.textContent = `⏳ Uploading ${file.name}...`;
         
         await r2Client.send(new PutObjectCommand({
           Bucket: r2BucketNameEl.value.trim(),
@@ -471,43 +617,46 @@
           ContentType: file.type
         }));
 
-        // 2. Create and upload version.json
-        publishStatusEl.textContent = "⏳ Updating version.json...";
+        // 2. Save version to Supabase
+        statusEl.textContent = "⏳ Saving version info...";
         const publicBaseUrl = r2PublicUrlEl.value.trim().replace(/\/$/, "");
         const downloadUrl = `${publicBaseUrl}/${remotePath}`;
         
-        const versionData = {
+        const { data: userData } = await supabase.auth.getUser();
+        
+        const { error: versionError } = await supabase.from("r2_versions").insert([{
           version,
           title,
           content,
-          is_critical,
+          file_name: file.name,
+          file_path: remotePath,
           download_url: downloadUrl,
-          publish_date: new Date().toISOString()
-        };
-
-        await r2Client.send(new PutObjectCommand({
-          Bucket: r2BucketNameEl.value.trim(),
-          Key: "version.json",
-          Body: JSON.stringify(versionData, null, 2),
-          ContentType: "application/json"
-        }));
-
-        // 3. Post announcement to Supabase
-        publishStatusEl.textContent = "⏳ Posting announcement...";
-        const { error: annError } = await supabase.from("announcements").insert([{
-          version, title, content, download_url: downloadUrl, is_critical, active: true
+          is_critical,
+          is_active: false,
+          uploaded_by: userData?.user?.id
         }]);
 
-        if (annError) throw annError;
+        if (versionError) throw versionError;
 
-        publishStatusEl.textContent = "✅ Successfully published to R2 and Supabase!";
-        publishStatusEl.style.color = "var(--success)";
-        loadAnnouncements();
+        statusEl.textContent = "✅ Successfully uploaded to R2!";
+        statusEl.style.color = "var(--success)";
+        
+        // Clear form
+        document.getElementById("upload-version").value = "";
+        document.getElementById("upload-title").value = "";
+        document.getElementById("upload-content").value = "";
+        document.getElementById("upload-critical").checked = false;
+        document.getElementById("update-file").value = "";
+        
+        // Reload versions list
+        loadVersions();
+        
+        alert("Upload complete! Go to 'Publish Update' tab to set it as active.");
         
       } catch (err) {
         console.error(err);
-        publishStatusEl.textContent = "❌ Error: " + err.message;
-        publishStatusEl.style.color = "var(--error)";
+        statusEl.textContent = "❌ Error: " + err.message;
+        statusEl.style.color = "var(--error)";
       }
     });
 
