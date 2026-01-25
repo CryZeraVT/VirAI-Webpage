@@ -49,9 +49,8 @@
                         real-time.</p>
                     <div class="hero-btns">
                         <a href="#pricing" class="btn">Get Started</a>
-                        <a href="#features" class="btn btn-outline"
-                            style="background: transparent; border: 2px solid var(--primary); margin-left: 1rem;">Learn
-                            More</a>
+                        <a id="latest-download-btn" href="account.html" class="btn btn-outline"
+                            style="background: transparent; border: 2px solid var(--primary); margin-left: 1rem;">Download v1.0.0</a>
                     </div>
                 </div>
             </div>
@@ -381,6 +380,34 @@
         lightbox.addEventListener('click', () => {
             lightbox.classList.remove('active');
         });
+
+        // Fetch Latest Version from Supabase
+        async function fetchLatestVersion() {
+            const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/announcements?active=eq.true&order=created_at.desc&limit=1`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    const latest = data[0];
+                    const btn = document.getElementById('latest-download-btn');
+                    if (btn) {
+                        btn.innerText = `Download v${latest.version}`;
+                        // If there's a download URL, we could link it, but usually we want them to login
+                        // btn.href = latest.download_url || 'account.html';
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch latest version:', err);
+            }
+        }
+        fetchLatestVersion();
     </script>
 </body>
 
