@@ -301,50 +301,90 @@
     const r2PublicUrlEl = document.getElementById("r2-public-url");
 
     async function checkAdmin() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = "account.html";
-        return;
-      }
+      try {
+        console.log("Checking admin status...");
+        statusEl.textContent = "🔍 Verifying permissions...";
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        console.log("User check:", user ? `Logged in as ${user.email}` : "Not logged in", userError);
+        
+        if (userError) {
+          console.error("Auth error:", userError);
+          statusEl.textContent = "⚠️ Auth error: " + userError.message;
+          statusEl.className = "auth-status error";
+          setTimeout(() => window.location.href = "account.html", 2000);
+          return;
+        }
+        
+        if (!user) {
+          console.log("No user found, redirecting to login...");
+          statusEl.textContent = "⚠️ Not logged in. Redirecting...";
+          setTimeout(() => window.location.href = "account.html", 1000);
+          return;
+        }
 
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
+        statusEl.textContent = `🔍 Checking admin rights for ${user.email}...`;
+        
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", user.id)
+          .single();
 
-      if (error || !profile?.is_admin) {
-        statusEl.textContent = "Access Denied: You are not an admin.";
+        console.log("Profile check:", profile, "Error:", profileError);
+
+        if (profileError) {
+          console.error("Profile error:", profileError);
+          statusEl.textContent = "⚠️ Error checking profile: " + profileError.message;
+          statusEl.className = "auth-status error";
+          return;
+        }
+        
+        if (!profile?.is_admin) {
+          console.log("User is not admin");
+          statusEl.textContent = "❌ Access Denied: You are not an admin.";
+          statusEl.className = "auth-status error";
+          return;
+        }
+
+        console.log("Admin access granted!");
+        statusEl.textContent = "✅ Admin Access Granted";
+        statusEl.className = "auth-status success";
+        contentEl.classList.remove("hidden");
+        
+        loadAnnouncements();
+        loadAIConfig();
+        loadR2Config();
+        loadVersions();
+      } catch (err) {
+        console.error("Unexpected error in checkAdmin:", err);
+        statusEl.textContent = "❌ Unexpected error: " + err.message;
         statusEl.className = "auth-status error";
-        return;
       }
-
-      statusEl.textContent = "Welcome, Admin.";
-      statusEl.className = "auth-status success";
-      contentEl.classList.remove("hidden");
-      loadAnnouncements();
-      loadAIConfig();
-      loadR2Config();
-      loadVersions();
     }
 
     async function loadVersions() {
-      const listEl = document.getElementById("versions-list");
-      
-      const { data, error } = await supabase
-        .from("r2_versions")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        console.log("Loading versions...");
+        const listEl = document.getElementById("versions-list");
+        
+        const { data, error } = await supabase
+          .from("r2_versions")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        listEl.innerHTML = `<p style="color: var(--error);">Error loading versions: ${error.message}</p>`;
-        return;
-      }
+        console.log("Versions loaded:", data, "Error:", error);
 
-      if (!data || data.length === 0) {
-        listEl.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 30px;">No versions uploaded yet. Go to Storage tab to upload your first version.</p>`;
-        return;
-      }
+        if (error) {
+          console.error("Error loading versions:", error);
+          listEl.innerHTML = `<p style="color: var(--error);">Error loading versions: ${error.message}</p>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          listEl.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 30px;">No versions uploaded yet. Go to Storage tab to upload your first version.</p>`;
+          return;
+        }
 
       listEl.innerHTML = data.map(ver => `
         <div class="announcement-item" style="flex-direction: column; align-items: flex-start; gap: 15px;">
@@ -392,6 +432,11 @@
           }
         });
       });
+      } catch (err) {
+        console.error("Error in loadVersions:", err);
+        document.getElementById("versions-list").innerHTML = 
+          `<p style="color: var(--error);">Unexpected error: ${err.message}</p>`;
+      }
     }
 
     window.setActiveVersion = async function(versionId) {
@@ -444,49 +489,77 @@
     }
 
     async function loadR2Config() {
-      const { data, error } = await supabase
-        .from("system_config")
-        .select("value")
-        .eq("key", "r2_storage_config")
-        .single();
+      try {
+        console.log("Loading R2 config...");
+        const { data, error } = await supabase
+          .from("system_config")
+          .select("value")
+          .eq("key", "r2_storage_config")
+          .single();
 
-      if (data) {
-        r2AccountIdEl.value = data.value.account_id || "";
-        r2AccessKeyEl.value = data.value.access_key || "";
-        r2SecretKeyEl.value = data.value.secret_key || "";
-        r2BucketNameEl.value = data.value.bucket_name || "";
-        r2PublicUrlEl.value = data.value.public_url || "";
+        console.log("R2 config loaded:", data ? "Found" : "Not found", "Error:", error);
+
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 = no rows returned, which is fine (config not set yet)
+          console.error("Error loading R2 config:", error);
+        }
+
+        if (data) {
+          r2AccountIdEl.value = data.value.account_id || "";
+          r2AccessKeyEl.value = data.value.access_key || "";
+          r2SecretKeyEl.value = data.value.secret_key || "";
+          r2BucketNameEl.value = data.value.bucket_name || "";
+          r2PublicUrlEl.value = data.value.public_url || "";
+        }
+      } catch (err) {
+        console.error("Unexpected error in loadR2Config:", err);
       }
     }
 
     async function loadAIConfig() {
-      const { data, error } = await supabase
-        .from("system_config")
-        .select("value")
-        .eq("key", "builtin_ai_provider")
-        .single();
+      try {
+        console.log("Loading AI config...");
+        const { data, error } = await supabase
+          .from("system_config")
+          .select("value")
+          .eq("key", "builtin_ai_provider")
+          .single();
 
-      if (data) {
-        aiProviderEl.value = data.value.provider;
-        aiModelEl.value = data.value.model;
+        console.log("AI config loaded:", data ? "Found" : "Not found", "Error:", error);
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error loading AI config:", error);
+        }
+
+        if (data) {
+          aiProviderEl.value = data.value.provider;
+          aiModelEl.value = data.value.model;
+        }
+      } catch (err) {
+        console.error("Unexpected error in loadAIConfig:", err);
       }
     }
 
     async function loadAnnouncements() {
-      const { data, error } = await supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        console.log("Loading announcements...");
+        const { data, error } = await supabase
+          .from("announcements")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        listEl.textContent = "Error loading announcements.";
-        return;
-      }
+        console.log("Announcements loaded:", data ? `${data.length} found` : "None", "Error:", error);
 
-      if (!data || data.length === 0) {
-        listEl.textContent = "No announcements found.";
-        return;
-      }
+        if (error) {
+          console.error("Error loading announcements:", error);
+          listEl.textContent = "Error loading announcements: " + error.message;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          listEl.textContent = "No announcements found.";
+          return;
+        }
 
       listEl.innerHTML = data.map(ann => `
         <div class="announcement-item">
@@ -511,6 +584,10 @@
           else loadAnnouncements();
         });
       });
+      } catch (err) {
+        console.error("Unexpected error in loadAnnouncements:", err);
+        listEl.textContent = "Unexpected error: " + err.message;
+      }
     }
 
     document.getElementById("save-announcement").addEventListener("click", async () => {
