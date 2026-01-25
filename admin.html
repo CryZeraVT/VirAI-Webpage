@@ -680,15 +680,19 @@
           },
         });
 
-        // 1. Upload the main file
+        // 1. Read file as ArrayBuffer (browser-compatible)
         const remotePath = `updates/${version}/${file.name}`;
+        statusEl.textContent = `⏳ Reading ${file.name}...`;
+        
+        const fileBuffer = await file.arrayBuffer();
+        
         statusEl.textContent = `⏳ Uploading ${file.name}...`;
         
         await r2Client.send(new PutObjectCommand({
           Bucket: r2BucketNameEl.value.trim(),
           Key: remotePath,
-          Body: file,
-          ContentType: file.type
+          Body: new Uint8Array(fileBuffer),
+          ContentType: file.type || "application/octet-stream"
         }));
 
         // 2. Save version to Supabase
