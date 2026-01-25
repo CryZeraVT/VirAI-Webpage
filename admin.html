@@ -51,6 +51,63 @@
     }
     .badge-critical { background: #ef4444; color: white; }
     .badge-active { background: #22c55e; color: white; }
+
+    /* Tab Styles */
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      border-bottom: 1px solid rgba(157, 78, 221, 0.2);
+      padding-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-tab {
+      padding: 12px 20px;
+      background: transparent;
+      border: 1px solid #2d1b4e;
+      color: #a1a1aa;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-tab.active {
+      background: linear-gradient(135deg, #d946ef, #06b6d4);
+      border-color: transparent;
+      color: white;
+      box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);
+    }
+    
+    .nav-tab:hover:not(.active) {
+      border-color: #d946ef;
+      color: #d946ef;
+      background: rgba(217, 70, 239, 0.05);
+    }
+    
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease-out;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .quick-links {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
   </style>
 </head>
 <body>
@@ -79,97 +136,118 @@
         <div class="auth-divider"></div>
         
         <!-- Quick Links -->
-        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-          <a href="admin-usage.html" class="btn" style="background: linear-gradient(135deg, #22c55e, #06b6d4);">
+        <div class="quick-links">
+          <a href="admin-usage.html" class="btn" style="background: linear-gradient(135deg, #22c55e, #06b6d4); font-size: 0.9rem; padding: 10px 20px;">
             📊 View Token Usage Dashboard
           </a>
         </div>
 
-        <div class="auth-divider"></div>
-        
-        <h3>Cloudflare R2 Configuration</h3>
-        <p class="auth-helper">Enter your R2 credentials to enable file uploads and versioning.</p>
-        <div class="form-group">
-          <label>Account ID</label>
-          <input id="r2-account-id" type="text" placeholder="xxx..." class="form-input">
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+          <button class="nav-tab active" data-tab="publish">🚀 Publish Update</button>
+          <button class="nav-tab" data-tab="announcements">📢 Announcements</button>
+          <button class="nav-tab" data-tab="ai-engine">🤖 AI Engine</button>
+          <button class="nav-tab" data-tab="storage">☁️ Storage (R2)</button>
         </div>
-        <div class="form-group">
-          <label>Access Key ID</label>
-          <input id="r2-access-key" type="text" placeholder="xxx..." class="form-input">
-        </div>
-        <div class="form-group">
-          <label>Secret Access Key</label>
-          <input id="r2-secret-key" type="password" placeholder="xxx..." class="form-input">
-        </div>
-        <div class="form-group">
-          <label>Bucket Name</label>
-          <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
-        </div>
-        <div class="form-group">
-          <label>Public Download URL (e.g. https://pub-xxx.r2.dev)</label>
-          <input id="r2-public-url" type="text" placeholder="https://..." class="form-input">
-        </div>
-        <button id="save-r2-config" class="btn btn-outline" style="border-color: #22c55e; color: #22c55e;">Save R2 Settings</button>
 
-        <div class="auth-divider"></div>
-        
-        <h3>Publish New Update</h3>
-        <p class="auth-helper">Upload a new .exe or .zip and update the version for all users.</p>
-        <div class="form-group">
-          <label>Select Update File</label>
-          <input id="update-file" type="file" class="form-input">
-        </div>
-        <div id="publish-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
-        <button id="publish-to-r2" class="btn" style="background: linear-gradient(135deg, #d946ef, #06b6d4);">🚀 Upload & Publish to R2</button>
+        <!-- Tab: Publish Update -->
+        <div class="tab-content active" id="tab-publish">
+          <h3>Publish New Update</h3>
+          <p class="auth-helper">Upload a new .exe or .zip and update the version for all users.</p>
+          
+          <div class="form-group">
+            <label>Version</label>
+            <input id="ann-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input id="ann-title" type="text" placeholder="Update Title" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Content / Changelog</label>
+            <textarea id="ann-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
+          </div>
+          
+          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
+            <label style="margin-bottom: 0;">
+              <input id="ann-critical" type="checkbox"> Critical Update
+            </label>
+          </div>
 
-        <div class="auth-divider"></div>
-        
-        <h3>Create New Announcement</h3>
-        <div class="form-group">
-          <label>Version</label>
-          <input id="ann-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          <div class="form-group">
+            <label>Select Update File</label>
+            <input id="update-file" type="file" class="form-input">
+          </div>
+          
+          <div id="publish-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
+          <button id="publish-to-r2" class="btn" style="width: 100%; background: linear-gradient(135deg, #d946ef, #06b6d4);">🚀 Upload & Publish to R2</button>
         </div>
-        <div class="form-group">
-          <label>Title</label>
-          <input id="ann-title" type="text" placeholder="Update Title" class="form-input">
-        </div>
-        <div class="form-group">
-          <label>Content / Changelog</label>
-          <textarea id="ann-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
-        </div>
-        <div class="form-group">
-          <label>Download URL (Optional)</label>
-          <input id="ann-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
-        </div>
-        <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
-          <label style="margin-bottom: 0;">
-            <input id="ann-critical" type="checkbox"> Critical Update
-          </label>
-          <label style="margin-bottom: 0;">
-            <input id="ann-active" type="checkbox" checked> Active
-          </label>
-        </div>
-        <button id="save-announcement" class="btn">Post Announcement</button>
 
-        <div class="auth-divider"></div>
+        <!-- Tab: Announcements -->
+        <div class="tab-content" id="tab-announcements">
+          <h3>Create Manual Announcement</h3>
+          <p class="auth-helper">Post a notice without uploading a new file.</p>
+          
+          <div class="form-group">
+            <label>Download URL (Optional)</label>
+            <input id="ann-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
+          </div>
+          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
+            <label style="margin-bottom: 0;">
+              <input id="ann-active" type="checkbox" checked> Active
+            </label>
+          </div>
+          <button id="save-announcement" class="btn" style="margin-bottom: 30px;">Post Announcement</button>
 
-        <h3>Global Built-in AI Control</h3>
-        <p class="auth-helper">Switch the AI provider and model used by all 'Built-in AI' users instantly.</p>
-        <div class="form-group">
-          <label>Provider</label>
-          <select id="ai-provider" class="form-input">
-            <option value="openai">OpenAI</option>
-            <option value="grok">Grok (X.AI)</option>
-          </select>
+          <div class="auth-divider"></div>
+          <h3>Existing Announcements</h3>
+          <div id="announcements-list">Loading...</div>
         </div>
-        <div class="form-group">
-          <label>Model</label>
-          <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
-        </div>
-        <button id="update-ai-config" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4;">Update Global AI Engine</button>
 
-        <div class="auth-divider"></div>
-        <div id="announcements-list">Loading...</div>
+        <!-- Tab: AI Engine -->
+        <div class="tab-content" id="tab-ai-engine">
+          <h3>Global Built-in AI Control</h3>
+          <p class="auth-helper">Switch the AI provider and model used by all 'Built-in AI' users instantly.</p>
+          <div class="form-group">
+            <label>Provider</label>
+            <select id="ai-provider" class="form-input">
+              <option value="openai">OpenAI</option>
+              <option value="grok">Grok (X.AI)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Model</label>
+            <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
+          </div>
+          <button id="update-ai-config" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; width: 100%;">Update Global AI Engine</button>
+        </div>
+
+        <!-- Tab: Storage -->
+        <div class="tab-content" id="tab-storage">
+          <h3>Cloudflare R2 Configuration</h3>
+          <p class="auth-helper">Enter your R2 credentials to enable file uploads and versioning.</p>
+          <div class="form-group">
+            <label>Account ID</label>
+            <input id="r2-account-id" type="text" placeholder="xxx..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Access Key ID</label>
+            <input id="r2-access-key" type="text" placeholder="xxx..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Secret Access Key</label>
+            <input id="r2-secret-key" type="password" placeholder="xxx..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Bucket Name</label>
+            <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Public Download URL (e.g. https://pub-xxx.r2.dev)</label>
+            <input id="r2-public-url" type="text" placeholder="https://..." class="form-input">
+          </div>
+          <button id="save-r2-config" class="btn btn-outline" style="border-color: #22c55e; color: #22c55e; width: 100%;">Save R2 Settings</button>
+        </div>
       </div>
     </div>
   </div>
@@ -318,6 +396,20 @@
         document.getElementById("ann-url").value = "";
         loadAnnouncements();
       }
+    });
+
+    // Tab switching logic
+    document.querySelectorAll(".nav-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        // Remove active class from all tabs and contents
+        document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add("active");
+        const tabId = `tab-${tab.dataset.tab}`;
+        document.getElementById(tabId).classList.add("active");
+      });
     });
 
     document.getElementById("save-r2-config").addEventListener("click", async () => {
