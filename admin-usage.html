@@ -270,7 +270,7 @@
             <table class="data-table" id="user-table">
               <thead>
                 <tr>
-                  <th>License Key</th>
+                  <th>Twitch Channel</th>
                   <th>Requests</th>
                   <th>Prompt Tokens</th>
                   <th>Completion Tokens</th>
@@ -438,12 +438,14 @@
         return;
       }
 
-      // Aggregate by user
+      // Aggregate by user (using twitch_channel as primary, fallback to license_key)
       const userStats = {};
       data.forEach(row => {
-        const key = row.license_key;
+        const twitch = row.twitch_channel || '';
+        const license = row.license_key || '';
+        const key = twitch || license; // Prefer twitch name
         if (!userStats[key]) {
-          userStats[key] = { requests: 0, prompt: 0, completion: 0, cost: 0 };
+          userStats[key] = { twitch: twitch, license: license, requests: 0, prompt: 0, completion: 0, cost: 0 };
         }
         userStats[key].requests++;
         userStats[key].prompt += row.prompt_tokens || 0;
@@ -456,7 +458,12 @@
 
       tbody.innerHTML = sorted.map(([key, stats]) => `
         <tr>
-          <td><span class="license-key" title="${key}">${key.substring(0, 20)}...</span></td>
+          <td>
+            ${stats.twitch 
+              ? `<a href="https://twitch.tv/${stats.twitch}" target="_blank" style="color: #9146FF; text-decoration: none; font-weight: 600;">📺 ${stats.twitch}</a>` 
+              : `<span class="license-key" title="${stats.license}">${stats.license.substring(0, 15)}...</span>`
+            }
+          </td>
           <td>${stats.requests.toLocaleString()}</td>
           <td>${stats.prompt.toLocaleString()}</td>
           <td>${stats.completion.toLocaleString()}</td>
