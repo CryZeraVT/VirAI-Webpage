@@ -261,6 +261,8 @@
           <button class="nav-tab active" data-tab="users">By User</button>
           <button class="nav-tab" data-tab="daily">Daily Breakdown</button>
           <button class="nav-tab" data-tab="models">By Model</button>
+          <button class="nav-tab" data-tab="openai" style="border-color: #10a37f; color: #10a37f;">OpenAI Billing</button>
+          <button class="nav-tab" data-tab="pricing" style="border-color: #f59e0b; color: #f59e0b;">Model Pricing</button>
         </div>
 
         <!-- User Usage Tab -->
@@ -323,6 +325,101 @@
                 <tr><td colspan="5" class="loading">Loading...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- OpenAI Billing Tab -->
+        <div class="tab-content" id="tab-openai">
+          <h3 class="section-title" style="color: #10a37f;">OpenAI Official Usage (Current Billing Cycle)</h3>
+          <p style="color: #a1a1aa; margin-bottom: 20px;">Data pulled directly from OpenAI's API. Updates in real-time.</p>
+          
+          <div class="stats-grid" id="openai-stats">
+            <div class="stat-card" style="border-color: #10a37f;">
+              <p class="stat-value" id="openai-total-tokens" style="color: #10a37f;">-</p>
+              <p class="stat-label">Total Tokens</p>
+            </div>
+            <div class="stat-card" style="border-color: #10a37f;">
+              <p class="stat-value" id="openai-input-tokens" style="color: #10a37f;">-</p>
+              <p class="stat-label">Input Tokens</p>
+            </div>
+            <div class="stat-card" style="border-color: #10a37f;">
+              <p class="stat-value" id="openai-output-tokens" style="color: #10a37f;">-</p>
+              <p class="stat-label">Output Tokens</p>
+            </div>
+            <div class="stat-card" style="border-color: #22c55e;">
+              <p class="stat-value cost" id="openai-total-cost">-</p>
+              <p class="stat-label">Estimated Cost</p>
+            </div>
+          </div>
+
+          <div style="margin: 20px 0;">
+            <button class="refresh-btn" id="refresh-openai" style="border-color: #10a37f; color: #10a37f;">↻ Refresh OpenAI Data</button>
+            <span id="openai-period" style="margin-left: 15px; color: #a1a1aa; font-size: 0.9rem;"></span>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="openai-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Model</th>
+                  <th>Input Tokens</th>
+                  <th>Output Tokens</th>
+                  <th>Requests</th>
+                </tr>
+              </thead>
+              <tbody id="openai-table-body">
+                <tr><td colspan="5" class="loading">Click "Refresh OpenAI Data" to load...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div id="openai-error" style="display: none; margin-top: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444;"></div>
+          
+          <div style="margin-top: 20px; padding: 15px; background: rgba(16, 163, 127, 0.1); border: 1px solid rgba(16, 163, 127, 0.3); border-radius: 8px;">
+            <p style="color: #10a37f; margin: 0; font-weight: 600;">Setup Required:</p>
+            <p style="color: #a1a1aa; margin: 5px 0 0 0; font-size: 0.9rem;">
+              Add your OpenAI API key as <code style="background: #1a112e; padding: 2px 6px; border-radius: 4px;">OPENAI_API_KEY</code> or Admin key as <code style="background: #1a112e; padding: 2px 6px; border-radius: 4px;">OPENAI_ADMIN_KEY</code> in Supabase Edge Function secrets.
+            </p>
+          </div>
+        </div>
+
+        <!-- Model Pricing Tab -->
+        <div class="tab-content" id="tab-pricing">
+          <h3 class="section-title" style="color: #f59e0b;">Model Pricing Configuration</h3>
+          <p style="color: #a1a1aa; margin-bottom: 20px;">Update costs per 1M tokens. Changes affect cost calculations in usage tracking.</p>
+          
+          <div style="margin-bottom: 20px;">
+            <button class="refresh-btn" id="refresh-pricing" style="border-color: #f59e0b; color: #f59e0b;">↻ Refresh Pricing</button>
+            <button class="refresh-btn" id="save-pricing" style="border-color: #22c55e; color: #22c55e; margin-left: 10px;">💾 Save Changes</button>
+          </div>
+
+          <div class="table-container" style="max-height: 500px;">
+            <table class="data-table" id="pricing-table">
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Model</th>
+                  <th>Input Cost (per 1M tokens)</th>
+                  <th>Output Cost (per 1M tokens)</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody id="pricing-table-body">
+                <tr><td colspan="5" class="loading">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 20px; padding: 15px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px;">
+            <p style="color: #f59e0b; margin: 0; font-weight: 600;">Add New Model</p>
+            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+              <input type="text" id="new-provider" placeholder="Provider (e.g., openai)" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 120px;">
+              <input type="text" id="new-model" placeholder="Model name" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 180px;">
+              <input type="number" id="new-input-cost" placeholder="Input $" step="0.001" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px;">
+              <input type="number" id="new-output-cost" placeholder="Output $" step="0.001" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px;">
+              <button class="refresh-btn" id="add-model" style="border-color: #22c55e; color: #22c55e;">+ Add</button>
+            </div>
           </div>
         </div>
       </div>
@@ -574,8 +671,218 @@
         loadStats(),
         loadUserUsage(),
         loadDailyUsage(),
-        loadModelUsage()
+        loadModelUsage(),
+        loadPricing()
       ]);
+    }
+
+    // Load OpenAI official usage
+    async function loadOpenAIUsage() {
+      const tbody = document.getElementById("openai-table-body");
+      const errorDiv = document.getElementById("openai-error");
+      errorDiv.style.display = "none";
+      tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading from OpenAI...</td></tr>`;
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=usage`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+          errorDiv.textContent = result.error + (result.note ? " " + result.note : "");
+          errorDiv.style.display = "block";
+          tbody.innerHTML = `<tr><td colspan="5">Failed to load OpenAI data. See error above.</td></tr>`;
+          return;
+        }
+
+        // Display period
+        document.getElementById("openai-period").textContent = 
+          `Billing Period: ${new Date(result.period.start).toLocaleDateString()} - ${new Date(result.period.end).toLocaleDateString()}`;
+
+        // Parse usage data
+        if (result.source === "usage_api" && result.data?.data) {
+          const buckets = result.data.data;
+          let totalInput = 0, totalOutput = 0, totalRequests = 0;
+          const rows = [];
+
+          buckets.forEach(bucket => {
+            const date = new Date(bucket.start_time * 1000).toLocaleDateString();
+            bucket.results?.forEach(r => {
+              totalInput += r.input_tokens || 0;
+              totalOutput += r.output_tokens || 0;
+              totalRequests += r.num_model_requests || 0;
+              rows.push({
+                date,
+                model: r.model_id || "unknown",
+                input: r.input_tokens || 0,
+                output: r.output_tokens || 0,
+                requests: r.num_model_requests || 0
+              });
+            });
+          });
+
+          document.getElementById("openai-total-tokens").textContent = (totalInput + totalOutput).toLocaleString();
+          document.getElementById("openai-input-tokens").textContent = totalInput.toLocaleString();
+          document.getElementById("openai-output-tokens").textContent = totalOutput.toLocaleString();
+          
+          // Estimate cost (rough estimate)
+          const estimatedCost = (totalInput / 1000000 * 0.15) + (totalOutput / 1000000 * 0.60);
+          document.getElementById("openai-total-cost").textContent = "$" + estimatedCost.toFixed(4);
+
+          if (rows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5">No usage data for this billing period.</td></tr>`;
+          } else {
+            tbody.innerHTML = rows.map(r => `
+              <tr>
+                <td>${r.date}</td>
+                <td><span class="model-badge">${r.model}</span></td>
+                <td>${r.input.toLocaleString()}</td>
+                <td>${r.output.toLocaleString()}</td>
+                <td>${r.requests.toLocaleString()}</td>
+              </tr>
+            `).join("");
+          }
+        } else if (result.source === "billing" && result.data) {
+          // Older billing API format
+          const data = result.data;
+          const totalCents = data.total_usage || 0;
+          document.getElementById("openai-total-cost").textContent = "$" + (totalCents / 100).toFixed(2);
+          document.getElementById("openai-total-tokens").textContent = "-";
+          document.getElementById("openai-input-tokens").textContent = "-";
+          document.getElementById("openai-output-tokens").textContent = "-";
+          
+          if (data.daily_costs?.length) {
+            tbody.innerHTML = data.daily_costs.map(day => `
+              <tr>
+                <td>${new Date(day.timestamp * 1000).toLocaleDateString()}</td>
+                <td>-</td>
+                <td colspan="2">$${((day.line_items?.reduce((s, i) => s + i.cost, 0) || 0) / 100).toFixed(4)}</td>
+                <td>-</td>
+              </tr>
+            `).join("");
+          } else {
+            tbody.innerHTML = `<tr><td colspan="5">Total usage: $${(totalCents / 100).toFixed(2)}</td></tr>`;
+          }
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5">Unexpected response format.</td></tr>`;
+        }
+      } catch (err) {
+        console.error("OpenAI usage error:", err);
+        errorDiv.textContent = "Error fetching OpenAI data: " + err.message;
+        errorDiv.style.display = "block";
+        tbody.innerHTML = `<tr><td colspan="5">Error loading data.</td></tr>`;
+      }
+    }
+
+    // Load model pricing
+    async function loadPricing() {
+      const tbody = document.getElementById("pricing-table-body");
+      
+      const { data, error } = await supabase
+        .from("model_pricing")
+        .select("*")
+        .order("provider")
+        .order("model");
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Error loading pricing: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5">No pricing data found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => `
+        <tr data-id="${row.id}">
+          <td>${row.provider}</td>
+          <td><span class="model-badge">${row.model}</span></td>
+          <td>
+            <input type="number" class="pricing-input input-cost" value="${row.input_cost_per_million}" step="0.001" 
+              style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 4px; padding: 5px 8px; color: white; width: 100px;">
+          </td>
+          <td>
+            <input type="number" class="pricing-input output-cost" value="${row.output_cost_per_million}" step="0.001"
+              style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 4px; padding: 5px 8px; color: white; width: 100px;">
+          </td>
+          <td style="color: #a1a1aa; font-size: 0.85rem;">${new Date(row.updated_at).toLocaleDateString()}</td>
+        </tr>
+      `).join("");
+    }
+
+    // Save pricing changes
+    async function savePricing() {
+      const rows = document.querySelectorAll("#pricing-table-body tr[data-id]");
+      const updates = [];
+
+      rows.forEach(row => {
+        const id = row.dataset.id;
+        const inputCost = parseFloat(row.querySelector(".input-cost").value) || 0;
+        const outputCost = parseFloat(row.querySelector(".output-cost").value) || 0;
+        updates.push({ id, input_cost_per_million: inputCost, output_cost_per_million: outputCost, updated_at: new Date().toISOString() });
+      });
+
+      let successCount = 0;
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("model_pricing")
+          .update({
+            input_cost_per_million: update.input_cost_per_million,
+            output_cost_per_million: update.output_cost_per_million,
+            updated_at: update.updated_at
+          })
+          .eq("id", update.id);
+        
+        if (!error) successCount++;
+      }
+
+      alert(`Saved ${successCount} of ${updates.length} pricing entries.`);
+      await loadPricing();
+    }
+
+    // Add new model pricing
+    async function addModelPricing() {
+      const provider = document.getElementById("new-provider").value.trim().toLowerCase();
+      const model = document.getElementById("new-model").value.trim();
+      const inputCost = parseFloat(document.getElementById("new-input-cost").value) || 0;
+      const outputCost = parseFloat(document.getElementById("new-output-cost").value) || 0;
+
+      if (!provider || !model) {
+        alert("Please enter provider and model name.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("model_pricing")
+        .insert({
+          provider,
+          model,
+          input_cost_per_million: inputCost,
+          output_cost_per_million: outputCost
+        });
+
+      if (error) {
+        alert("Error adding model: " + error.message);
+        return;
+      }
+
+      // Clear inputs
+      document.getElementById("new-provider").value = "";
+      document.getElementById("new-model").value = "";
+      document.getElementById("new-input-cost").value = "";
+      document.getElementById("new-output-cost").value = "";
+
+      alert("Model added successfully!");
+      await loadPricing();
     }
 
     // Tab switching
@@ -594,6 +901,14 @@
 
     // Refresh button
     document.getElementById("refresh-btn").addEventListener("click", loadAllData);
+
+    // OpenAI refresh button
+    document.getElementById("refresh-openai").addEventListener("click", loadOpenAIUsage);
+
+    // Pricing buttons
+    document.getElementById("refresh-pricing").addEventListener("click", loadPricing);
+    document.getElementById("save-pricing").addEventListener("click", savePricing);
+    document.getElementById("add-model").addEventListener("click", addModelPricing);
 
     // Initialize
     async function init() {
