@@ -6,6 +6,7 @@
   <title>ViriTTS - Admin Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3@3.454.0/dist-browser/index.js"></script>
   <style>
     .admin-card {
       background: rgba(30, 20, 51, 0.8);
@@ -86,6 +87,43 @@
 
         <div class="auth-divider"></div>
         
+        <h3>Cloudflare R2 Configuration</h3>
+        <p class="auth-helper">Enter your R2 credentials to enable file uploads and versioning.</p>
+        <div class="form-group">
+          <label>Account ID</label>
+          <input id="r2-account-id" type="text" placeholder="xxx..." class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Access Key ID</label>
+          <input id="r2-access-key" type="text" placeholder="xxx..." class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Secret Access Key</label>
+          <input id="r2-secret-key" type="password" placeholder="xxx..." class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Bucket Name</label>
+          <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Public Download URL (e.g. https://pub-xxx.r2.dev)</label>
+          <input id="r2-public-url" type="text" placeholder="https://..." class="form-input">
+        </div>
+        <button id="save-r2-config" class="btn btn-outline" style="border-color: #22c55e; color: #22c55e;">Save R2 Settings</button>
+
+        <div class="auth-divider"></div>
+        
+        <h3>Publish New Update</h3>
+        <p class="auth-helper">Upload a new .exe or .zip and update the version for all users.</p>
+        <div class="form-group">
+          <label>Select Update File</label>
+          <input id="update-file" type="file" class="form-input">
+        </div>
+        <div id="publish-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
+        <button id="publish-to-r2" class="btn" style="background: linear-gradient(135deg, #d946ef, #06b6d4);">🚀 Upload & Publish to R2</button>
+
+        <div class="auth-divider"></div>
+        
         <h3>Create New Announcement</h3>
         <div class="form-group">
           <label>Version</label>
@@ -148,6 +186,12 @@
     const listEl = document.getElementById("announcements-list");
     const aiProviderEl = document.getElementById("ai-provider");
     const aiModelEl = document.getElementById("ai-model");
+    const r2AccountIdEl = document.getElementById("r2-account-id");
+    const r2AccessKeyEl = document.getElementById("r2-access-key");
+    const r2SecretKeyEl = document.getElementById("r2-secret-key");
+    const r2BucketNameEl = document.getElementById("r2-bucket-name");
+    const r2PublicUrlEl = document.getElementById("r2-public-url");
+    const publishStatusEl = document.getElementById("publish-status");
 
     async function checkAdmin() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -173,6 +217,23 @@
       contentEl.classList.remove("hidden");
       loadAnnouncements();
       loadAIConfig();
+      loadR2Config();
+    }
+
+    async function loadR2Config() {
+      const { data, error } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "r2_storage_config")
+        .single();
+
+      if (data) {
+        r2AccountIdEl.value = data.value.account_id || "";
+        r2AccessKeyEl.value = data.value.access_key || "";
+        r2SecretKeyEl.value = data.value.secret_key || "";
+        r2BucketNameEl.value = data.value.bucket_name || "";
+        r2PublicUrlEl.value = data.value.public_url || "";
+      }
     }
 
     async function loadAIConfig() {
@@ -256,6 +317,105 @@
         document.getElementById("ann-content").value = "";
         document.getElementById("ann-url").value = "";
         loadAnnouncements();
+      }
+    });
+
+    document.getElementById("save-r2-config").addEventListener("click", async () => {
+      const config = {
+        account_id: r2AccountIdEl.value.trim(),
+        access_key: r2AccessKeyEl.value.trim(),
+        secret_key: r2SecretKeyEl.value.trim(),
+        bucket_name: r2BucketNameEl.value.trim(),
+        public_url: r2PublicUrlEl.value.trim()
+      };
+
+      const { error } = await supabase
+        .from("system_config")
+        .upsert({ 
+          key: "r2_storage_config", 
+          value: config,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) alert("Error saving R2 config: " + error.message);
+      else alert("R2 Configuration saved!");
+    });
+
+    document.getElementById("publish-to-r2").addEventListener("click", async () => {
+      const file = document.getElementById("update-file").files[0];
+      const version = document.getElementById("ann-version").value.trim();
+      const title = document.getElementById("ann-title").value.trim();
+      const content = document.getElementById("ann-content").value.trim();
+      const is_critical = document.getElementById("ann-critical").checked;
+
+      if (!file || !version || !title || !content) {
+        alert("Please fill in version, title, content and select a file.");
+        return;
+      }
+
+      publishStatusEl.textContent = "⏳ Initializing upload...";
+      publishStatusEl.style.color = "var(--text-secondary)";
+
+      try {
+        const { S3Client, PutObjectCommand } = window["@aws-sdk/client-s3"];
+        
+        const r2Client = new S3Client({
+          region: "auto",
+          endpoint: `https://${r2AccountIdEl.value.trim()}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: r2AccessKeyEl.value.trim(),
+            secretAccessKey: r2SecretKeyEl.value.trim(),
+          },
+        });
+
+        // 1. Upload the main file
+        const remotePath = `updates/${version}/${file.name}`;
+        publishStatusEl.textContent = `⏳ Uploading ${file.name}...`;
+        
+        await r2Client.send(new PutObjectCommand({
+          Bucket: r2BucketNameEl.value.trim(),
+          Key: remotePath,
+          Body: file,
+          ContentType: file.type
+        }));
+
+        // 2. Create and upload version.json
+        publishStatusEl.textContent = "⏳ Updating version.json...";
+        const publicBaseUrl = r2PublicUrlEl.value.trim().replace(/\/$/, "");
+        const downloadUrl = `${publicBaseUrl}/${remotePath}`;
+        
+        const versionData = {
+          version,
+          title,
+          content,
+          is_critical,
+          download_url: downloadUrl,
+          publish_date: new Date().toISOString()
+        };
+
+        await r2Client.send(new PutObjectCommand({
+          Bucket: r2BucketNameEl.value.trim(),
+          Key: "version.json",
+          Body: JSON.stringify(versionData, null, 2),
+          ContentType: "application/json"
+        }));
+
+        // 3. Post announcement to Supabase
+        publishStatusEl.textContent = "⏳ Posting announcement...";
+        const { error: annError } = await supabase.from("announcements").insert([{
+          version, title, content, download_url: downloadUrl, is_critical, active: true
+        }]);
+
+        if (annError) throw annError;
+
+        publishStatusEl.textContent = "✅ Successfully published to R2 and Supabase!";
+        publishStatusEl.style.color = "var(--success)";
+        loadAnnouncements();
+        
+      } catch (err) {
+        console.error(err);
+        publishStatusEl.textContent = "❌ Error: " + err.message;
+        publishStatusEl.style.color = "var(--error)";
       }
     });
 
