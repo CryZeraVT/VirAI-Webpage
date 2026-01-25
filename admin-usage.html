@@ -681,7 +681,7 @@
       const tbody = document.getElementById("openai-table-body");
       const errorDiv = document.getElementById("openai-error");
       errorDiv.style.display = "none";
-      tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading from OpenAI...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading usage data...</td></tr>`;
 
       try {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -751,26 +751,36 @@
               </tr>
             `).join("");
           }
-        } else if (result.source === "billing" && result.data) {
-          // Older billing API format
-          const data = result.data;
-          const totalCents = data.total_usage || 0;
-          document.getElementById("openai-total-cost").textContent = "$" + (totalCents / 100).toFixed(2);
-          document.getElementById("openai-total-tokens").textContent = "-";
-          document.getElementById("openai-input-tokens").textContent = "-";
-          document.getElementById("openai-output-tokens").textContent = "-";
-          
-          if (data.daily_costs?.length) {
-            tbody.innerHTML = data.daily_costs.map(day => `
+        } else if (result.source === "local_database") {
+          // Local database tracking (from VirAI app)
+          const totals = result.totals;
+          document.getElementById("openai-total-tokens").textContent = (totals.total_tokens || 0).toLocaleString();
+          document.getElementById("openai-input-tokens").textContent = (totals.input_tokens || 0).toLocaleString();
+          document.getElementById("openai-output-tokens").textContent = (totals.output_tokens || 0).toLocaleString();
+          document.getElementById("openai-total-cost").textContent = "$" + parseFloat(totals.cost_usd || 0).toFixed(4);
+
+          // Build rows from by_model data
+          const modelData = result.by_model || {};
+          const rows = Object.entries(modelData).map(([model, stats]) => ({
+            model,
+            input: stats.input,
+            output: stats.output,
+            cost: stats.cost,
+            requests: stats.requests
+          }));
+
+          if (rows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5">No usage data for this billing period.</td></tr>`;
+          } else {
+            tbody.innerHTML = rows.map(r => `
               <tr>
-                <td>${new Date(day.timestamp * 1000).toLocaleDateString()}</td>
-                <td>-</td>
-                <td colspan="2">$${((day.line_items?.reduce((s, i) => s + i.cost, 0) || 0) / 100).toFixed(4)}</td>
-                <td>-</td>
+                <td>This Month</td>
+                <td><span class="model-badge">${r.model}</span></td>
+                <td>${r.input.toLocaleString()}</td>
+                <td>${r.output.toLocaleString()}</td>
+                <td>${r.requests.toLocaleString()} req / $${r.cost.toFixed(4)}</td>
               </tr>
             `).join("");
-          } else {
-            tbody.innerHTML = `<tr><td colspan="5">Total usage: $${(totalCents / 100).toFixed(2)}</td></tr>`;
           }
         } else {
           tbody.innerHTML = `<tr><td colspan="5">Unexpected response format.</td></tr>`;
