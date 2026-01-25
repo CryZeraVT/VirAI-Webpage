@@ -150,6 +150,7 @@
           <button class="nav-tab active" data-tab="publish">🚀 Publish Update</button>
           <button class="nav-tab" data-tab="announcements">📢 Announcements</button>
           <button class="nav-tab" data-tab="ai-engine">🤖 AI Engine</button>
+          <button class="nav-tab" data-tab="licenses">🔑 Licenses</button>
           <button class="nav-tab" data-tab="storage">☁️ Storage (R2)</button>
         </div>
 
@@ -217,6 +218,32 @@
             <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
           </div>
           <button id="update-ai-config" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; width: 100%;">Update Global AI Engine</button>
+        </div>
+
+        <!-- Tab: Licenses -->
+        <div class="tab-content" id="tab-licenses">
+          <h3>Generate Beta License Key</h3>
+          <p class="auth-helper">Create a new license key and assign it to a user's email.</p>
+          
+          <div class="form-group">
+            <label>User Email</label>
+            <input id="license-email" type="email" placeholder="user@example.com" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>License Key (Leave blank to auto-generate)</label>
+            <input id="license-key-input" type="text" placeholder="VIRI-BETA-XXXX-XXXX" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Duration (Days)</label>
+            <input id="license-duration" type="number" value="30" class="form-input">
+          </div>
+          
+          <div id="license-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
+          <button id="generate-license" class="btn" style="width: 100%; background: linear-gradient(135deg, #22c55e, #06b6d4);">🔑 Generate & Assign License</button>
+
+          <div class="auth-divider"></div>
+          <h3>Recent Licenses</h3>
+          <div id="admin-licenses-list">Loading...</div>
         </div>
 
         <!-- Tab: Storage -->
@@ -832,7 +859,97 @@
       }
     });
 
+    document.getElementById("generate-license").addEventListener("click", async () => {
+      const email = document.getElementById("license-email").value.trim();
+      let key = document.getElementById("license-key-input").value.trim();
+      const duration = parseInt(document.getElementById("license-duration").value) || 30;
+      const statusEl = document.getElementById("license-status");
+
+      if (!email) {
+        alert("Please enter a user email.");
+        return;
+      }
+
+      if (!key) {
+        // Generate a random BETA key
+        const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + 
+                          Math.random().toString(36).substring(2, 6).toUpperCase();
+        key = `VIRI-BETA-${randomStr}`;
+      }
+
+      statusEl.textContent = "⏳ Generating license...";
+      statusEl.style.color = "var(--text-secondary)";
+
+      try {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + duration);
+
+        const { error } = await supabase.from("licenses").insert([{
+          license_key: key,
+          email: email,
+          status: "active",
+          expires_at: expiresAt.toISOString()
+        }]);
+
+        if (error) throw error;
+
+        statusEl.textContent = `✅ License generated: ${key}`;
+        statusEl.style.color = "var(--success)";
+        
+        document.getElementById("license-email").value = "";
+        document.getElementById("license-key-input").value = "";
+        
+        loadAdminLicenses();
+        alert(`BETA License ${key} has been assigned to ${email}`);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "❌ Error: " + err.message;
+        statusEl.style.color = "var(--error)";
+      }
+    });
+
+    async function loadAdminLicenses() {
+      const listEl = document.getElementById("admin-licenses-list");
+      const { data, error } = await supabase
+        .from("licenses")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        listEl.textContent = "Error loading licenses.";
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        listEl.textContent = "No licenses found.";
+        return;
+      }
+
+      listEl.innerHTML = data.map(lic => `
+        <div class="announcement-item">
+          <div class="announcement-info">
+            <h4>${lic.license_key}</h4>
+            <p>📧 ${lic.email} • Status: ${lic.status.toUpperCase()}</p>
+            <p style="font-size: 0.8em; color: #888;">Expires: ${lic.expires_at ? new Date(lic.expires_at).toLocaleDateString() : 'Never'}</p>
+          </div>
+          <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Revoke</button>
+        </div>
+      `).join("");
+
+      document.querySelectorAll(".delete-license-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-key");
+          if (!confirm(`Revoke license ${key}?`)) return;
+          const { error } = await supabase.from("licenses").delete().eq("license_key", key);
+          if (error) alert(error.message);
+          else loadAdminLicenses();
+        });
+      });
+    }
+
     checkAdmin();
+    loadAdminLicenses();
   </script>
 </body>
 </html>
