@@ -432,11 +432,11 @@
           }
         });
       });
-      } catch (err) {
-        console.error("Error in loadVersions:", err);
-        document.getElementById("versions-list").innerHTML = 
-          `<p style="color: var(--error);">Unexpected error: ${err.message}</p>`;
-      }
+    } catch (err) {
+      console.error("Error in loadVersions:", err);
+      document.getElementById("versions-list").innerHTML = 
+        `<p style="color: var(--error);">Unexpected error: ${err.message}</p>`;
+    }
     }
 
     window.setActiveVersion = async function(versionId) {
@@ -584,10 +584,10 @@
           else loadAnnouncements();
         });
       });
-      } catch (err) {
-        console.error("Unexpected error in loadAnnouncements:", err);
-        listEl.textContent = "Unexpected error: " + err.message;
-      }
+    } catch (err) {
+      console.error("Unexpected error in loadAnnouncements:", err);
+      listEl.textContent = "Unexpected error: " + err.message;
+    }
     }
 
     document.getElementById("save-announcement").addEventListener("click", async () => {
