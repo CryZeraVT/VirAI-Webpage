@@ -283,7 +283,67 @@
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-    import { S3Client, PutObjectCommand } from "https://esm.sh/@aws-sdk/client-s3@3.454.0";
+    
+    // Helper function to sign AWS requests (S3/R2 compatible)
+    async function signRequest(method, url, headers, body, credentials) {
+      const encoder = new TextEncoder();
+      
+      async function hmacSha256(key, message) {
+        const cryptoKey = await crypto.subtle.importKey(
+          "raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+        );
+        return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(message)));
+      }
+      
+      async function sha256(message) {
+        const hash = await crypto.subtle.digest("SHA-256", typeof message === "string" ? encoder.encode(message) : message);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+      
+      const urlObj = new URL(url);
+      const datetime = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+      const date = datetime.slice(0, 8);
+      const host = urlObj.host;
+      const region = "auto";
+      const service = "s3";
+      
+      const payloadHash = await sha256(body || "");
+      
+      const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${datetime}\n`;
+      const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+      
+      const canonicalRequest = [
+        method,
+        urlObj.pathname,
+        urlObj.search.slice(1),
+        canonicalHeaders,
+        signedHeaders,
+        payloadHash
+      ].join("\n");
+      
+      const scope = `${date}/${region}/${service}/aws4_request`;
+      const stringToSign = [
+        "AWS4-HMAC-SHA256",
+        datetime,
+        scope,
+        await sha256(canonicalRequest)
+      ].join("\n");
+      
+      let key = encoder.encode("AWS4" + credentials.secretAccessKey);
+      key = await hmacSha256(key, date);
+      key = await hmacSha256(key, region);
+      key = await hmacSha256(key, service);
+      key = await hmacSha256(key, "aws4_request");
+      
+      const signature = Array.from(await hmacSha256(key, stringToSign))
+        .map(b => b.toString(16).padStart(2, "0")).join("");
+      
+      return {
+        "x-amz-date": datetime,
+        "x-amz-content-sha256": payloadHash,
+        "Authorization": `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+      };
+    }
 
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
@@ -671,29 +731,39 @@
       statusEl.style.color = "var(--text-secondary)";
 
       try {
-        const r2Client = new S3Client({
-          region: "auto",
-          endpoint: `https://${r2AccountIdEl.value.trim()}.r2.cloudflarestorage.com`,
-          credentials: {
-            accessKeyId: r2AccessKeyEl.value.trim(),
-            secretAccessKey: r2SecretKeyEl.value.trim(),
-          },
-        });
+        const accountId = r2AccountIdEl.value.trim();
+        const bucketName = r2BucketNameEl.value.trim();
+        const credentials = {
+          accessKeyId: r2AccessKeyEl.value.trim(),
+          secretAccessKey: r2SecretKeyEl.value.trim(),
+        };
 
         // 1. Read file as ArrayBuffer (browser-compatible)
         const remotePath = `updates/${version}/${file.name}`;
         statusEl.textContent = `⏳ Reading ${file.name}...`;
         
         const fileBuffer = await file.arrayBuffer();
+        const fileBytes = new Uint8Array(fileBuffer);
         
         statusEl.textContent = `⏳ Uploading ${file.name}...`;
         
-        await r2Client.send(new PutObjectCommand({
-          Bucket: r2BucketNameEl.value.trim(),
-          Key: remotePath,
-          Body: new Uint8Array(fileBuffer),
-          ContentType: file.type || "application/octet-stream"
-        }));
+        // Build the R2 URL and sign the request
+        const r2Url = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${remotePath}`;
+        const authHeaders = await signRequest("PUT", r2Url, {}, fileBytes, credentials);
+        
+        const uploadResponse = await fetch(r2Url, {
+          method: "PUT",
+          headers: {
+            ...authHeaders,
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: fileBytes
+        });
+        
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+        }
 
         // 2. Save version to Supabase
         statusEl.textContent = "⏳ Saving version info...";
