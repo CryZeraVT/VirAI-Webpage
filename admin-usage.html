@@ -689,6 +689,7 @@
 
         const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=usage`, {
           headers: {
+            "apikey": SUPABASE_ANON_KEY,
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
           }
