@@ -282,25 +282,22 @@
           btn.disabled = true;
           btn.textContent = "Resetting...";
 
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-
           try {
-            const response = await fetch(`${SUPABASE_URL}/functions/v1/reset-license`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-              },
-              body: JSON.stringify({ license_key: key })
+            const { data, error } = await supabase.functions.invoke("reset-license", {
+              body: { license_key: key }
             });
 
-            const result = await response.json();
-            if (result.success) {
-              alert(result.message);
+            if (error) {
+              console.error("Reset error:", error);
+              alert("Error: " + (error.message || "Failed to reset license"));
+              return;
+            }
+
+            if (data.success) {
+              alert(data.message);
               loadKeys();
             } else {
-              alert("Error: " + result.message);
+              alert("Error: " + data.message);
             }
           } catch (err) {
             console.error("Reset error:", err);
