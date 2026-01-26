@@ -237,6 +237,13 @@
             <label>Duration (Days)</label>
             <input id="license-duration" type="number" value="30" class="form-input">
           </div>
+          <div class="form-group">
+            <label>Initial Status</label>
+            <select id="license-status-select" class="form-input">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
           
           <div id="license-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
           <button id="generate-license" class="btn" style="width: 100%; background: linear-gradient(135deg, #22c55e, #06b6d4);">🔑 Generate & Assign License</button>
@@ -863,6 +870,7 @@
       const email = document.getElementById("license-email").value.trim();
       let key = document.getElementById("license-key-input").value.trim();
       const duration = parseInt(document.getElementById("license-duration").value) || 30;
+      const status = document.getElementById("license-status-select").value;
       const statusEl = document.getElementById("license-status");
 
       if (!email) {
@@ -887,7 +895,7 @@
         const { error } = await supabase.from("licenses").insert([{
           license_key: key,
           email: email,
-          status: "active",
+          status: status,
           expires_at: expiresAt.toISOString()
         }]);
 
@@ -929,13 +937,42 @@
       listEl.innerHTML = data.map(lic => `
         <div class="announcement-item">
           <div class="announcement-info">
-            <h4>${lic.license_key}</h4>
-            <p>📧 ${lic.email} • Status: ${lic.status.toUpperCase()}</p>
+            <h4 style="display: flex; align-items: center; gap: 10px;">
+              ${lic.license_key}
+              <span class="badge ${lic.status === 'active' ? 'badge-active' : ''}" style="background: ${lic.status === 'active' ? '#22c55e' : '#4b5563'};">
+                ${lic.status.toUpperCase()}
+              </span>
+            </h4>
+            <p>📧 ${lic.email}</p>
             <p style="font-size: 0.8em; color: #888;">Expires: ${lic.expires_at ? new Date(lic.expires_at).toLocaleDateString() : 'Never'}</p>
           </div>
-          <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Revoke</button>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline toggle-status-btn" 
+              data-key="${lic.license_key}" 
+              data-status="${lic.status}"
+              style="border-color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; padding: 5px 10px; font-size: 0.8em;">
+              ${lic.status === 'active' ? 'Deactivate' : 'Activate'}
+            </button>
+            <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Revoke</button>
+          </div>
         </div>
       `).join("");
+
+      document.querySelectorAll(".toggle-status-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-key");
+          const currentStatus = btn.getAttribute("data-status");
+          const newStatus = currentStatus === "active" ? "inactive" : "active";
+          
+          const { error } = await supabase
+            .from("licenses")
+            .update({ status: newStatus })
+            .eq("license_key", key);
+            
+          if (error) alert("Error updating status: " + error.message);
+          else loadAdminLicenses();
+        });
+      });
 
       document.querySelectorAll(".delete-license-btn").forEach(btn => {
         btn.addEventListener("click", async () => {

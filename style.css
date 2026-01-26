@@ -31,7 +31,7 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--primary-dark);
+    border-bottom: 2px solid rgba(157, 78, 221, 0.5);
 }
 
 .logo {
