@@ -34,6 +34,7 @@
 
         <div class="auth-row">
           <input id="email" type="email" placeholder="Email" class="auth-input">
+          <input id="twitch-username" type="text" placeholder="Twitch Username" class="auth-input">
           <input id="password" type="password" placeholder="Password" class="auth-input">
         </div>
 
@@ -323,10 +324,21 @@
 
     document.getElementById("sign-up").addEventListener("click", async () => {
       const email = emailEl.value.trim();
+      const twitchUsername = twitchUsernameEl.value.trim();
       const password = passwordEl.value.trim();
+      
       if (!email || !password) return setStatus("Enter email and password.", true);
+      if (!twitchUsername) return setStatus("Twitch Username is mandatory.", true);
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            twitch_username: twitchUsername
+          }
+        }
+      });
       
       if (error) {
         // Check for common "already exists" error messages
