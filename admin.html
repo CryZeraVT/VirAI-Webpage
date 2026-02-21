@@ -1132,7 +1132,7 @@
             alert("License created but failed to update signup status: " + upErr.message);
           }
 
-          // Send approval email with license key
+          // Send invite / magic link via Supabase built-in email
           btn.textContent = "📧 Sending email...";
           try {
             const emailRes = await fetch(
@@ -1150,12 +1150,16 @@
             );
             const emailData = await emailRes.json();
             if (!emailRes.ok) {
-              alert(`⚠️ License created but email failed: ${emailData.error}\n\nKey: ${key}`);
+              alert(`⚠️ License created but email failed: ${emailData.error}\n\nManually share:\nKey: ${key}\nAccount page: ${SUPABASE_URL.replace("https://rgigtqpesabuyaumibaj.supabase.co","https://viritts.com")}/account.html`);
+            } else if (emailData.already_exists) {
+              // User already has an account — show magic link for them to sign in
+              const link = emailData.action_link || "https://viritts.com/account.html";
+              alert(`✅ Approved! User already has an account.\n\nLicense: ${key}\nEmail: ${email}\n\nShare this sign-in link with them:\n${link}`);
             } else {
-              alert(`✅ Approved & email sent!\n\nLicense: ${key}\nSent to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}`);
+              alert(`✅ Approved & invite sent!\n\nLicense: ${key}\nInvite emailed to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}\n\nThey'll get a Supabase invite email with a link to create their account. Their key will be waiting for them when they log in.`);
             }
           } catch (emailErr) {
-            alert(`⚠️ License created but email failed to send.\n\nKey: ${key}\nEmail: ${email}`);
+            alert(`⚠️ License created but invite failed to send.\n\nManually share:\nKey: ${key}\nCreate account: https://viritts.com/account.html`);
           }
 
           loadBetaSignups();
