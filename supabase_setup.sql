@@ -91,3 +91,27 @@ BEGIN
     RETURN json_build_object('signed_url', signed_url);
 END;
 $$;
+
+-- Beta signups for ViriTTS
+CREATE TABLE IF NOT EXISTS public.beta_signups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    twitch_username TEXT NOT NULL,
+    content_type TEXT,
+    message TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_beta_signups_email
+    ON public.beta_signups (email);
+
+ALTER TABLE public.beta_signups ENABLE ROW LEVEL SECURITY;
+
+-- Service role (edge functions) can insert; no public read
+CREATE POLICY "Service role full access on beta_signups"
+ON public.beta_signups
+FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
