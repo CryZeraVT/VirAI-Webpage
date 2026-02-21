@@ -151,6 +151,7 @@
           <button class="nav-tab" data-tab="announcements">📢 Announcements</button>
           <button class="nav-tab" data-tab="ai-engine">🤖 AI Engine</button>
           <button class="nav-tab" data-tab="licenses">🔑 Licenses</button>
+          <button class="nav-tab" data-tab="beta-signups">🧪 Beta Signups <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:2px 7px;font-size:0.75em;margin-left:4px;display:none;"></span></button>
           <button class="nav-tab" data-tab="storage">☁️ Storage (R2)</button>
         </div>
 
@@ -251,6 +252,28 @@
           <div class="auth-divider"></div>
           <h3>Recent Licenses</h3>
           <div id="admin-licenses-list">Loading...</div>
+        </div>
+
+        <!-- Tab: Beta Signups -->
+        <div class="tab-content" id="tab-beta-signups">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
+            <div>
+              <h3 style="margin:0;">Beta Signups</h3>
+              <p class="auth-helper" style="margin:4px 0 0;">People who applied via the beta signup page. Approve to auto-generate a license key and send it to their email.</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <select id="beta-filter" class="form-input" style="width:auto; padding:8px 12px;">
+                <option value="all">All</option>
+                <option value="pending" selected>Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button id="refresh-signups" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 16px;">🔄 Refresh</button>
+            </div>
+          </div>
+          <div id="beta-signups-list" style="margin-top:16px;">
+            <div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading signups...</div>
+          </div>
         </div>
 
         <!-- Tab: Storage -->
@@ -450,6 +473,7 @@
         loadAIConfig();
         loadR2Config();
         loadVersions();
+        loadBetaSignups();
       } catch (err) {
         console.error("Unexpected error in checkAdmin:", err);
         statusEl.textContent = "❌ Unexpected error: " + err.message;
@@ -984,6 +1008,163 @@
         });
       });
     }
+
+    // ── Beta Signups ──────────────────────────────────────────────────────────
+
+    async function loadBetaSignups() {
+      const listEl = document.getElementById("beta-signups-list");
+      const filter = document.getElementById("beta-filter").value;
+      listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading...</div>`;
+
+      let query = supabase
+        .from("beta_signups")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (filter !== "all") query = query.eq("status", filter);
+
+      const { data, error } = await query;
+
+      if (error) {
+        listEl.innerHTML = `<p style="color:var(--error);">Error loading signups: ${error.message}</p>`;
+        return;
+      }
+
+      // Update pending badge
+      const { count } = await supabase
+        .from("beta_signups")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      const badge = document.getElementById("beta-signups-badge");
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      if (!data || data.length === 0) {
+        listEl.innerHTML = `<p style="text-align:center;color:var(--text-secondary);padding:30px;">No ${filter === "all" ? "" : filter + " "}signups found.</p>`;
+        return;
+      }
+
+      const statusColors = { pending: "#f59e0b", approved: "#22c55e", rejected: "#ef4444" };
+
+      listEl.innerHTML = data.map(s => `
+        <div class="announcement-item" style="flex-direction:column; align-items:flex-start; gap:12px;" data-id="${s.id}">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <h4 style="margin:0; display:flex; align-items:center; gap:8px;">
+                ${s.name}
+                <span class="badge" style="background:${statusColors[s.status] || "#4b5563"};">${s.status.toUpperCase()}</span>
+              </h4>
+              <p style="margin:4px 0 0; font-size:0.9em;">📧 ${s.email}</p>
+              <p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${s.twitch_username}</p>
+              ${s.content_type ? `<p style="margin:2px 0 0; font-size:0.85em; color:#a1a1aa;">📺 ${s.content_type}</p>` : ""}
+              ${s.message ? `<p style="margin:6px 0 0; font-size:0.85em; color:#d1d5db; background:#1a112e; padding:8px; border-radius:6px; white-space:pre-wrap;">${s.message}</p>` : ""}
+              <p style="margin:4px 0 0; font-size:0.8em; color:#6b7280;">Signed up: ${new Date(s.created_at).toLocaleString()}</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:140px;">
+              ${s.status === "pending" ? `
+                <button class="btn approve-btn" data-id="${s.id}" data-email="${s.email}" data-name="${s.name}"
+                  style="background:linear-gradient(135deg,#22c55e,#06b6d4); padding:8px 14px; font-size:0.85em;">
+                  ✅ Approve & Send Key
+                </button>
+                <button class="btn reject-btn" data-id="${s.id}"
+                  style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:8px 14px; font-size:0.85em;">
+                  ❌ Reject
+                </button>
+              ` : ""}
+              ${s.status === "approved" ? `
+                <button class="btn revert-btn" data-id="${s.id}"
+                  style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:8px 14px; font-size:0.85em;">
+                  ↩ Revert to Pending
+                </button>
+              ` : ""}
+              ${s.status === "rejected" ? `
+                <button class="btn revert-btn" data-id="${s.id}"
+                  style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:8px 14px; font-size:0.85em;">
+                  ↩ Revert to Pending
+                </button>
+              ` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      // Approve: generate license key and update status
+      document.querySelectorAll(".approve-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const email = btn.getAttribute("data-email");
+          const name = btn.getAttribute("data-name");
+
+          if (!confirm(`Approve ${name} (${email}) and send them a license key?`)) return;
+          btn.disabled = true;
+          btn.textContent = "⏳ Processing...";
+
+          const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase() + "-" +
+                            Math.random().toString(36).substring(2, 6).toUpperCase();
+          const key = `VIRI-BETA-${randomStr}`;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+
+          const { error: licErr } = await supabase.from("licenses").insert([{
+            license_key: key,
+            email: email,
+            status: "active",
+            expires_at: expiresAt.toISOString()
+          }]);
+
+          if (licErr) {
+            alert("Error creating license: " + licErr.message);
+            btn.disabled = false;
+            btn.textContent = "✅ Approve & Send Key";
+            return;
+          }
+
+          const { error: upErr } = await supabase
+            .from("beta_signups")
+            .update({ status: "approved" })
+            .eq("id", id);
+
+          if (upErr) {
+            alert("License created but failed to update signup status: " + upErr.message);
+          } else {
+            alert(`✅ Approved!\n\nLicense key: ${key}\nAssigned to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}\n\nHead to the Licenses tab to view it.`);
+          }
+
+          loadBetaSignups();
+          loadAdminLicenses();
+        });
+      });
+
+      // Reject
+      document.querySelectorAll(".reject-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          if (!confirm("Reject this signup?")) return;
+          const { error } = await supabase.from("beta_signups").update({ status: "rejected" }).eq("id", id);
+          if (error) alert("Error: " + error.message);
+          else loadBetaSignups();
+        });
+      });
+
+      // Revert to pending
+      document.querySelectorAll(".revert-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const { error } = await supabase.from("beta_signups").update({ status: "pending" }).eq("id", id);
+          if (error) alert("Error: " + error.message);
+          else loadBetaSignups();
+        });
+      });
+    }
+
+    document.getElementById("beta-filter").addEventListener("change", loadBetaSignups);
+    document.getElementById("refresh-signups").addEventListener("click", loadBetaSignups);
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     checkAdmin();
     loadAdminLicenses();
