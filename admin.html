@@ -1130,8 +1130,32 @@
 
           if (upErr) {
             alert("License created but failed to update signup status: " + upErr.message);
-          } else {
-            alert(`✅ Approved!\n\nLicense key: ${key}\nAssigned to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}\n\nHead to the Licenses tab to view it.`);
+          }
+
+          // Send approval email with license key
+          btn.textContent = "📧 Sending email...";
+          try {
+            const emailRes = await fetch(
+              `${SUPABASE_URL}/functions/v1/send-beta-approval`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name,
+                  email,
+                  license_key: key,
+                  expires_at: expiresAt.toISOString(),
+                }),
+              }
+            );
+            const emailData = await emailRes.json();
+            if (!emailRes.ok) {
+              alert(`⚠️ License created but email failed: ${emailData.error}\n\nKey: ${key}`);
+            } else {
+              alert(`✅ Approved & email sent!\n\nLicense: ${key}\nSent to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}`);
+            }
+          } catch (emailErr) {
+            alert(`⚠️ License created but email failed to send.\n\nKey: ${key}\nEmail: ${email}`);
           }
 
           loadBetaSignups();
