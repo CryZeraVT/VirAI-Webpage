@@ -17,13 +17,11 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Fetch Twitch profile picture URL via the public Twitch GQL endpoint (no auth needed)
 async function getTwitchAvatars(logins: string[]): Promise<Map<string, string>> {
   const avatarMap = new Map<string, string>();
   if (!logins.length) return avatarMap;
 
   try {
-    // Use Twitch's public GQL — works without OAuth for basic user info
     const query = {
       query: `query {
         ${logins.map((l, i) => `
@@ -39,7 +37,7 @@ async function getTwitchAvatars(logins: string[]): Promise<Map<string, string>> 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Client-Id": "kimne78kx3ncx6brgo4mv6wki5h1ko", // Twitch web client ID (public)
+        "Client-Id": "kimne78kx3ncx6brgo4mv6wki5h1ko",
       },
       body: JSON.stringify(query),
     });
@@ -48,7 +46,6 @@ async function getTwitchAvatars(logins: string[]): Promise<Map<string, string>> 
 
     const data = await res.json();
     const gqlData = data?.data ?? {};
-
     logins.forEach((l, i) => {
       const user = gqlData[`u${i}`];
       if (user?.profileImageURL) {
@@ -66,19 +63,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Pull users who have logged token usage in the last 30 days
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
+    // Source 1: everyone who has token_usage with a twitch_channel set
     const { data: usageRows, error: usageErr } = await supabase
       .from("token_usage")
       .select("twitch_channel, created_at")
-      .gte("created_at", since)
       .not("twitch_channel", "is", null)
       .neq("twitch_channel", "");
 
     if (usageErr) throw usageErr;
 
-    // De-dupe by twitch_channel, track most-recent usage time
+    // De-dupe by channel, keep most-recent activity timestamp
     const channelMap = new Map<string, { twitch: string; lastActive: string }>();
     for (const row of (usageRows ?? [])) {
       const ch = String(row.twitch_channel ?? "").trim();
@@ -90,13 +84,33 @@ serve(async (req) => {
       }
     }
 
-    // Sort by most recently active
+    // Source 2: approved beta signups with a twitch_username — catches testers
+    // whose token rows have null twitch_channel (e.g. set up before field was tracked)
+    const { data: signups } = await supabase
+      .from("beta_signups")
+      .select("twitch_username")
+      .eq("status", "approved")
+      .not("twitch_username", "is", null)
+      .neq("twitch_username", "");
+
+    for (const s of (signups ?? [])) {
+      const ch = String(s.twitch_username ?? "").trim();
+      if (!ch) continue;
+      const key = ch.toLowerCase();
+      if (!channelMap.has(key)) {
+        channelMap.set(key, { twitch: ch, lastActive: "0" });
+      }
+    }
+
+    // Sort: most recently active first, then alpha
     const sorted = Array.from(channelMap.values())
-      .sort((a, b) => b.lastActive.localeCompare(a.lastActive));
+      .sort((a, b) => {
+        if (b.lastActive !== a.lastActive) return b.lastActive.localeCompare(a.lastActive);
+        return a.twitch.localeCompare(b.twitch);
+      });
 
     const logins = sorted.map(t => t.twitch);
 
-    // Fetch avatars from Twitch GQL in one batched request
     const avatarMap = await getTwitchAvatars(logins);
 
     const testers = sorted.map(({ twitch }) => ({
