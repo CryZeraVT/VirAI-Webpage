@@ -7,6 +7,144 @@
     <title>ViriTTS - AI Stream Companion</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+      /* ── Beta Testers Carousel ─────────────────────────────────── */
+      .testers-section {
+        padding: 60px 0 50px;
+        text-align: center;
+        overflow: hidden;
+      }
+      .testers-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .testers-header h3 {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #e2e8f0;
+        margin: 0;
+      }
+      .testers-live-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
+        animation: testerPulse 1.8s infinite;
+        flex-shrink: 0;
+      }
+      @keyframes testerPulse {
+        0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+        70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+        100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      }
+      .testers-badge {
+        background: linear-gradient(135deg, #7c3aed, #06b6d4);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 9px;
+        border-radius: 20px;
+        letter-spacing: 0.04em;
+      }
+      .testers-sub {
+        color: #6b7280;
+        font-size: 0.88rem;
+        margin: 0 0 28px;
+      }
+
+      /* Fade edges */
+      .testers-track-wrap {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+      }
+      .testers-track-wrap::before,
+      .testers-track-wrap::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100px;
+        z-index: 2;
+        pointer-events: none;
+      }
+      .testers-track-wrap::before {
+        left: 0;
+        background: linear-gradient(to right, var(--bg-dark, #0d0718), transparent);
+      }
+      .testers-track-wrap::after {
+        right: 0;
+        background: linear-gradient(to left, var(--bg-dark, #0d0718), transparent);
+      }
+
+      /* Scrolling track */
+      .testers-track {
+        display: flex;
+        gap: 14px;
+        width: max-content;
+        animation: testerScroll 30s linear infinite;
+        padding: 10px 0;
+      }
+      .testers-track:hover { animation-play-state: paused; }
+
+      @keyframes testerScroll {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+
+      /* Individual card */
+      .tester-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(124,58,237,0.18);
+        border-radius: 40px;
+        padding: 9px 18px 9px 9px;
+        white-space: nowrap;
+        transition: border-color 0.2s, transform 0.2s;
+        cursor: default;
+      }
+      .tester-card:hover {
+        border-color: rgba(167,139,250,0.5);
+        transform: translateY(-2px);
+      }
+      .tester-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: rgba(124,58,237,0.2);
+        flex-shrink: 0;
+      }
+      .tester-avatar-placeholder {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #7c3aed55, #06b6d455);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #a78bfa;
+        flex-shrink: 0;
+        border: 1px solid rgba(124,58,237,0.3);
+      }
+      .tester-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #e2e8f0;
+      }
+      .tester-twitch {
+        font-size: 0.72rem;
+        color: #9146FF;
+        font-weight: 500;
+      }
+    </style>
 </head>
 
 <body>
@@ -80,6 +218,22 @@
                 <span class="marquee-item">Interactive TTS</span>
             </div>
         </div>
+
+        <!-- BETA TESTERS CAROUSEL -->
+        <section class="testers-section">
+          <div class="testers-header">
+            <span class="testers-live-dot"></span>
+            <h3>Currently Testing ViriTTS</h3>
+            <span class="testers-badge" id="testers-count">–</span>
+          </div>
+          <p class="testers-sub">Real streamers. Real feedback. Building this together.</p>
+
+          <div class="testers-track-wrap">
+            <div class="testers-track" id="testers-track">
+              <!-- cards injected by JS -->
+            </div>
+          </div>
+        </section>
 
         <!-- SPOTLIGHT SECTION (Community Memory) -->
         <section class="spotlight">
@@ -410,6 +564,108 @@
             }
         }
         fetchLatestVersion();
+
+        // ── Beta Testers Carousel ──────────────────────────────────────────
+        async function buildTestersCarousel() {
+          const SUPABASE_URL     = 'https://rgigtqpesabuyaumibaj.supabase.co';
+          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+
+          const track     = document.getElementById('testers-track');
+          const countBadge = document.getElementById('testers-count');
+          if (!track) return;
+
+          let testers = [];
+          try {
+            // Fetch active licenses joined with profiles for twitch names
+            const res = await fetch(
+              `${SUPABASE_URL}/rest/v1/licenses?select=email,status&status=eq.active&limit=200`,
+              { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+            );
+            const licenses = await res.json();
+
+            // Fetch all profiles that have a twitch_username set
+            const pRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/profiles?select=twitch_username&twitch_username=not.is.null&limit=200`,
+              { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+            );
+            const profiles = await pRes.json();
+
+            // Build unique list: prefer twitch usernames, fall back to anonymised email prefix
+            const seen = new Set();
+
+            if (Array.isArray(profiles)) {
+              profiles.forEach(p => {
+                const name = String(p.twitch_username || '').trim();
+                if (name && !seen.has(name.toLowerCase())) {
+                  seen.add(name.toLowerCase());
+                  testers.push({ display: name, twitch: name });
+                }
+              });
+            }
+
+            // Add anonymous entries for licenses without a matched profile
+            if (Array.isArray(licenses)) {
+              licenses.forEach(l => {
+                const emailPrefix = String(l.email || '').split('@')[0];
+                const anonKey = 'anon_' + emailPrefix.toLowerCase();
+                if (emailPrefix && !seen.has(anonKey) && testers.length < 60) {
+                  seen.add(anonKey);
+                  testers.push({ display: emailPrefix, twitch: null });
+                }
+              });
+            }
+          } catch (err) {
+            console.warn('Testers carousel: failed to fetch', err);
+            // Graceful fallback — hide the section
+            const section = track.closest('.testers-section');
+            if (section) section.style.display = 'none';
+            return;
+          }
+
+          if (!testers.length) {
+            const section = track.closest('.testers-section');
+            if (section) section.style.display = 'none';
+            return;
+          }
+
+          // Update badge count
+          countBadge.textContent = testers.length + ' testers';
+
+          // Build card HTML
+          function cardHTML(t) {
+            const initials = t.display.slice(0, 2).toUpperCase();
+            const avatarHtml = t.twitch
+              ? `<img class="tester-avatar" src="https://avatar.iran.liara.run/username?username=${encodeURIComponent(t.display)}" onerror="this.replaceWith(makePlaceholder('${initials}'))" alt="${t.display}">`
+              : `<div class="tester-avatar-placeholder">${initials}</div>`;
+
+            const nameHtml = t.twitch
+              ? `<div>
+                   <div class="tester-name">${t.display}</div>
+                   <div class="tester-twitch">twitch.tv/${t.display}</div>
+                 </div>`
+              : `<div class="tester-name">${t.display}</div>`;
+
+            return `<div class="tester-card">${avatarHtml}${nameHtml}</div>`;
+          }
+
+          // Double the list for seamless infinite scroll
+          const doubled = [...testers, ...testers];
+          track.innerHTML = doubled.map(cardHTML).join('');
+
+          // Adjust animation speed based on card count
+          const duration = Math.max(18, testers.length * 2.2);
+          track.style.animationDuration = duration + 's';
+        }
+
+        // Helper exposed to inline onerror handlers
+        window.makePlaceholder = function(initials) {
+          const div = document.createElement('div');
+          div.className = 'tester-avatar-placeholder';
+          div.textContent = initials;
+          return div;
+        };
+
+        buildTestersCarousel();
     </script>
 </body>
 
