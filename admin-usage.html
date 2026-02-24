@@ -616,26 +616,49 @@
       return startDate.toISOString();
     }
 
-    // Load overview stats
-    async function loadStats() {
-      const dateFilter = getDateFilter();
-      
-      let query = supabase.from("token_usage").select("*");
+    function asNumber(value, fallback = 0) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function getTwitchName(row) {
+      return String((row?.twitch_channel || row?.twitch_username || "")).trim();
+    }
+
+    async function fetchTokenUsageRows(dateFilter) {
+      let query = supabase
+        .from("token_usage")
+        .select("created_at,license_key,twitch_channel,twitch_username,provider,model,prompt_tokens,completion_tokens,cost_usd");
       if (dateFilter) {
         query = query.gte("created_at", dateFilter);
       }
-
       const { data, error } = await query;
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
 
-      if (error) {
+    function monthRangeIso(monthsAgo = 0) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1, 0, 0, 0, 0);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59, 999);
+      return { startIso: monthStart.toISOString(), endIso: monthEnd.toISOString(), monthStart, monthEnd };
+    }
+
+    // Load overview stats
+    async function loadStats() {
+      const dateFilter = getDateFilter();
+
+      let data = [];
+      try {
+        data = await fetchTokenUsageRows(dateFilter);
+      } catch (error) {
         console.error("Error loading stats:", error);
-        return;
       }
 
       const totalRequests = data.length;
-      const totalTokens = data.reduce((sum, r) => sum + (r.prompt_tokens + r.completion_tokens), 0);
-      const totalCost = data.reduce((sum, r) => sum + parseFloat(r.cost_usd || 0), 0);
-      const uniqueUsers = new Set(data.map(r => r.license_key)).size;
+      const totalTokens = data.reduce((sum, r) => sum + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens), 0);
+      const totalCost = data.reduce((sum, r) => sum + asNumber(r.cost_usd), 0);
+      const uniqueUsers = new Set(data.map(r => String(r.license_key || "").trim()).filter(Boolean)).size;
 
       document.getElementById("total-requests").textContent = totalRequests.toLocaleString();
       document.getElementById("total-tokens").textContent = totalTokens.toLocaleString();
@@ -647,15 +670,11 @@
     async function loadUserUsage() {
       const dateFilter = getDateFilter();
       const tbody = document.getElementById("user-table-body");
-      
-      let query = supabase.from("token_usage").select("*");
-      if (dateFilter) {
-        query = query.gte("created_at", dateFilter);
-      }
 
-      const { data, error } = await query;
-
-      if (error) {
+      let data = [];
+      try {
+        data = await fetchTokenUsageRows(dateFilter);
+      } catch (error) {
         tbody.innerHTML = `<tr><td colspan="6">Error loading data: ${error.message}</td></tr>`;
         return;
       }
@@ -668,16 +687,17 @@
       // Aggregate by user (using twitch_channel as primary, fallback to license_key)
       const userStats = {};
       data.forEach(row => {
-        const twitch = row.twitch_channel || '';
-        const license = row.license_key || '';
+        const twitch = getTwitchName(row);
+        const license = String(row.license_key || "").trim();
         const key = twitch || license; // Prefer twitch name
+        if (!key) return;
         if (!userStats[key]) {
           userStats[key] = { twitch: twitch, license: license, requests: 0, prompt: 0, completion: 0, cost: 0 };
         }
         userStats[key].requests++;
-        userStats[key].prompt += row.prompt_tokens || 0;
-        userStats[key].completion += row.completion_tokens || 0;
-        userStats[key].cost += parseFloat(row.cost_usd || 0);
+        userStats[key].prompt += asNumber(row.prompt_tokens);
+        userStats[key].completion += asNumber(row.completion_tokens);
+        userStats[key].cost += asNumber(row.cost_usd);
       });
 
       // Sort by cost descending
@@ -704,15 +724,11 @@
     async function loadDailyUsage() {
       const dateFilter = getDateFilter();
       const tbody = document.getElementById("daily-table-body");
-      
-      let query = supabase.from("token_usage").select("*");
-      if (dateFilter) {
-        query = query.gte("created_at", dateFilter);
-      }
 
-      const { data, error } = await query;
-
-      if (error) {
+      let data = [];
+      try {
+        data = await fetchTokenUsageRows(dateFilter);
+      } catch (error) {
         tbody.innerHTML = `<tr><td colspan="4">Error loading data: ${error.message}</td></tr>`;
         return;
       }
@@ -730,8 +746,8 @@
           dailyStats[date] = { requests: 0, tokens: 0, cost: 0 };
         }
         dailyStats[date].requests++;
-        dailyStats[date].tokens += (row.prompt_tokens || 0) + (row.completion_tokens || 0);
-        dailyStats[date].cost += parseFloat(row.cost_usd || 0);
+        dailyStats[date].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
+        dailyStats[date].cost += asNumber(row.cost_usd);
       });
 
       // Sort by date descending
@@ -751,15 +767,11 @@
     async function loadModelUsage() {
       const dateFilter = getDateFilter();
       const tbody = document.getElementById("model-table-body");
-      
-      let query = supabase.from("token_usage").select("*");
-      if (dateFilter) {
-        query = query.gte("created_at", dateFilter);
-      }
 
-      const { data, error } = await query;
-
-      if (error) {
+      let data = [];
+      try {
+        data = await fetchTokenUsageRows(dateFilter);
+      } catch (error) {
         tbody.innerHTML = `<tr><td colspan="5">Error loading data: ${error.message}</td></tr>`;
         return;
       }
@@ -777,8 +789,8 @@
           modelStats[key] = { provider: row.provider, model: row.model, requests: 0, tokens: 0, cost: 0 };
         }
         modelStats[key].requests++;
-        modelStats[key].tokens += (row.prompt_tokens || 0) + (row.completion_tokens || 0);
-        modelStats[key].cost += parseFloat(row.cost_usd || 0);
+        modelStats[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
+        modelStats[key].cost += asNumber(row.cost_usd);
       });
 
       // Sort by requests descending
@@ -812,6 +824,126 @@
     let dailyCostsChart = null;
     let modelCostsChart = null;
 
+    async function loadRevenueFallback(monthsAgo = 0) {
+      const tbody = document.getElementById("revenue-daily-body");
+      const { startIso, endIso, monthStart, monthEnd } = monthRangeIso(monthsAgo);
+
+      const { data, error } = await supabase
+        .from("token_usage")
+        .select("created_at,provider,model,prompt_tokens,completion_tokens,cost_usd")
+        .gte("created_at", startIso)
+        .lte("created_at", endIso);
+
+      if (error) {
+        console.error("Revenue fallback error:", error);
+        tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
+        return;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      const dayMap = {};
+      const byModel = {};
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let totalCost = 0;
+
+      rows.forEach((r) => {
+        const d = new Date(r.created_at).toISOString().split("T")[0];
+        if (!dayMap[d]) dayMap[d] = { date: d, requests: 0, input: 0, output: 0, cost: 0 };
+        const inTok = asNumber(r.prompt_tokens);
+        const outTok = asNumber(r.completion_tokens);
+        const c = asNumber(r.cost_usd);
+        dayMap[d].requests += 1;
+        dayMap[d].input += inTok;
+        dayMap[d].output += outTok;
+        dayMap[d].cost += c;
+        inputTokens += inTok;
+        outputTokens += outTok;
+        totalCost += c;
+
+        const modelKey = `${r.provider || "unknown"}/${r.model || "unknown"}`;
+        if (!byModel[modelKey]) byModel[modelKey] = { requests: 0, input: 0, output: 0, cost: 0 };
+        byModel[modelKey].requests += 1;
+        byModel[modelKey].input += inTok;
+        byModel[modelKey].output += outTok;
+        byModel[modelKey].cost += c;
+      });
+
+      const { data: plans } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("is_active", true)
+        .limit(1);
+      const activePlan = plans?.[0] || null;
+      const planPrice = asNumber(activePlan?.price_monthly, 0);
+      if (activePlan) {
+        document.getElementById("plan-name").value = activePlan.name || "";
+        document.getElementById("plan-price").value = activePlan.price_monthly || "";
+        document.getElementById("plan-id").textContent = activePlan.id || "";
+      }
+
+      const { count: activeSubs } = await supabase
+        .from("licenses")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+
+      const grossRevenue = asNumber(activeSubs) * planPrice;
+      const profitBeforeTax = grossRevenue - totalCost;
+      const taxReserve = Math.max(0, profitBeforeTax * 0.3);
+      const netProfitAfterTax = profitBeforeTax - taxReserve;
+      const profitMargin = grossRevenue > 0 ? (netProfitAfterTax / grossRevenue) * 100 : 0;
+      const costPerUser = asNumber(activeSubs) > 0 ? totalCost / asNumber(activeSubs) : 0;
+
+      document.getElementById("active-subs").textContent = asNumber(activeSubs).toLocaleString();
+      document.getElementById("gross-revenue").textContent = "$" + grossRevenue.toFixed(2);
+      document.getElementById("api-costs").textContent = "-$" + totalCost.toFixed(4);
+      document.getElementById("tax-reserve").textContent = "-$" + taxReserve.toFixed(2);
+      document.getElementById("net-profit").textContent = "$" + netProfitAfterTax.toFixed(2);
+      document.getElementById("profit-margin").textContent = profitMargin.toFixed(1) + "%";
+      document.getElementById("cost-per-user").textContent = "$" + costPerUser.toFixed(4);
+      document.getElementById("price-per-sub").textContent = "$" + planPrice.toFixed(2);
+      document.getElementById("billing-period-text").textContent =
+        `${monthStart.toLocaleString("en-US", { month: "long" })} • Fallback mode`;
+
+      document.getElementById("proj-revenue").textContent = "$" + grossRevenue.toFixed(2);
+      document.getElementById("proj-costs").textContent = "$" + totalCost.toFixed(4);
+      document.getElementById("proj-tax").textContent = "$" + taxReserve.toFixed(2);
+      document.getElementById("proj-takehome").textContent = "$" + netProfitAfterTax.toFixed(2);
+
+      const daily = Object.values(dayMap).sort((a, b) => b.date.localeCompare(a.date));
+      if (!daily.length) {
+        tbody.innerHTML = `<tr><td colspan="5">No usage data for this period.</td></tr>`;
+      } else {
+        tbody.innerHTML = daily.map(d => `
+          <tr>
+            <td>${new Date(d.date).toLocaleDateString()}</td>
+            <td>${d.requests.toLocaleString()}</td>
+            <td>${d.input.toLocaleString()}</td>
+            <td>${d.output.toLocaleString()}</td>
+            <td style="color: #ef4444;">$${d.cost.toFixed(4)}</td>
+          </tr>
+        `).join("");
+      }
+
+      buildRevenueChart(grossRevenue, totalCost, taxReserve, netProfitAfterTax);
+      buildDailyCostsChart(daily);
+      buildModelCostsChart(byModel);
+      updateCostsTab({
+        totals: {
+          total_tokens: inputTokens + outputTokens,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          cost_usd: totalCost
+        },
+        by_model: byModel,
+        billing_period: {
+          month_name: monthStart.toLocaleString("en-US", { month: "long", year: "numeric" }),
+          days_elapsed: new Date().getDate(),
+          days_total: monthEnd.getDate()
+        }
+      });
+    }
+
     // Load Revenue & Business Metrics
     async function loadRevenue(monthsAgo = 0) {
       const tbody = document.getElementById("revenue-daily-body");
@@ -832,8 +964,8 @@
         const result = await response.json();
 
         if (!response.ok || result.error) {
-          console.error("Revenue error:", result.error);
-          tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
+          console.warn("Revenue edge-function failed, using fallback:", result?.error || response.statusText);
+          await loadRevenueFallback(monthsAgo);
           return;
         }
 
@@ -906,8 +1038,8 @@
         updateCostsTab(result);
         
       } catch (err) {
-        console.error("Revenue error:", err);
-        tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
+        console.warn("Revenue request failed, using fallback:", err);
+        await loadRevenueFallback(monthsAgo);
       }
     }
     
@@ -1281,9 +1413,20 @@
           select.innerHTML = result.months.map(m => 
             `<option value="${m.value}">${m.label}${m.is_current ? " (Current)" : ""}</option>`
           ).join("");
+        } else {
+          throw new Error("No month data from edge function");
         }
       } catch (err) {
-        console.error("Error loading months:", err);
+        console.warn("Error loading months from edge function, using local fallback:", err);
+        const select = document.getElementById("revenue-month");
+        const options = [];
+        for (let i = 0; i < 12; i++) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const label = d.toLocaleString("en-US", { month: "long", year: "numeric" });
+          options.push(`<option value="${i}" ${i === 0 ? "selected" : ""}>${label}${i === 0 ? " (Current)" : ""}</option>`);
+        }
+        select.innerHTML = options.join("");
       }
     }
 
