@@ -84,22 +84,36 @@ serve(async (req) => {
       }
     }
 
-    // Source 2: approved beta signups with a twitch_username — catches testers
-    // whose token rows have null twitch_channel (e.g. set up before field was tracked)
+    // Source 2: approved beta signups with a twitch_username, respecting opt-out flag
     const { data: signups } = await supabase
       .from("beta_signups")
-      .select("twitch_username")
+      .select("twitch_username, hidden_from_carousel")
       .eq("status", "approved")
       .not("twitch_username", "is", null)
       .neq("twitch_username", "");
 
+    // Build a set of opted-out twitch names from beta_signups
+    const hiddenNames = new Set<string>();
     for (const s of (signups ?? [])) {
+      if (s.hidden_from_carousel === true) {
+        const ch = String(s.twitch_username ?? "").trim().toLowerCase();
+        if (ch) hiddenNames.add(ch);
+      }
+    }
+
+    for (const s of (signups ?? [])) {
+      if (s.hidden_from_carousel === true) continue;
       const ch = String(s.twitch_username ?? "").trim();
       if (!ch) continue;
       const key = ch.toLowerCase();
       if (!channelMap.has(key)) {
         channelMap.set(key, { twitch: ch, lastActive: "0" });
       }
+    }
+
+    // Also remove any token_usage entries whose twitch name was opted out
+    for (const key of hiddenNames) {
+      channelMap.delete(key);
     }
 
     // Sort: most recently active first, then alpha

@@ -361,7 +361,13 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    showStatus("You're on the list! We'll be in touch soon.", 'success');
+                    if (data.account_created) {
+                        showStatus("You're on the list! Check your email for an account setup link to create your password.", 'success');
+                    } else if (data.account_exists) {
+                        showStatus("You're on the list! We found your account already — you can sign in now from the Account page.", 'success');
+                    } else {
+                        showStatus("You're on the list! We'll be in touch soon. If needed, create/sign in from the Account page.", 'success');
+                    }
                     form.reset();
                 } else {
                     showStatus(data.error || 'Something went wrong. Please try again.', 'error');

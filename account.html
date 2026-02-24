@@ -727,6 +727,9 @@
     }
 
     // ── Auth events ───────────────────────────────────────────────
+    // Track whether we're already in the signed-in view to avoid double-loading
+    let _signedInHandled = false;
+
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         enterPasswordSetupMode("recovery");
@@ -734,10 +737,13 @@
         const linkType = getAuthLinkTypeFromHash();
         if (linkType === "invite") {
           enterPasswordSetupMode("invite");
-        } else if (session?.user) {
+        } else if (session?.user && !_signedInHandled) {
+          // Only run if the sign-in button handler hasn't already handled it
+          _signedInHandled = true;
           await enterSignedIn(session.user);
         }
       } else if (event === "SIGNED_OUT") {
+        _signedInHandled = false;
         showView("view-signed-out");
         clearStatus();
       }
@@ -761,11 +767,27 @@
     $("goto-signin").addEventListener("click", () => { clearStatus(); showMode("signin"); });
 
     $("sign-in").addEventListener("click", async () => {
-      const email = $("email").value.trim();
+      const email    = $("email").value.trim();
       const password = $("password").value.trim();
       if (!email || !password) return setStatus("Enter your email and password.", "error");
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      const btn = $("sign-in");
+      btn.disabled    = true;
+      btn.textContent = "Signing in…";
+      setStatus("Signing in…", "");
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      btn.disabled    = false;
+      btn.textContent = "Sign In";
+
       if (error) return setStatus(error.message, "error");
+
+      // Don't wait for onAuthStateChange — enter signed-in state immediately
+      if (data?.user) {
+        _signedInHandled = true;
+        await enterSignedIn(data.user);
+      }
     });
 
     $("sign-up").addEventListener("click", async () => {
