@@ -1050,13 +1050,13 @@
     }
 
     function getTwitchName(row) {
-      return String((row?.twitch_channel || row?.twitch_username || "")).trim();
+      return String(row?.twitch_channel || "").trim();
     }
 
     async function fetchTokenUsageRows(startIso = null, endIso = null) {
       let query = supabase
         .from("token_usage")
-        .select("created_at,license_key,twitch_channel,twitch_username,provider,model,prompt_tokens,completion_tokens,cost_usd");
+        .select("created_at,license_key,twitch_channel,provider,model,prompt_tokens,completion_tokens,cost_usd");
       if (startIso) query = query.gte("created_at", startIso);
       if (endIso)   query = query.lte("created_at", endIso);
       const { data, error } = await query;
