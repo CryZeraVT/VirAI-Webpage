@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-      /* ── Beta Testers Carousel ─────────────────────────────────── */
+      /* ── Beta Testers Spotlight Carousel ──────────────────────── */
       .testers-section {
-        padding: 60px 0 50px;
+        padding: 70px 0 60px;
         text-align: center;
         overflow: hidden;
       }
@@ -27,8 +27,7 @@
         margin: 0;
       }
       .testers-live-dot {
-        width: 10px;
-        height: 10px;
+        width: 10px; height: 10px;
         border-radius: 50%;
         background: #22c55e;
         box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
@@ -52,111 +51,138 @@
       .testers-sub {
         color: #6b7280;
         font-size: 0.88rem;
-        margin: 0 0 28px;
+        margin: 0 0 40px;
       }
 
-      /* Fade edges */
-      .testers-track-wrap {
+      /* ── Stage: centre spotlight + side ghosts ── */
+      .testers-stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        perspective: 1000px;
+        min-height: 300px;
         position: relative;
-        width: 100%;
-        overflow: hidden;
       }
-      .testers-track-wrap::before,
-      .testers-track-wrap::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 100px;
-        z-index: 2;
+
+      /* Each slot */
+      .tester-slot {
+        transition: all 0.7s cubic-bezier(0.34,1.56,0.64,1);
+        flex-shrink: 0;
+      }
+
+      /* Ghost cards either side */
+      .tester-slot.prev,
+      .tester-slot.next {
+        opacity: 0.35;
+        transform: scale(0.72) translateY(12px);
+        filter: blur(1px);
         pointer-events: none;
       }
-      .testers-track-wrap::before {
-        left: 0;
-        background: linear-gradient(to right, var(--bg-dark, #0d0718), transparent);
-      }
-      .testers-track-wrap::after {
-        right: 0;
-        background: linear-gradient(to left, var(--bg-dark, #0d0718), transparent);
-      }
+      .tester-slot.prev { transform: scale(0.72) translateX(-20px) translateY(12px); }
+      .tester-slot.next { transform: scale(0.72) translateX( 20px) translateY(12px); }
 
-      /* Scrolling track */
-      .testers-track {
-        display: flex;
-        gap: 14px;
-        width: max-content;
-        animation: testerScroll 30s linear infinite;
-        padding: 10px 0;
+      /* Far ghosts */
+      .tester-slot.far-prev,
+      .tester-slot.far-next {
+        opacity: 0.12;
+        transform: scale(0.55) translateY(18px);
+        filter: blur(2px);
+        pointer-events: none;
       }
-      .testers-track:hover { animation-play-state: paused; }
+      .tester-slot.far-prev { transform: scale(0.55) translateX(-30px) translateY(18px); }
+      .tester-slot.far-next { transform: scale(0.55) translateX( 30px) translateY(18px); }
 
-      @keyframes testerScroll {
-        0%   { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-      }
+      /* Hidden beyond range */
+      .tester-slot.hidden { opacity: 0; transform: scale(0.4); pointer-events: none; }
 
-      /* Individual card */
+      /* ── The card itself ── */
       .tester-card {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(124,58,237,0.2);
-        border-radius: 16px;
-        padding: 18px 20px 14px;
-        white-space: nowrap;
-        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        gap: 16px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(124,58,237,0.25);
+        border-radius: 20px;
+        padding: 28px 28px 22px;
+        width: 200px;
         cursor: default;
-        min-width: 120px;
+        position: relative;
+        overflow: hidden;
       }
-      .tester-card:hover {
-        border-color: rgba(145,70,255,0.6);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 30px rgba(145,70,255,0.15);
+
+      /* Glowing top edge on active card */
+      .tester-slot.active .tester-card {
+        border-color: rgba(145,70,255,0.55);
+        box-shadow: 0 0 0 1px rgba(145,70,255,0.2),
+                    0 16px 50px rgba(100,0,220,0.25),
+                    inset 0 1px 0 rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.07);
       }
+      .tester-slot.active .tester-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 10%; right: 10%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #9146FF, #06b6d4, transparent);
+        border-radius: 0 0 4px 4px;
+      }
+
+      /* Avatar */
       .tester-avatar {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
+        width: 100px; height: 100px;
+        border-radius: 16px;
         object-fit: cover;
-        border: 2px solid rgba(145,70,255,0.4);
+        border: 2px solid rgba(145,70,255,0.35);
         background: rgba(124,58,237,0.2);
-        flex-shrink: 0;
-        transition: border-color 0.2s;
+        transition: border-color 0.3s;
+        display: block;
       }
-      .tester-card:hover .tester-avatar {
-        border-color: #9146FF;
-      }
+      .tester-slot.active .tester-avatar { border-color: #9146FF; }
       .tester-avatar-placeholder {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #7c3aed66, #06b6d466);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: #a78bfa;
-        flex-shrink: 0;
+        width: 100px; height: 100px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #3b1a6e, #0e2a40);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.2rem; font-weight: 800; color: #a78bfa;
         border: 2px solid rgba(124,58,237,0.35);
       }
-      .tester-info {
-        text-align: center;
-      }
+
+      /* Text */
+      .tester-info { text-align: center; }
       .tester-name {
-        font-size: 0.88rem;
-        font-weight: 700;
-        color: #e2e8f0;
-        line-height: 1.2;
+        font-size: 1rem; font-weight: 700;
+        color: #e2e8f0; line-height: 1.2;
       }
       .tester-twitch {
-        font-size: 0.72rem;
-        color: #9146FF;
-        font-weight: 600;
-        margin-top: 2px;
+        font-size: 0.75rem; color: #9146FF;
+        font-weight: 600; margin-top: 4px;
       }
+
+      /* Dot indicators */
+      .testers-dots {
+        display: flex;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 28px;
+      }
+      .testers-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: rgba(124,58,237,0.3);
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+      .testers-dot.active {
+        background: #9146FF;
+        transform: scale(1.3);
+        box-shadow: 0 0 8px rgba(145,70,255,0.5);
+      }
+
+      /* Animations for card swap */
+      @keyframes tCardIn  { from { opacity:0; transform: scale(0.88) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+      @keyframes tCardOut { from { opacity:1; } to { opacity:0; transform: scale(0.88) translateY(10px); } }
     </style>
 </head>
 
@@ -232,7 +258,7 @@
             </div>
         </div>
 
-        <!-- BETA TESTERS CAROUSEL -->
+        <!-- BETA TESTERS SPOTLIGHT CAROUSEL -->
         <section class="testers-section">
           <div class="testers-header">
             <span class="testers-live-dot"></span>
@@ -241,11 +267,10 @@
           </div>
           <p class="testers-sub">Real streamers. Real feedback. Building this together.</p>
 
-          <div class="testers-track-wrap">
-            <div class="testers-track" id="testers-track">
-              <!-- cards injected by JS -->
-            </div>
+          <div class="testers-stage" id="testers-stage">
+            <!-- slots injected by JS -->
           </div>
+          <div class="testers-dots" id="testers-dots"></div>
         </section>
 
         <!-- SPOTLIGHT SECTION (Community Memory) -->
@@ -583,50 +608,47 @@
           const SUPABASE_URL      = 'https://rgigtqpesabuyaumibaj.supabase.co';
           const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
 
-          const track      = document.getElementById('testers-track');
+          const stage      = document.getElementById('testers-stage');
+          const dotsWrap   = document.getElementById('testers-dots');
           const countBadge = document.getElementById('testers-count');
-          if (!track) return;
+          if (!stage) return;
 
-          // ── Pull from the edge function which uses service role to read beta_signups + profiles ──
+          // ── Fetch active testers ──────────────────────────────────────────
           let testers = [];
           try {
             const res  = await fetch(`${SUPABASE_URL}/functions/v1/get-testers`, {
               headers: { apikey: SUPABASE_ANON_KEY }
             });
             const data = await res.json();
-            if (Array.isArray(data.testers)) testers = data.testers;
+            if (Array.isArray(data.testers) && data.testers.length) testers = data.testers;
           } catch (err) {
             console.warn('Testers carousel fetch failed:', err);
           }
 
-          // ── Never hide — show placeholders if no real data yet ──
           if (!testers.length) {
             testers = [
-              { twitch: 'cryzera',    display: 'CryZera'     },
-              { twitch: null,         display: 'Beta Tester' },
-              { twitch: null,         display: 'Coming Soon' },
+              { twitch: 'cryzera',  display: 'CryZera'  },
+              { twitch: null,       display: 'Tester 2' },
+              { twitch: null,       display: 'Tester 3' },
             ];
           }
 
-          // Update badge
           countBadge.textContent = testers.length + ' tester' + (testers.length !== 1 ? 's' : '');
 
-          // ── Build cards as DOM nodes ──
-          function escHtml(str) {
-            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+          // ── Helpers ───────────────────────────────────────────────────────
+          function esc(s) {
+            return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
           }
 
           function makeCard(t) {
             const card     = document.createElement('div');
             card.className = 'tester-card';
-            const initials = (t.display || '??').slice(0, 2).toUpperCase();
+            const initials = (t.display||'??').slice(0,2).toUpperCase();
 
-            // Avatar — try Twitch profile pic via unavatar (no API key needed)
             if (t.twitch) {
               const img     = document.createElement('img');
               img.className = 'tester-avatar';
               img.alt       = t.display;
-              // unavatar returns the actual Twitch profile picture
               img.src       = `https://unavatar.io/twitch/${encodeURIComponent(t.twitch)}`;
               img.onerror   = () => {
                 const ph       = document.createElement('div');
@@ -642,27 +664,83 @@
               card.appendChild(ph);
             }
 
-            // Info block (centered below avatar)
             const info     = document.createElement('div');
             info.className = 'tester-info';
-            if (t.twitch) {
-              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>
-                                <div class="tester-twitch">twitch.tv/${escHtml(t.twitch)}</div>`;
-            } else {
-              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>`;
-            }
+            info.innerHTML = t.twitch
+              ? `<div class="tester-name">${esc(t.display)}</div><div class="tester-twitch">twitch.tv/${esc(t.twitch)}</div>`
+              : `<div class="tester-name">${esc(t.display)}</div>`;
             card.appendChild(info);
-
             return card;
           }
 
-          // Double list for seamless infinite scroll
-          track.innerHTML = '';
-          [...testers, ...testers].forEach(t => track.appendChild(makeCard(t)));
+          // ── Build slots (one per tester) ──────────────────────────────────
+          // Each slot wraps a card. We only show 5 slots: far-prev, prev, active, next, far-next
+          // and reuse them by updating content + class as index changes.
 
-          // Scale duration: more testers = slightly faster scroll so it feels live
-          const duration = Math.max(20, testers.length * 3);
-          track.style.animationDuration = duration + 's';
+          const VISIBLE = 5; // must be odd
+          const slots   = [];
+          for (let i = 0; i < VISIBLE; i++) {
+            const slot     = document.createElement('div');
+            slot.className = 'tester-slot hidden';
+            stage.appendChild(slot);
+            slots.push(slot);
+          }
+
+          // Dot indicators
+          const dots = [];
+          if (testers.length > 1) {
+            testers.forEach((_, i) => {
+              const d       = document.createElement('div');
+              d.className   = 'testers-dot';
+              d.addEventListener('click', () => goTo(i));
+              dotsWrap.appendChild(d);
+              dots.push(d);
+            });
+          }
+
+          let current = 0;
+          const slotClasses = ['far-prev','prev','active','next','far-next'];
+
+          function render() {
+            const half   = Math.floor(VISIBLE / 2); // 2
+            const total  = testers.length;
+
+            slots.forEach((slot, si) => {
+              const offset  = si - half;             // -2,-1,0,+1,+2
+              const ti      = ((current + offset) % total + total) % total;
+
+              // Clear & rebuild content
+              slot.innerHTML = '';
+              slot.appendChild(makeCard(testers[ti]));
+
+              // Assign position class
+              slot.className = 'tester-slot ' + slotClasses[si];
+
+              // Hide side slots when there aren't enough testers
+              if (total === 1) {
+                if (si !== 2) slot.className = 'tester-slot hidden';
+              } else if (total === 2) {
+                if (si === 0 || si === 4) slot.className = 'tester-slot hidden';
+              }
+            });
+
+            // Update dots
+            dots.forEach((d, i) => d.classList.toggle('active', i === current));
+          }
+
+          function goTo(idx) {
+            current = ((idx % testers.length) + testers.length) % testers.length;
+            render();
+          }
+
+          function advance() { goTo(current + 1); }
+
+          render();
+
+          // Auto-advance every 3.5 seconds
+          if (testers.length > 1) {
+            setInterval(advance, 3500);
+          }
         }
 
         buildTestersCarousel();
