@@ -1215,45 +1215,28 @@
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {
-      async function doRequest(accessToken) {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ action, ...payload }),
+      async function invokeOnce() {
+        return supabase.functions.invoke("admin-users", {
+          body: { action, ...payload },
         });
-
-        let data = null;
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-        return { response, data };
       }
 
-      let { data: sessionData } = await supabase.auth.getSession();
-      let token = sessionData?.session?.access_token;
-      if (!token) throw new Error("Not authenticated");
+      let { data, error } = await invokeOnce();
 
-      let { response, data } = await doRequest(token);
-
-      // Token may be stale even when session exists; refresh once then retry.
-      if (response.status === 401) {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      // If token is stale, refresh once and retry.
+      if (error && (error.status === 401 || String(error.message || "").includes("401"))) {
+        const { error: refreshError } = await supabase.auth.refreshSession();
         if (refreshError) {
           throw new Error("Session expired. Please sign in again.");
         }
-        token = refreshed?.session?.access_token;
-        if (!token) throw new Error("Session expired. Please sign in again.");
-        ({ response, data } = await doRequest(token));
+        ({ data, error } = await invokeOnce());
       }
 
-      if (!response.ok) {
-        throw new Error(data?.error || `Request failed (${response.status})`);
+      if (error) {
+        throw new Error(error.message || `Request failed (${error.status || "unknown"})`);
+      }
+      if (!data) {
+        throw new Error("Empty response from admin-users.");
       }
       return data;
     }

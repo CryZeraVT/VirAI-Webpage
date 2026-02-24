@@ -31,7 +31,12 @@ async function requireAdmin(req: Request) {
   const token = authHeader.replace("Bearer ", "");
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user) {
-    return { error: jsonResponse({ error: "Unauthorized." }, 401) };
+    return {
+      error: jsonResponse(
+        { error: "Unauthorized.", details: userError?.message ?? "Invalid or expired token." },
+        401,
+      ),
+    };
   }
 
   const requester = userData.user;
