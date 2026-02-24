@@ -1233,7 +1233,17 @@
       }
 
       if (error) {
-        throw new Error(error.message || `Request failed (${error.status || "unknown"})`);
+        let detailed = "";
+        try {
+          if (error.context) {
+            const errJson = await error.context.json();
+            detailed = errJson?.details || errJson?.error || "";
+          }
+        } catch {
+          detailed = "";
+        }
+        const base = error.message || `Request failed (${error.status || "unknown"})`;
+        throw new Error(detailed ? `${base}: ${detailed}` : base);
       }
       if (!data) {
         throw new Error("Empty response from admin-users.");

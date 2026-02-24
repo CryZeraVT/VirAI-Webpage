@@ -28,7 +28,17 @@ async function requireAdmin(req: Request) {
     return { error: jsonResponse({ error: "Missing Authorization header." }, 401) };
   }
 
-  const token = authHeader.replace("Bearer ", "");
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!bearerMatch?.[1]) {
+    return {
+      error: jsonResponse(
+        { error: "Unauthorized.", details: "Malformed Authorization header." },
+        401,
+      ),
+    };
+  }
+
+  const token = bearerMatch[1].trim();
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user) {
     return {
