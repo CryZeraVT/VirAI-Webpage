@@ -151,6 +151,7 @@
           <button class="nav-tab" data-tab="announcements">📢 Announcements</button>
           <button class="nav-tab" data-tab="ai-engine">🤖 AI Engine</button>
           <button class="nav-tab" data-tab="licenses">🔑 Licenses</button>
+          <button class="nav-tab" data-tab="users">👥 Users</button>
           <button class="nav-tab" data-tab="beta-signups">🧪 Beta Signups <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:2px 7px;font-size:0.75em;margin-left:4px;display:none;"></span></button>
           <button class="nav-tab" data-tab="storage">☁️ Storage (R2)</button>
         </div>
@@ -252,6 +253,25 @@
           <div class="auth-divider"></div>
           <h3>Recent Licenses</h3>
           <div id="admin-licenses-list">Loading...</div>
+        </div>
+
+        <!-- Tab: Users -->
+        <div class="tab-content" id="tab-users">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
+            <div>
+              <h3 style="margin:0;">Users</h3>
+              <p class="auth-helper" style="margin:4px 0 0;">
+                View accounts and permanently delete a user (auth + related records).
+              </p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="users-search" class="form-input" type="text" placeholder="Search email..." style="width:240px; padding:8px 12px;" />
+              <button id="refresh-users" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 16px;">🔄 Refresh</button>
+            </div>
+          </div>
+          <div id="users-list" style="margin-top:16px;">
+            <div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading users...</div>
+          </div>
         </div>
 
         <!-- Tab: Beta Signups -->
@@ -474,6 +494,7 @@
         loadR2Config();
         loadVersions();
         loadBetaSignups();
+        loadUsers();
       } catch (err) {
         console.error("Unexpected error in checkAdmin:", err);
         statusEl.textContent = "❌ Unexpected error: " + err.message;
@@ -1191,6 +1212,104 @@
 
     document.getElementById("beta-filter").addEventListener("change", loadBetaSignups);
     document.getElementById("refresh-signups").addEventListener("click", loadBetaSignups);
+
+    // ── Users ────────────────────────────────────────────────────────────────
+    async function callAdminUsers(action, payload = {}) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action, ...payload }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    async function loadUsers() {
+      const listEl = document.getElementById("users-list");
+      const search = (document.getElementById("users-search").value || "").trim().toLowerCase();
+      listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading users...</div>`;
+
+      try {
+        const res = await callAdminUsers("list", { limit: 200 });
+        let users = Array.isArray(res.users) ? res.users : [];
+        if (search) {
+          users = users.filter(u => String(u.email || "").toLowerCase().includes(search));
+        }
+
+        if (!users.length) {
+          listEl.innerHTML = `<p style="text-align:center;color:var(--text-secondary);padding:30px;">No users found.</p>`;
+          return;
+        }
+
+        listEl.innerHTML = users.map((u) => `
+          <div class="announcement-item" style="flex-direction:column; align-items:flex-start; gap:10px;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+              <div style="flex:1; min-width:260px;">
+                <h4 style="margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  ${u.email || "Unknown Email"}
+                  ${u.is_admin ? '<span class="badge badge-critical" style="background:#06b6d4;">ADMIN</span>' : ""}
+                </h4>
+                <p style="margin:4px 0 0; font-size:0.9em;">User ID: <code>${u.id}</code></p>
+                ${u.twitch_username ? `<p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${u.twitch_username}</p>` : ""}
+                <p style="margin:2px 0 0; font-size:0.85em; color:#a1a1aa;">
+                  Licenses: ${u.license_count || 0} (${u.active_license_count || 0} active) • Beta status: ${u.beta_status || "none"}
+                </p>
+                <p style="margin:2px 0 0; font-size:0.8em; color:#6b7280;">
+                  Created: ${u.created_at ? new Date(u.created_at).toLocaleString() : "unknown"} • Last sign-in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "never"}
+                </p>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-outline delete-user-btn" data-id="${u.id}" data-email="${u.email || ""}" style="border-color:#ef4444;color:#ef4444;padding:8px 14px;font-size:0.85em;">
+                  🗑 Delete User
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+        document.querySelectorAll(".delete-user-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const userId = btn.getAttribute("data-id");
+            const email = btn.getAttribute("data-email");
+            if (!confirm(`Delete user ${email}?\n\nThis removes auth account, profile, licenses, purchases, token usage, and beta signup records.`)) return;
+            if (!confirm(`Final confirm: permanently delete ${email}? This cannot be undone.`)) return;
+
+            btn.disabled = true;
+            btn.textContent = "⏳ Deleting...";
+            try {
+              const result = await callAdminUsers("delete", { user_id: userId, email });
+              alert(`✅ User deleted.\n\nRemoved auth: ${result.deleted_auth ? "yes" : "no"}\nDeleted records for: ${email}`);
+              await loadUsers();
+              loadAdminLicenses();
+              loadBetaSignups();
+            } catch (e) {
+              alert(`❌ Failed to delete user: ${e.message}`);
+              btn.disabled = false;
+              btn.textContent = "🗑 Delete User";
+            }
+          });
+        });
+      } catch (err) {
+        listEl.innerHTML = `<p style="color:var(--error);">Error loading users: ${err.message}</p>`;
+      }
+    }
+
+    document.getElementById("refresh-users").addEventListener("click", loadUsers);
+    document.getElementById("users-search").addEventListener("input", () => {
+      loadUsers();
+    });
 
     // ─────────────────────────────────────────────────────────────────────────
 
