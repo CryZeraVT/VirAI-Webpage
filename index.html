@@ -98,51 +98,64 @@
       /* Individual card */
       .tester-card {
         display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 10px;
-        background: rgba(255,255,255,0.035);
-        border: 1px solid rgba(124,58,237,0.18);
-        border-radius: 40px;
-        padding: 9px 18px 9px 9px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(124,58,237,0.2);
+        border-radius: 16px;
+        padding: 18px 20px 14px;
         white-space: nowrap;
-        transition: border-color 0.2s, transform 0.2s;
+        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         cursor: default;
+        min-width: 120px;
       }
       .tester-card:hover {
-        border-color: rgba(167,139,250,0.5);
-        transform: translateY(-2px);
+        border-color: rgba(145,70,255,0.6);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(145,70,255,0.15);
       }
       .tester-avatar {
-        width: 34px;
-        height: 34px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         object-fit: cover;
+        border: 2px solid rgba(145,70,255,0.4);
         background: rgba(124,58,237,0.2);
         flex-shrink: 0;
+        transition: border-color 0.2s;
+      }
+      .tester-card:hover .tester-avatar {
+        border-color: #9146FF;
       }
       .tester-avatar-placeholder {
-        width: 34px;
-        height: 34px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #7c3aed55, #06b6d455);
+        background: linear-gradient(135deg, #7c3aed66, #06b6d466);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.9rem;
-        font-weight: 700;
+        font-size: 1.4rem;
+        font-weight: 800;
         color: #a78bfa;
         flex-shrink: 0;
-        border: 1px solid rgba(124,58,237,0.3);
+        border: 2px solid rgba(124,58,237,0.35);
+      }
+      .tester-info {
+        text-align: center;
       }
       .tester-name {
         font-size: 0.88rem;
-        font-weight: 600;
+        font-weight: 700;
         color: #e2e8f0;
+        line-height: 1.2;
       }
       .tester-twitch {
         font-size: 0.72rem;
         color: #9146FF;
-        font-weight: 500;
+        font-weight: 600;
+        margin-top: 2px;
       }
     </style>
 </head>
@@ -598,7 +611,7 @@
           // Update badge
           countBadge.textContent = testers.length + ' tester' + (testers.length !== 1 ? 's' : '');
 
-          // ── Build cards as DOM nodes (safe, no inline onerror strings) ──
+          // ── Build cards as DOM nodes ──
           function escHtml(str) {
             return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
           }
@@ -608,34 +621,37 @@
             card.className = 'tester-card';
             const initials = (t.display || '??').slice(0, 2).toUpperCase();
 
+            // Avatar — try Twitch profile pic via unavatar (no API key needed)
             if (t.twitch) {
-              // unavatar.io proxies Twitch profile pictures — no API key needed
-              const img      = document.createElement('img');
-              img.className  = 'tester-avatar';
-              img.alt        = t.display;
-              img.src        = `https://unavatar.io/twitch/${encodeURIComponent(t.twitch)}`;
-              img.onerror    = () => {
+              const img     = document.createElement('img');
+              img.className = 'tester-avatar';
+              img.alt       = t.display;
+              // unavatar returns the actual Twitch profile picture
+              img.src       = `https://unavatar.io/twitch/${encodeURIComponent(t.twitch)}`;
+              img.onerror   = () => {
                 const ph       = document.createElement('div');
                 ph.className   = 'tester-avatar-placeholder';
                 ph.textContent = initials;
                 img.replaceWith(ph);
               };
               card.appendChild(img);
-
-              const info       = document.createElement('div');
-              info.innerHTML   = `<div class="tester-name">${escHtml(t.display)}</div>
-                                  <div class="tester-twitch">twitch.tv/${escHtml(t.twitch)}</div>`;
-              card.appendChild(info);
             } else {
               const ph       = document.createElement('div');
               ph.className   = 'tester-avatar-placeholder';
               ph.textContent = initials;
               card.appendChild(ph);
-
-              const info     = document.createElement('div');
-              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>`;
-              card.appendChild(info);
             }
+
+            // Info block (centered below avatar)
+            const info     = document.createElement('div');
+            info.className = 'tester-info';
+            if (t.twitch) {
+              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>
+                                <div class="tester-twitch">twitch.tv/${escHtml(t.twitch)}</div>`;
+            } else {
+              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>`;
+            }
+            card.appendChild(info);
 
             return card;
           }
