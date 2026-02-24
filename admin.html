@@ -1215,21 +1215,43 @@
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      async function doRequest(accessToken) {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ action, ...payload }),
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+        return { response, data };
+      }
+
+      let { data: sessionData } = await supabase.auth.getSession();
+      let token = sessionData?.session?.access_token;
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "apikey": SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ action, ...payload }),
-      });
+      let { response, data } = await doRequest(token);
 
-      const data = await response.json();
+      // Token may be stale even when session exists; refresh once then retry.
+      if (response.status === 401) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw new Error("Session expired. Please sign in again.");
+        }
+        token = refreshed?.session?.access_token;
+        if (!token) throw new Error("Session expired. Please sign in again.");
+        ({ response, data } = await doRequest(token));
+      }
+
       if (!response.ok) {
         throw new Error(data?.error || `Request failed (${response.status})`);
       }
