@@ -67,8 +67,8 @@
 
       /* Each slot */
       .tester-slot {
-        transition: all 0.7s cubic-bezier(0.34,1.56,0.64,1);
         flex-shrink: 0;
+        will-change: transform, opacity;
       }
 
       /* Ghost cards either side */
@@ -180,9 +180,35 @@
         box-shadow: 0 0 8px rgba(145,70,255,0.5);
       }
 
-      /* Animations for card swap */
-      @keyframes tCardIn  { from { opacity:0; transform: scale(0.88) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
-      @keyframes tCardOut { from { opacity:1; } to { opacity:0; transform: scale(0.88) translateY(10px); } }
+      /* ── Slot transition animations ── */
+      /* All position changes are driven purely by CSS transitions on the slot classes.
+         The transition on .tester-slot handles scale/opacity/translate smoothly.
+         We add a brief "pop" on the active slot when it becomes active. */
+      @keyframes tActiveIn {
+        0%   { transform: scale(0.82); opacity: 0; }
+        60%  { transform: scale(1.04); opacity: 1; }
+        100% { transform: scale(1);    opacity: 1; }
+      }
+      @keyframes tSideIn {
+        from { opacity: 0; transform: scale(0.6) translateY(20px); }
+        to   { opacity: 0.35; transform: scale(0.72) translateY(12px); }
+      }
+
+      /* Active slot pops in */
+      .tester-slot.active {
+        animation: tActiveIn 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+      }
+      /* Side slots slide in */
+      .tester-slot.prev  { animation: none; }
+      .tester-slot.next  { animation: none; }
+
+      /* Smooth position/size transitions for all slots */
+      .tester-slot {
+        transition:
+          opacity    0.5s cubic-bezier(0.4,0,0.2,1),
+          transform  0.5s cubic-bezier(0.34,1.2,0.64,1),
+          filter     0.5s ease;
+      }
     </style>
 </head>
 
@@ -645,11 +671,14 @@
             card.className = 'tester-card';
             const initials = (t.display||'??').slice(0,2).toUpperCase();
 
-            if (t.twitch) {
+            // Avatar: use server-resolved URL first, then fall back to placeholder
+            const avatarSrc = t.avatar || null;
+
+            if (avatarSrc) {
               const img     = document.createElement('img');
               img.className = 'tester-avatar';
               img.alt       = t.display;
-              img.src       = `https://unavatar.io/twitch/${encodeURIComponent(t.twitch)}`;
+              img.src       = avatarSrc;
               img.onerror   = () => {
                 const ph       = document.createElement('div');
                 ph.className   = 'tester-avatar-placeholder';
@@ -701,30 +730,33 @@
           let current = 0;
           const slotClasses = ['far-prev','prev','active','next','far-next'];
 
-          function render() {
-            const half   = Math.floor(VISIBLE / 2); // 2
-            const total  = testers.length;
+          function render(direction = 1) {
+            const half  = Math.floor(VISIBLE / 2); // 2
+            const total = testers.length;
 
             slots.forEach((slot, si) => {
-              const offset  = si - half;             // -2,-1,0,+1,+2
-              const ti      = ((current + offset) % total + total) % total;
+              const offset = si - half;             // -2,-1,0,+1,+2
+              const ti     = ((current + offset) % total + total) % total;
 
-              // Clear & rebuild content
+              // Rebuild card content
               slot.innerHTML = '';
               slot.appendChild(makeCard(testers[ti]));
 
-              // Assign position class
-              slot.className = 'tester-slot ' + slotClasses[si];
+              // Determine position class
+              let cls = slotClasses[si];
+              if (total === 1 && si !== 2)       cls = 'hidden';
+              if (total === 2 && (si === 0 || si === 4)) cls = 'hidden';
 
-              // Hide side slots when there aren't enough testers
-              if (total === 1) {
-                if (si !== 2) slot.className = 'tester-slot hidden';
-              } else if (total === 2) {
-                if (si === 0 || si === 4) slot.className = 'tester-slot hidden';
+              // For the active slot, briefly strip the animation class so it re-fires
+              if (cls === 'active') {
+                slot.className = 'tester-slot';
+                // Force reflow so removing the class takes effect before we re-add it
+                void slot.offsetWidth;
               }
+
+              slot.className = 'tester-slot ' + cls;
             });
 
-            // Update dots
             dots.forEach((d, i) => d.classList.toggle('active', i === current));
           }
 

@@ -17,12 +17,56 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Fetch Twitch profile picture URL via the public Twitch GQL endpoint (no auth needed)
+async function getTwitchAvatars(logins: string[]): Promise<Map<string, string>> {
+  const avatarMap = new Map<string, string>();
+  if (!logins.length) return avatarMap;
+
+  try {
+    // Use Twitch's public GQL — works without OAuth for basic user info
+    const query = {
+      query: `query {
+        ${logins.map((l, i) => `
+          u${i}: user(login: ${JSON.stringify(l)}) {
+            login
+            profileImageURL(width: 300)
+          }
+        `).join("")}
+      }`
+    };
+
+    const res = await fetch("https://gql.twitch.tv/gql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Client-Id": "kimne78kx3ncx6brgo4mv6wki5h1ko", // Twitch web client ID (public)
+      },
+      body: JSON.stringify(query),
+    });
+
+    if (!res.ok) return avatarMap;
+
+    const data = await res.json();
+    const gqlData = data?.data ?? {};
+
+    logins.forEach((l, i) => {
+      const user = gqlData[`u${i}`];
+      if (user?.profileImageURL) {
+        avatarMap.set(l.toLowerCase(), user.profileImageURL);
+      }
+    });
+  } catch (err) {
+    console.warn("Twitch GQL avatar fetch failed:", err);
+  }
+
+  return avatarMap;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Pull users who have logged token usage — these are ACTIVELY using the app.
-    // Look back 30 days so the list stays fresh without being too strict.
+    // Pull users who have logged token usage in the last 30 days
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: usageRows, error: usageErr } = await supabase
@@ -46,10 +90,20 @@ serve(async (req) => {
       }
     }
 
-    // Sort by most recently active first
-    const testers = Array.from(channelMap.values())
-      .sort((a, b) => b.lastActive.localeCompare(a.lastActive))
-      .map(({ twitch }) => ({ twitch, display: twitch }));
+    // Sort by most recently active
+    const sorted = Array.from(channelMap.values())
+      .sort((a, b) => b.lastActive.localeCompare(a.lastActive));
+
+    const logins = sorted.map(t => t.twitch);
+
+    // Fetch avatars from Twitch GQL in one batched request
+    const avatarMap = await getTwitchAvatars(logins);
+
+    const testers = sorted.map(({ twitch }) => ({
+      twitch,
+      display: twitch,
+      avatar: avatarMap.get(twitch.toLowerCase()) ?? null,
+    }));
 
     return json({ testers, total: testers.length });
   } catch (err) {
