@@ -5,16 +5,248 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ViriTTS - Account</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Account page overrides ─────────────────────────────── */
+    .account-wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 40px 16px 80px;
+    }
+
+    .account-card {
+      background: rgba(15, 5, 30, 0.85);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: 18px;
+      padding: 36px 32px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    }
+
+    .account-card h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin: 0 0 4px;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .account-card .subtitle {
+      color: #9ca3af;
+      font-size: 0.9rem;
+      margin: 0 0 24px;
+    }
+
+    /* ── Status banner ───────────────────────────────────────── */
+    .status-bar {
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .status-bar.show { display: block; }
+    .status-bar.success { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+    .status-bar.error   { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    .status-bar.info    { background: rgba(6,182,212,0.10);  color: #67e8f9; border: 1px solid rgba(6,182,212,0.22); }
+
+    /* ── Signed-in header ────────────────────────────────────── */
+    .signed-in-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .signed-in-header .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar-circle {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; color: white;
+      flex-shrink: 0;
+    }
+    .signed-in-header .email-label {
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .signed-in-header .role-badge {
+      font-size: 0.72rem;
+      background: rgba(6,182,212,0.15);
+      color: #06b6d4;
+      border: 1px solid rgba(6,182,212,0.3);
+      border-radius: 20px;
+      padding: 2px 8px;
+    }
+
+    /* ── Form fields ─────────────────────────────────────────── */
+    .field-group { margin-bottom: 14px; }
+    .field-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .field-group input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .field-group input:focus {
+      outline: none;
+      border-color: rgba(167,139,250,0.6);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .btn-row .btn { flex: 1; min-width: 120px; text-align: center; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(124,58,237,0.2);
+      margin: 28px 0;
+    }
+
+    /* ── Reset / invite panel ────────────────────────────────── */
+    .reset-panel {
+      background: rgba(124,58,237,0.08);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .reset-panel h3 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+      color: #a78bfa;
+    }
+
+    /* ── License cards ───────────────────────────────────────── */
+    .license-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .license-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .license-card:hover { border-color: rgba(167,139,250,0.4); }
+
+    .license-card .lc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .license-key-display {
+      font-family: "Courier New", monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #a78bfa;
+      word-break: break-all;
+    }
+
+    .license-status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-active   { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-inactive { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-expired  { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+    .license-meta {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #6b7280;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .license-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .license-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .license-actions .btn {
+      font-size: 0.82rem;
+      padding: 7px 14px;
+    }
+    .btn-danger { border-color: #ef4444 !important; color: #ef4444 !important; }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 0;
+      color: #4b5563;
+      font-size: 0.9rem;
+    }
+    .empty-state .empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+    .text-link {
+      background: none;
+      border: none;
+      color: #a78bfa;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0;
+      text-decoration: underline;
+      font-family: inherit;
+    }
+
+    /* ── Sections visibility ─────────────────────────────────── */
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
   <div id="interactive-bg"></div>
 
-    <div class="container">
+  <div class="container">
     <header>
       <a href="index.html" class="logo">
-        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
-        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
+        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height:50px;">
+        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height:40px;">
       </a>
       <nav>
         <a href="index.html#features">Features</a>
@@ -25,103 +257,115 @@
       </nav>
     </header>
 
-    <section class="auth-section">
-      <div class="auth-card">
-        <h2>Your License Portal</h2>
-        <p class="auth-subtitle">Log in to view your ViriTTS license keys anytime.</p>
+    <div class="account-wrap">
+      <div class="account-card">
 
-        <div class="auth-status" id="auth-status"></div>
+        <!-- Status bar -->
+        <div class="status-bar" id="auth-status"></div>
 
-        <div class="auth-row">
-          <input id="email" type="email" placeholder="Email" class="auth-input">
-          <input id="twitch-username" type="text" placeholder="Twitch Username" class="auth-input">
-          <input id="password" type="password" placeholder="Password" class="auth-input">
-        </div>
+        <!-- ── Signed OUT view ────────────────────────────── -->
+        <div id="view-signed-out">
+          <h2>License Portal</h2>
+          <p class="subtitle">Sign in to view and manage your ViriTTS license.</p>
 
-        <div class="auth-actions" id="auth-actions">
-          <button id="sign-in" class="btn">Sign In</button>
-          <button id="sign-up" class="btn btn-outline">Create Account</button>
-          <button id="sign-out" class="btn btn-outline">Sign Out</button>
-          <a id="admin-link" href="admin.html" class="btn btn-outline hidden" style="border-color: #06b6d4; color: #06b6d4;">Admin Dashboard</a>
-        </div>
-
-        <p class="auth-helper">
-          Use the same email you purchased with. New accounts may require email confirmation.
-        </p>
-
-        <button id="reset-password" class="btn btn-outline auth-reset">Reset Password</button>
-
-        <div id="reset-panel" class="reset-panel hidden">
-          <h3>Set a New Password</h3>
-          <div class="auth-row">
-            <input id="new-password" type="password" placeholder="New password" class="auth-input">
-            <input id="confirm-password" type="password" placeholder="Confirm new password" class="auth-input">
+          <div class="field-group">
+            <label>Email</label>
+            <input id="email" type="email" placeholder="you@example.com">
           </div>
-          <button id="update-password" class="btn">Update Password</button>
-        </div>
-
-        <div class="auth-divider"></div>
-
-        <div class="auth-keys">
-          <div class="auth-keys-header">
-            <h3>Your License Keys</h3>
-            <button id="load-keys" class="btn">Refresh</button>
+          <div class="field-group" id="twitch-field">
+            <label>Twitch Username <span style="color:#6b7280;font-weight:400;text-transform:none;">(required for new accounts)</span></label>
+            <input id="twitch-username" type="text" placeholder="YourTwitchName">
           </div>
-          <div id="keys-list" class="keys-list">No keys loaded yet.</div>
+          <div class="field-group">
+            <label>Password</label>
+            <input id="password" type="password" placeholder="••••••••">
+          </div>
+
+          <div class="btn-row">
+            <button id="sign-in" class="btn">Sign In</button>
+            <button id="sign-up" class="btn btn-outline">Create Account</button>
+          </div>
+
+          <div style="text-align:center; margin-top:14px;">
+            <button class="text-link" id="reset-password">Forgot password?</button>
+          </div>
+
+          <p style="font-size:0.8rem;color:#4b5563;margin-top:16px;text-align:center;">
+            Beta users: use the email you signed up with. Check your inbox for a setup link.
+          </p>
         </div>
 
-        <p class="auth-note">
-          Need help? Visit <a href="https://www.viritts.com" target="_blank">www.viritts.com</a>.
-        </p>
+        <!-- ── Password setup panel (recovery / invite) ───── -->
+        <div id="view-password-setup" class="hidden">
+          <div class="reset-panel">
+            <h3 id="reset-panel-title">Set a New Password</h3>
+            <div class="field-group">
+              <label>New Password</label>
+              <input id="new-password" type="password" placeholder="••••••••">
+            </div>
+            <div class="field-group">
+              <label>Confirm Password</label>
+              <input id="confirm-password" type="password" placeholder="••••••••">
+            </div>
+            <button id="update-password" class="btn" style="width:100%;margin-top:4px;">Save Password</button>
+          </div>
+        </div>
+
+        <!-- ── Signed IN view ─────────────────────────────── -->
+        <div id="view-signed-in" class="hidden">
+
+          <div class="signed-in-header">
+            <div class="user-info">
+              <div class="avatar-circle" id="avatar-initials">?</div>
+              <div>
+                <div class="email-label" id="signed-in-email">—</div>
+                <div style="font-size:0.78rem;color:#6b7280;margin-top:1px;" id="signed-in-sub">ViriTTS Beta</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <a id="admin-link" href="admin.html" class="btn btn-outline hidden" style="border-color:#06b6d4;color:#06b6d4;font-size:0.82rem;padding:7px 14px;">⚙️ Admin</a>
+              <button id="sign-out" class="btn btn-outline" style="font-size:0.82rem;padding:7px 14px;">Sign Out</button>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- License keys section -->
+          <div class="license-section">
+            <h3>🔑 Your License Keys <button id="load-keys" class="btn btn-outline" style="font-size:0.78rem;padding:5px 12px;margin-left:auto;">Refresh</button></h3>
+            <div id="keys-list">
+              <div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
-    </section>
+
+      <p style="text-align:center;font-size:0.8rem;color:#4b5563;margin-top:20px;">
+        Need help? Visit <a href="https://www.viritts.com" style="color:#7c3aed;">www.viritts.com</a>
+      </p>
+    </div>
   </div>
 
-  <!-- Mouse Reactive Background Script -->
+  <!-- Parallax background -->
   <script>
     const bg = document.getElementById('interactive-bg');
     const particles = [];
-    const particleCount = 25;
-
-    // Initialize particles
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < 25; i++) {
       const p = document.createElement('div');
       p.classList.add('particle');
-
-      // Random properties
       const size = Math.random() * 100 + 50;
       const x = Math.random() * 100;
       const y = Math.random() * 100;
-
-      p.style.width = `${size}px`;
-      p.style.height = `${size}px`;
-      p.style.left = `${x}%`;
-      p.style.top = `${y}%`;
-
-      // Store original position for parallax calculation
-      particles.push({
-        el: p,
-        x: x,
-        y: y,
-        speed: Math.random() * 0.05 + 0.02 // Depth factor
-      });
-
+      p.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;`;
+      particles.push({ el: p, x, y, speed: Math.random() * 0.05 + 0.02 });
       bg.appendChild(p);
     }
-
-    // Mouse move handler
     document.addEventListener('mousemove', (e) => {
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-
+      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
       particles.forEach(p => {
-        const moveX = (mouseX - centerX) * p.speed;
-        const moveY = (mouseY - centerY) * p.speed;
-
-        // Using transform for performance
-        p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        p.el.style.transform = `translate(${(e.clientX - cx) * p.speed}px, ${(e.clientY - cy) * p.speed}px)`;
       });
     });
   </script>
@@ -129,102 +373,99 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // TODO: Fill these in with your project values
-    // Use the project URL (NOT the Edge Function URL)
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const PASSWORD_RESET_REDIRECT = "https://www.viritts.com/account.html";
 
-    const statusEl = document.getElementById("auth-status");
-    const keysList = document.getElementById("keys-list");
-    const emailEl = document.getElementById("email");
-    const twitchUsernameEl = document.getElementById("twitch-username");
-    const passwordEl = document.getElementById("password");
-    const resetPanel = document.getElementById("reset-panel");
-    const authActions = document.getElementById("auth-actions");
-    const resetButton = document.getElementById("reset-password");
-    const newPasswordEl = document.getElementById("new-password");
-    const confirmPasswordEl = document.getElementById("confirm-password");
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const setStatus = (msg, isError = false) => {
-      statusEl.textContent = msg;
-      statusEl.className = "auth-status " + (isError ? "error" : "success");
-    };
+    // ── Helpers ──────────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
 
-    const clearStatus = () => {
-      statusEl.textContent = "";
-      statusEl.className = "auth-status";
-    };
+    function setStatus(msg, type = "success") {
+      const el = $("auth-status");
+      el.textContent = msg;
+      el.className = `status-bar show ${type}`;
+    }
+    function clearStatus() {
+      const el = $("auth-status");
+      el.textContent = "";
+      el.className = "status-bar";
+    }
 
-    async function refreshSession() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setStatus(`Signed in as ${user.email}`);
-        
-        // Check if user is admin
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_admin")
-          .eq("id", user.id)
-          .single();
-          
-        if (profile?.is_admin) {
-          document.getElementById("admin-link").classList.remove("hidden");
-        }
+    function showView(name) {
+      ["view-signed-out", "view-signed-in", "view-password-setup"].forEach(v => {
+        $(v).classList.toggle("hidden", v !== name);
+      });
+    }
+
+    function getAuthLinkTypeFromHash() {
+      const hash = String(window.location.hash || "").toLowerCase();
+      if (hash.includes("type=recovery")) return "recovery";
+      if (hash.includes("type=invite")) return "invite";
+      return "";
+    }
+
+    function enterPasswordSetupMode(mode = "recovery") {
+      const titleEl = $("reset-panel-title");
+      showView("view-password-setup");
+      if (mode === "invite") {
+        titleEl.textContent = "Create Your Password";
+        setStatus("Welcome! Set your password below to finish account setup.", "info");
       } else {
-        clearStatus();
-        document.getElementById("admin-link").classList.add("hidden");
+        titleEl.textContent = "Set a New Password";
+        setStatus("Enter your new password below.", "info");
       }
     }
 
-    function enterRecoveryMode() {
-      resetPanel.classList.remove("hidden");
-      authActions.classList.add("hidden");
-      resetButton.classList.add("hidden");
-      setStatus("Please set a new password below.");
+    function exitPasswordSetupMode() {
+      showView("view-signed-out");
+      clearStatus();
     }
 
-    function exitRecoveryMode() {
-      resetPanel.classList.add("hidden");
-      authActions.classList.remove("hidden");
-      resetButton.classList.remove("hidden");
-    }
+    // ── Signed-in UI ─────────────────────────────────────────────
+    async function enterSignedIn(user) {
+      showView("view-signed-in");
+      $("signed-in-email").textContent = user.email ?? "Unknown";
+      $("avatar-initials").textContent = (user.email ?? "?")[0].toUpperCase();
+      clearStatus();
 
-    // Show reset panel if this page is opened from a recovery link
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        enterRecoveryMode();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_admin, twitch_username")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile?.is_admin) {
+        $("admin-link").classList.remove("hidden");
+        $("signed-in-sub").textContent = "Admin · ViriTTS Beta";
       }
-    });
+      if (profile?.twitch_username) {
+        $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
+      }
 
-    // If the recovery token is in the URL hash, show the reset panel immediately
-    if (window.location.hash.includes("type=recovery")) {
-      enterRecoveryMode();
-    } else {
-      exitRecoveryMode();
+      loadKeys();
     }
 
+    // ── Load license keys ─────────────────────────────────────────
     async function loadKeys() {
+      const keysList = $("keys-list");
+      keysList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div>Loading licenses...</div>`;
+
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
       if (!user) {
-        keysList.textContent = "Please sign in to view your keys.";
+        keysList.innerHTML = `<div class="empty-state">Please sign in to view your licenses.</div>`;
         return;
       }
 
-      // Fetch active version download URL
       let downloadUrl = null;
       const { data: versionData } = await supabase
         .from("r2_versions")
         .select("download_url, version")
         .eq("is_active", true)
-        .single();
-      
-      if (versionData) {
-        downloadUrl = versionData.download_url;
-      }
+        .maybeSingle();
+      if (versionData) downloadUrl = versionData.download_url;
 
       const { data, error } = await supabase
         .from("licenses")
@@ -233,171 +474,176 @@
         .order("created_at", { ascending: false });
 
       if (error) {
-        keysList.textContent = "Error loading keys.";
+        keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses. Try refreshing.</div>`;
         return;
       }
 
       if (!data || data.length === 0) {
-        keysList.textContent = "No licenses found for this account.";
+        keysList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            No licenses found for this account.<br>
+            <span style="font-size:0.8rem;">Contact support if you believe this is an error.</span>
+          </div>`;
         return;
       }
 
       keysList.innerHTML = data.map((row) => {
-        const expires = row.expires_at ? new Date(row.expires_at).toLocaleDateString() : "No expiry";
         const isActive = row.status === "active";
-        const downloadButton = isActive && downloadUrl 
-          ? `<a href="${downloadUrl}" class="btn" style="background: linear-gradient(135deg, #d946ef, #06b6d4); text-decoration: none; padding: 8px 16px;">⬇️ Download</a>`
-          : '';
-        
+        const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
+        const badgeClass = isExpired ? "badge-expired" : isActive ? "badge-active" : "badge-inactive";
+        const badgeLabel = isExpired ? "EXPIRED" : row.status.toUpperCase();
+
+        const expires = row.expires_at
+          ? new Date(row.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+          : "No expiry";
+        const created = row.created_at
+          ? new Date(row.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+          : "";
+
+        const downloadBtn = isActive && downloadUrl
+          ? `<a href="${downloadUrl}" class="btn" style="background:linear-gradient(135deg,#d946ef,#06b6d4);text-decoration:none;font-size:0.82rem;padding:7px 14px;">⬇️ Download</a>`
+          : "";
+
         return `
-          <div class="key-item">
-            <div class="key-info">
-              <div class="key-value">${row.license_key}</div>
-              <div class="key-meta">Status: <span style="color: ${isActive ? '#22c55e' : '#ff4444'}; font-weight: 600;">${row.status.toUpperCase()}</span> • Expires: ${expires}</div>
-              <div class="key-note" style="font-size: 0.8em; color: #888; margin-top: 4px;">1-PC License</div>
+          <div class="license-card">
+            <div class="lc-top">
+              <div class="license-key-display">${row.license_key}</div>
+              <span class="license-status-badge ${badgeClass}">${badgeLabel}</span>
             </div>
-            <div class="key-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
-              ${downloadButton}
-              <button class="btn btn-outline copy-btn" data-key="${row.license_key}">Copy</button>
-              <button class="btn btn-outline reset-btn" data-key="${row.license_key}" style="border-color: #ff4444; color: #ff4444;">Reset PC</button>
+            <div class="license-meta">
+              <span>📅 Expires ${expires}</span>
+              ${created ? `<span>🗓 Issued ${created}</span>` : ""}
+              <span>💻 1-PC License</span>
             </div>
-          </div>
-        `;
+            <div class="license-actions">
+              ${downloadBtn}
+              <button class="btn btn-outline copy-btn" data-key="${row.license_key}">📋 Copy Key</button>
+              <button class="btn btn-outline reset-btn btn-danger" data-key="${row.license_key}">🔄 Reset PC</button>
+            </div>
+          </div>`;
       }).join("");
 
       document.querySelectorAll(".copy-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const key = btn.getAttribute("data-key") || "";
-          navigator.clipboard.writeText(key);
-          btn.textContent = "Copied!";
-          setTimeout(() => (btn.textContent = "Copy"), 1000);
+          navigator.clipboard.writeText(btn.getAttribute("data-key") || "");
+          btn.textContent = "✅ Copied!";
+          setTimeout(() => (btn.textContent = "📋 Copy Key"), 1500);
         });
       });
 
       document.querySelectorAll(".reset-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const key = btn.getAttribute("data-key") || "";
-          if (!confirm(`Are you sure you want to reset the machine binding for license ${key}? This will allow you to activate it on a new computer.`)) {
-            return;
-          }
-
+          if (!confirm(`Reset machine binding for:\n${key}\n\nThis lets you activate on a new PC.`)) return;
           btn.disabled = true;
           btn.textContent = "Resetting...";
-
           try {
-            const { data, error } = await supabase.functions.invoke("reset-license", {
-              body: { license_key: key }
-            });
-
-            if (error) {
-              console.error("Reset error:", error);
-              alert("Error: " + (error.message || "Failed to reset license"));
-              return;
-            }
-
-            if (data.success) {
-              alert(data.message);
-              loadKeys();
-            } else {
-              alert("Error: " + data.message);
-            }
+            const { data, error } = await supabase.functions.invoke("reset-license", { body: { license_key: key } });
+            if (error) { alert("Error: " + (error.message || "Failed to reset")); return; }
+            if (data.success) { setStatus("✅ License reset — you can now activate on a new PC.", "success"); loadKeys(); }
+            else alert("Error: " + data.message);
           } catch (err) {
-            console.error("Reset error:", err);
-            alert("Failed to reset license. Please try again later.");
+            alert("Failed to reset. Please try again.");
           } finally {
             btn.disabled = false;
-            btn.textContent = "Reset PC";
+            btn.textContent = "🔄 Reset PC";
           }
         });
       });
     }
 
-    document.getElementById("sign-in").addEventListener("click", async () => {
-      const email = emailEl.value.trim();
-      const password = passwordEl.value.trim();
-      if (!email || !password) return setStatus("Enter email and password.", true);
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return setStatus(error.message, true);
-      setStatus("Signed in successfully.");
-      loadKeys();
+    // ── Auth events ───────────────────────────────────────────────
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        enterPasswordSetupMode("recovery");
+      } else if (event === "SIGNED_IN") {
+        const linkType = getAuthLinkTypeFromHash();
+        if (linkType === "invite") {
+          enterPasswordSetupMode("invite");
+        } else if (session?.user) {
+          await enterSignedIn(session.user);
+        }
+      } else if (event === "SIGNED_OUT") {
+        showView("view-signed-out");
+        clearStatus();
+      }
     });
 
-    document.getElementById("sign-up").addEventListener("click", async () => {
-      const email = emailEl.value.trim();
-      const twitchUsername = twitchUsernameEl.value.trim();
-      const password = passwordEl.value.trim();
-      
-      if (!email || !password) return setStatus("Enter email and password.", true);
-      if (!twitchUsername) return setStatus("Twitch Username is mandatory.", true);
-
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            twitch_username: twitchUsername
-          }
-        }
-      });
-      
-      if (error) {
-        // Check for common "already exists" error messages
-        if (error.message.toLowerCase().includes("already") || 
-            error.message.toLowerCase().includes("registered") ||
-            error.message.toLowerCase().includes("exists")) {
-          return setStatus("An account with this email already exists. Please sign in instead.", true);
-        }
-        return setStatus(error.message, true);
-      }
-      
-      // Supabase returns a user but no session if email already exists (security feature)
-      // Check if user was actually created by looking at identities
-      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-        return setStatus("An account with this email already exists. Please sign in instead.", true);
-      }
-      
-      if (data?.session) {
-        setStatus("Account created and signed in.");
-        loadKeys();
+    // ── Initial page load ─────────────────────────────────────────
+    const initialLinkType = getAuthLinkTypeFromHash();
+    if (initialLinkType === "recovery" || initialLinkType === "invite") {
+      enterPasswordSetupMode(initialLinkType);
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await enterSignedIn(user);
       } else {
-        setStatus("Account created. Please check your email to confirm, then sign in.");
+        showView("view-signed-out");
+      }
+    }
+
+    // ── Button handlers ───────────────────────────────────────────
+    $("sign-in").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value.trim();
+      if (!email || !password) return setStatus("Enter your email and password.", "error");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return setStatus(error.message, "error");
+    });
+
+    $("sign-up").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const twitchUsername = $("twitch-username").value.trim();
+      const password = $("password").value.trim();
+      if (!email || !password) return setStatus("Enter email and password.", "error");
+      if (!twitchUsername) return setStatus("Twitch username is required for new accounts.", "error");
+
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { twitch_username: twitchUsername } }
+      });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+          return setStatus("An account with this email already exists — try signing in instead.", "error");
+        }
+        return setStatus(error.message, "error");
+      }
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        return setStatus("An account with this email already exists — try signing in instead.", "error");
+      }
+      if (data?.session) {
+        setStatus("Account created and signed in.", "success");
+      } else {
+        setStatus("Account created! Check your email to confirm, then sign in.", "info");
       }
     });
 
-    document.getElementById("sign-out").addEventListener("click", async () => {
+    $("sign-out").addEventListener("click", async () => {
       await supabase.auth.signOut();
-      setStatus("Signed out.");
-      keysList.textContent = "Please sign in to view your keys.";
     });
 
-    document.getElementById("reset-password").addEventListener("click", async () => {
-      const email = emailEl.value.trim();
-      if (!email) return setStatus("Enter your email to reset password.", true);
-
+    $("reset-password").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      if (!email) return setStatus("Enter your email address first.", "error");
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: PASSWORD_RESET_REDIRECT });
-      if (error) return setStatus(error.message, true);
-      setStatus("Password reset email sent. Check your inbox.");
+      if (error) return setStatus(error.message, "error");
+      setStatus("Password reset email sent — check your inbox.", "success");
     });
 
-    document.getElementById("update-password").addEventListener("click", async () => {
-      const newPassword = newPasswordEl.value.trim();
-      const confirmPassword = confirmPasswordEl.value.trim();
-      if (!newPassword || !confirmPassword) return setStatus("Enter your new password twice.", true);
-      if (newPassword !== confirmPassword) return setStatus("Passwords do not match.", true);
-
+    $("update-password").addEventListener("click", async () => {
+      const newPassword = $("new-password").value.trim();
+      const confirmPassword = $("confirm-password").value.trim();
+      if (!newPassword || !confirmPassword) return setStatus("Enter your new password twice.", "error");
+      if (newPassword !== confirmPassword) return setStatus("Passwords don't match.", "error");
       const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) return setStatus(error.message, true);
-      setStatus("Password updated successfully. Redirecting to login...");
-      exitRecoveryMode();
-      setTimeout(() => {
-        window.location.href = "/account.html";
-      }, 1200);
+      if (error) return setStatus(error.message, "error");
+      setStatus("Password saved! Taking you to your account...", "success");
+      setTimeout(() => { window.location.href = "/account.html"; }, 1400);
     });
 
-    document.getElementById("load-keys").addEventListener("click", loadKeys);
-
-    refreshSession();
+    $("load-keys").addEventListener("click", loadKeys);
   </script>
 </body>
 </html>
