@@ -7,110 +7,302 @@
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    .admin-card {
-      background: rgba(30, 20, 51, 0.8);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(217, 70, 239, 0.3);
-      border-radius: 16px;
-      padding: 30px;
-      width: 100%;
-      max-width: 800px;
-      margin: 40px auto;
+    /* ── Reset & base ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ── Animations ──────────────────────────────────────────── */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #d946ef; }
-    .form-input {
-      width: 100%;
-      padding: 12px;
-      background: #0f0816;
-      border: 1px solid #2d1b4e;
-      border-radius: 8px;
-      color: white;
-      font-family: inherit;
+    @keyframes sidebarFade {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
-    .form-textarea { height: 120px; resize: vertical; }
-    .announcement-item {
-      background: #1a112e;
-      border: 1px solid #2d1b4e;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .announcement-info h4 { margin: 0; color: #06b6d4; }
-    .announcement-info p { margin: 5px 0 0; font-size: 0.9em; color: #a1a1aa; }
-    .badge {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.75em;
-      font-weight: bold;
-      margin-left: 10px;
-    }
-    .badge-critical { background: #ef4444; color: white; }
-    .badge-active { background: #22c55e; color: white; }
-    
-    input[type="radio"] {
-      accent-color: #22c55e;
+    @keyframes tabIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Tab Styles */
-    .nav-tabs {
+    /* ── Layout shell ────────────────────────────────────────── */
+    .admin-shell {
       display: flex;
-      gap: 10px;
-      margin-bottom: 30px;
-      border-bottom: 1px solid rgba(157, 78, 221, 0.2);
-      padding-bottom: 10px;
-      flex-wrap: wrap;
+      gap: 0;
+      min-height: calc(100vh - 100px);
+      max-width: 1200px;
+      margin: 32px auto 60px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(124,58,237,0.2);
+      box-shadow: 0 12px 60px rgba(0,0,0,0.5);
+      animation: fadeSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
     }
-    
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .admin-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: rgba(10,4,24,0.95);
+      border-right: 1px solid rgba(124,58,237,0.15);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 24px;
+      animation: sidebarFade 0.4s ease both;
+    }
+
+    .sidebar-brand {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid rgba(124,58,237,0.12);
+      margin-bottom: 16px;
+    }
+    .sidebar-brand h2 {
+      font-size: 1rem;
+      font-weight: 800;
+      margin: 0 0 2px;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sidebar-brand p {
+      font-size: 0.72rem;
+      color: #4b5563;
+      margin: 0;
+    }
+
+    .sidebar-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 12px 20px 6px;
+    }
+
     .nav-tab {
-      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
       background: transparent;
-      border: 1px solid #2d1b4e;
-      color: #a1a1aa;
-      border-radius: 8px;
+      border: none;
+      color: #6b7280;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.18s;
+      font-weight: 500;
+      font-size: 0.9rem;
+      font-family: inherit;
+      width: 100%;
+      text-align: left;
+      border-left: 3px solid transparent;
+      border-radius: 0;
+      position: relative;
+    }
+    .nav-tab .tab-icon { font-size: 1rem; flex-shrink: 0; }
+    .nav-tab .tab-label { flex: 1; }
+
+    .nav-tab:hover:not(.active) {
+      color: #a78bfa;
+      background: rgba(167,139,250,0.06);
+      border-left-color: rgba(167,139,250,0.3);
+    }
+    .nav-tab.active {
+      color: #e2e8f0;
+      background: rgba(124,58,237,0.12);
+      border-left-color: #a78bfa;
       font-weight: 600;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px 0;
+      border-top: 1px solid rgba(124,58,237,0.12);
+    }
+    .sidebar-footer a {
       display: flex;
       align-items: center;
       gap: 8px;
+      color: #22c55e;
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 600;
+      padding: 8px 0;
+      transition: opacity 0.15s;
     }
-    
-    .nav-tab.active {
-      background: linear-gradient(135deg, #d946ef, #06b6d4);
-      border-color: transparent;
-      color: white;
-      box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);
+    .sidebar-footer a:hover { opacity: 0.8; }
+
+    /* ── Main content area ───────────────────────────────────── */
+    .admin-main {
+      flex: 1;
+      background: rgba(15,5,30,0.92);
+      backdrop-filter: blur(16px);
+      overflow-y: auto;
     }
-    
-    .nav-tab:hover:not(.active) {
-      border-color: #d946ef;
-      color: #d946ef;
-      background: rgba(217, 70, 239, 0.05);
+
+    /* Status check area */
+    .admin-status-wrap {
+      padding: 40px;
     }
-    
+
+    /* Tab panels */
     .tab-content {
       display: none;
-      animation: fadeIn 0.3s ease-out;
+      padding: 36px 40px;
+      animation: tabIn 0.25s ease both;
     }
-    
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content.active { display: block; }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    /* Tab header */
+    .tab-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(124,58,237,0.15);
     }
-
-    .quick-links {
+    .tab-header h3 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin: 0 0 4px;
+      color: #e2e8f0;
+    }
+    .tab-header p {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin: 0;
+    }
+    .tab-header-row {
       display: flex;
-      gap: 15px;
-      margin-bottom: 30px;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
     }
+
+    /* ── Section cards (content grouping) ───────────────────── */
+    .admin-section {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .admin-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #7c3aed;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 0 0 16px;
+    }
+
+    /* ── Form elements ───────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(124,58,237,0.22);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: rgba(167,139,250,0.5);
+      box-shadow: 0 0 0 3px rgba(167,139,250,0.1);
+    }
+    select.form-input { cursor: pointer; }
+    .form-textarea { height: 110px; resize: vertical; }
+
+    input[type="radio"]   { accent-color: #22c55e; }
+    input[type="checkbox"] { accent-color: #a78bfa; cursor: pointer; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* ── Checkboxes inline ───────────────────────────────────── */
+    .check-row {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      padding: 10px 0;
+    }
+    .check-row label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      font-weight: 500;
+    }
+
+    /* ── List items (announcements, signups, users, licenses) ── */
+    .announcement-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      transition: border-color 0.18s;
+      animation: fadeSlideIn 0.28s ease both;
+    }
+    .announcement-item:hover { border-color: rgba(167,139,250,0.3); }
+    .announcement-info h4 { margin: 0 0 4px; color: #a78bfa; font-size: 0.95rem; }
+    .announcement-info p  { margin: 3px 0 0; font-size: 0.83rem; color: #6b7280; line-height: 1.5; }
+
+    /* ── Badges ──────────────────────────────────────────────── */
+    .badge {
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-left: 8px;
+      display: inline-block;
+    }
+    .badge-critical { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-active   { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+
+    /* ── Btn tweaks ──────────────────────────────────────────── */
+    .btn {
+      transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(124,58,237,0.25);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+
+    /* ── Responsive sidebar collapse ────────────────────────── */
+    @media (max-width: 720px) {
+      .admin-shell { flex-direction: column; border-radius: 14px; }
+      .admin-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 12px; border-right: none; border-bottom: 1px solid rgba(124,58,237,0.15); }
+      .sidebar-brand, .sidebar-section-label, .sidebar-footer { display: none; }
+      .nav-tab { width: auto; border-left: none; border-bottom: 3px solid transparent; border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; }
+      .nav-tab.active { border-bottom-color: #a78bfa; background: rgba(124,58,237,0.15); }
+      .tab-content { padding: 20px; }
+    }
+
+    .hidden { display: none !important; }
+    .auth-status { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -129,232 +321,285 @@
       </nav>
     </header>
 
-    <div class="admin-card">
-      <h2>Admin Dashboard</h2>
-      <p class="auth-subtitle">Manage system announcements and changelogs.</p>
-
+    <!-- Admin permission check (shown before content loads) -->
+    <div id="admin-status-wrap" class="admin-status-wrap">
       <div id="admin-status" class="auth-status">Checking permissions...</div>
+    </div>
 
-      <div id="admin-content" class="hidden">
-        <div class="auth-divider"></div>
-        
-        <!-- Quick Links -->
-        <div class="quick-links">
-          <a href="admin-usage.html" class="btn" style="background: linear-gradient(135deg, #22c55e, #06b6d4); font-size: 0.9rem; padding: 10px 20px;">
-            📊 View Token Usage Dashboard
-          </a>
+    <!-- Main shell (sidebar + content) -->
+    <div class="admin-shell hidden" id="admin-content">
+
+      <!-- ── Sidebar ──────────────────────────────────────────── -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-brand">
+          <h2>Admin Dashboard</h2>
+          <p>ViriTTS Control Panel</p>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="nav-tabs">
-          <button class="nav-tab active" data-tab="publish">🚀 Publish Update</button>
-          <button class="nav-tab" data-tab="announcements">📢 Announcements</button>
-          <button class="nav-tab" data-tab="ai-engine">🤖 AI Engine</button>
-          <button class="nav-tab" data-tab="licenses">🔑 Licenses</button>
-          <button class="nav-tab" data-tab="users">👥 Users</button>
-          <button class="nav-tab" data-tab="beta-signups">🧪 Beta Signups <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:2px 7px;font-size:0.75em;margin-left:4px;display:none;"></span></button>
-          <button class="nav-tab" data-tab="storage">☁️ Storage (R2)</button>
+        <span class="sidebar-section-label">Content</span>
+        <button class="nav-tab active" data-tab="publish">
+          <span class="tab-icon">🚀</span><span class="tab-label">Publish Update</span>
+        </button>
+        <button class="nav-tab" data-tab="announcements">
+          <span class="tab-icon">📢</span><span class="tab-label">Announcements</span>
+        </button>
+
+        <span class="sidebar-section-label">System</span>
+        <button class="nav-tab" data-tab="ai-engine">
+          <span class="tab-icon">🤖</span><span class="tab-label">AI Engine</span>
+        </button>
+        <button class="nav-tab" data-tab="storage">
+          <span class="tab-icon">☁️</span><span class="tab-label">Storage (R2)</span>
+        </button>
+
+        <span class="sidebar-section-label">Users</span>
+        <button class="nav-tab" data-tab="licenses">
+          <span class="tab-icon">🔑</span><span class="tab-label">Licenses</span>
+        </button>
+        <button class="nav-tab" data-tab="users">
+          <span class="tab-icon">👥</span><span class="tab-label">Users</span>
+        </button>
+        <button class="nav-tab" data-tab="beta-signups">
+          <span class="tab-icon">🧪</span>
+          <span class="tab-label">Beta Signups</span>
+          <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:1px 7px;font-size:0.72em;display:none;"></span>
+        </button>
+
+        <div class="sidebar-footer">
+          <a href="admin-usage.html">📊 Token Usage Dashboard</a>
+          <a href="account.html" style="color:#6b7280;">← Back to Account</a>
         </div>
+      </aside>
+
+      <!-- ── Tab content ──────────────────────────────────────── -->
+      <main class="admin-main">
 
         <!-- Tab: Publish Update -->
         <div class="tab-content active" id="tab-publish">
-          <h3>Published Versions</h3>
-          <p class="auth-helper">Select which version users should download. Only one version can be active at a time.</p>
-          
-          <div id="versions-list" style="margin-top: 20px;">
-            <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
-              Loading versions...
-            </div>
+          <div class="tab-header">
+            <h3>🚀 Publish Update</h3>
+            <p>Set which version users see and can download. Only one version is active at a time.</p>
+          </div>
+          <div id="versions-list">
+            <div style="text-align:center;padding:40px;color:#4b5563;">Loading versions...</div>
           </div>
         </div>
 
         <!-- Tab: Announcements -->
         <div class="tab-content" id="tab-announcements">
-          <h3>Create Manual Announcement</h3>
-          <p class="auth-helper">Post a notice without uploading a new file (for non-version announcements).</p>
-          
-          <div class="form-group">
-            <label>Version</label>
-            <input id="manual-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+          <div class="tab-header">
+            <h3>📢 Announcements</h3>
+            <p>Post notices and changelogs visible to all users.</p>
           </div>
-          <div class="form-group">
-            <label>Title</label>
-            <input id="manual-title" type="text" placeholder="Announcement Title" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Content</label>
-            <textarea id="manual-content" placeholder="Announcement content..." class="form-input form-textarea"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Download URL (Optional)</label>
-            <input id="manual-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
-          </div>
-          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
-            <label style="margin-bottom: 0;">
-              <input id="manual-critical" type="checkbox"> Critical
-            </label>
-            <label style="margin-bottom: 0;">
-              <input id="manual-active" type="checkbox" checked> Active
-            </label>
-          </div>
-          <button id="save-announcement" class="btn" style="margin-bottom: 30px; width: 100%;">Post Announcement</button>
 
-          <div class="auth-divider"></div>
-          <h3>Existing Announcements</h3>
-          <div id="announcements-list">Loading...</div>
+          <div class="admin-section">
+            <div class="admin-section-title">New Announcement</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Version</label>
+                <input id="manual-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Title</label>
+                <input id="manual-title" type="text" placeholder="Announcement Title" class="form-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Content</label>
+              <textarea id="manual-content" placeholder="Announcement content..." class="form-input form-textarea"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Download URL <span style="font-weight:400;text-transform:none;color:#4b5563;">(optional)</span></label>
+              <input id="manual-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
+            </div>
+            <div class="check-row">
+              <label><input id="manual-critical" type="checkbox"> Critical</label>
+              <label><input id="manual-active" type="checkbox" checked> Active</label>
+            </div>
+            <button id="save-announcement" class="btn" style="margin-top:12px;width:100%;">Post Announcement</button>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Existing Announcements</div>
+            <div id="announcements-list">Loading...</div>
+          </div>
         </div>
 
         <!-- Tab: AI Engine -->
         <div class="tab-content" id="tab-ai-engine">
-          <h3>Global Built-in AI Control</h3>
-          <p class="auth-helper">Switch the AI provider and model used by all 'Built-in AI' users instantly.</p>
-          <div class="form-group">
-            <label>Provider</label>
-            <select id="ai-provider" class="form-input">
-              <option value="openai">OpenAI</option>
-              <option value="grok">Grok (X.AI)</option>
-            </select>
+          <div class="tab-header">
+            <h3>🤖 AI Engine</h3>
+            <p>Switch the global AI provider and model for all Built-in AI users instantly.</p>
           </div>
-          <div class="form-group">
-            <label>Model</label>
-            <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
+          <div class="admin-section">
+            <div class="admin-section-title">Global Configuration</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Provider</label>
+                <select id="ai-provider" class="form-input">
+                  <option value="openai">OpenAI</option>
+                  <option value="grok">Grok (X.AI)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Model</label>
+                <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
+              </div>
+            </div>
+            <button id="update-ai-config" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;width:100%;margin-top:4px;">Update Global AI Engine</button>
           </div>
-          <button id="update-ai-config" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; width: 100%;">Update Global AI Engine</button>
         </div>
 
         <!-- Tab: Licenses -->
         <div class="tab-content" id="tab-licenses">
-          <h3>Generate Beta License Key</h3>
-          <p class="auth-helper">Create a new license key and assign it to a user's email.</p>
-          
-          <div class="form-group">
-            <label>User Email</label>
-            <input id="license-email" type="email" placeholder="user@example.com" class="form-input">
+          <div class="tab-header">
+            <h3>🔑 Licenses</h3>
+            <p>Generate and assign license keys to beta users.</p>
           </div>
-          <div class="form-group">
-            <label>License Key (Leave blank to auto-generate)</label>
-            <input id="license-key-input" type="text" placeholder="VIRI-BETA-XXXX-XXXX" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Duration (Days)</label>
-            <input id="license-duration" type="number" value="30" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Initial Status</label>
-            <select id="license-status-select" class="form-input">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-          
-          <div id="license-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
-          <button id="generate-license" class="btn" style="width: 100%; background: linear-gradient(135deg, #22c55e, #06b6d4);">🔑 Generate & Assign License</button>
 
-          <div class="auth-divider"></div>
-          <h3>Recent Licenses</h3>
-          <div id="admin-licenses-list">Loading...</div>
+          <div class="admin-section">
+            <div class="admin-section-title">Generate License Key</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>User Email</label>
+                <input id="license-email" type="email" placeholder="user@example.com" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Duration (Days)</label>
+                <input id="license-duration" type="number" value="30" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>License Key <span style="font-weight:400;text-transform:none;color:#4b5563;">(blank = auto-generate)</span></label>
+                <input id="license-key-input" type="text" placeholder="VIRI-BETA-XXXX-XXXX" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Initial Status</label>
+                <select id="license-status-select" class="form-input">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div id="license-status" style="margin-bottom:10px;font-size:0.88rem;"></div>
+            <button id="generate-license" class="btn" style="width:100%;background:linear-gradient(135deg,#22c55e,#06b6d4);">🔑 Generate & Assign License</button>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Recent Licenses</div>
+            <div id="admin-licenses-list">Loading...</div>
+          </div>
         </div>
 
         <!-- Tab: Users -->
         <div class="tab-content" id="tab-users">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
-            <div>
-              <h3 style="margin:0;">Users</h3>
-              <p class="auth-helper" style="margin:4px 0 0;">
-                View accounts and permanently delete a user (auth + related records).
-              </p>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <input id="users-search" class="form-input" type="text" placeholder="Search email..." style="width:240px; padding:8px 12px;" />
-              <button id="refresh-users" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 16px;">🔄 Refresh</button>
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>👥 Users</h3>
+                <p>View accounts. Delete a user to wipe auth + profile + licenses + usage records.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <input id="users-search" class="form-input" type="text" placeholder="Search by email..." style="width:220px;">
+                <button id="refresh-users" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
+              </div>
             </div>
           </div>
-          <div id="users-list" style="margin-top:16px;">
-            <div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading users...</div>
+          <div id="users-list">
+            <div style="text-align:center;padding:40px;color:#4b5563;">Loading users...</div>
           </div>
         </div>
 
         <!-- Tab: Beta Signups -->
         <div class="tab-content" id="tab-beta-signups">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
-            <div>
-              <h3 style="margin:0;">Beta Signups</h3>
-              <p class="auth-helper" style="margin:4px 0 0;">People who applied via the beta signup page. Approve to auto-generate a license key and send it to their email.</p>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <select id="beta-filter" class="form-input" style="width:auto; padding:8px 12px;">
-                <option value="all">All</option>
-                <option value="pending" selected>Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <button id="refresh-signups" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 16px;">🔄 Refresh</button>
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>🧪 Beta Signups</h3>
+                <p>Approve applicants to auto-generate a license key and email it to them.</p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <select id="beta-filter" class="form-input" style="width:auto;">
+                  <option value="all">All</option>
+                  <option value="pending" selected>Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button id="refresh-signups" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
+              </div>
             </div>
           </div>
-          <div id="beta-signups-list" style="margin-top:16px;">
-            <div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading signups...</div>
+          <div id="beta-signups-list">
+            <div style="text-align:center;padding:40px;color:#4b5563;">Loading signups...</div>
           </div>
         </div>
 
         <!-- Tab: Storage -->
         <div class="tab-content" id="tab-storage">
-          <h3>Cloudflare R2 Configuration</h3>
-          <p class="auth-helper">Enter your R2 credentials to enable file uploads and versioning.</p>
-          <div class="form-group">
-            <label>Account ID</label>
-            <input id="r2-account-id" type="text" placeholder="xxx..." class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Access Key ID</label>
-            <input id="r2-access-key" type="text" placeholder="xxx..." class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Secret Access Key</label>
-            <input id="r2-secret-key" type="password" placeholder="xxx..." class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Bucket Name</label>
-            <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Public Download URL (e.g. https://pub-xxx.r2.dev)</label>
-            <input id="r2-public-url" type="text" placeholder="https://..." class="form-input">
-          </div>
-          <button id="save-r2-config" class="btn btn-outline" style="border-color: #22c55e; color: #22c55e; width: 100%;">Save R2 Settings</button>
-
-          <div class="auth-divider"></div>
-
-          <h3>Upload New Version to R2</h3>
-          <p class="auth-helper">Upload a new .exe or .zip file to your R2 bucket.</p>
-          
-          <div class="form-group">
-            <label>Version</label>
-            <input id="upload-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Title</label>
-            <input id="upload-title" type="text" placeholder="Update Title" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Content / Changelog</label>
-            <textarea id="upload-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
-          </div>
-          
-          <div class="form-group" style="display: flex; gap: 20px; align-items: center;">
-            <label style="margin-bottom: 0;">
-              <input id="upload-critical" type="checkbox"> Critical Update
-            </label>
+          <div class="tab-header">
+            <h3>☁️ Storage (R2)</h3>
+            <p>Configure Cloudflare R2 credentials and upload new app versions.</p>
           </div>
 
-          <div class="form-group">
-            <label>Select Update File</label>
-            <input id="update-file" type="file" class="form-input">
+          <div class="admin-section">
+            <div class="admin-section-title">R2 Credentials</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Account ID</label>
+                <input id="r2-account-id" type="text" placeholder="xxx..." class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Bucket Name</label>
+                <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Access Key ID</label>
+                <input id="r2-access-key" type="text" placeholder="xxx..." class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Secret Access Key</label>
+                <input id="r2-secret-key" type="password" placeholder="xxx..." class="form-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Public Download URL</label>
+              <input id="r2-public-url" type="text" placeholder="https://pub-xxx.r2.dev" class="form-input">
+            </div>
+            <button id="save-r2-config" class="btn btn-outline" style="border-color:#22c55e;color:#22c55e;width:100%;margin-top:4px;">Save R2 Settings</button>
           </div>
-          
-          <div id="upload-status" style="margin-bottom: 15px; font-size: 0.9em;"></div>
-          <button id="upload-to-r2" class="btn" style="width: 100%; background: linear-gradient(135deg, #d946ef, #06b6d4);">☁️ Upload to R2 Storage</button>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Upload New Version</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Version</label>
+                <input id="upload-version" type="text" placeholder="e.g. 1.0.1" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Title</label>
+                <input id="upload-title" type="text" placeholder="Update Title" class="form-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Changelog / Content</label>
+              <textarea id="upload-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
+            </div>
+            <div class="check-row">
+              <label><input id="upload-critical" type="checkbox"> Critical Update</label>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Select File (.exe or .zip)</label>
+              <input id="update-file" type="file" class="form-input">
+            </div>
+            <div id="upload-status" style="margin:10px 0;font-size:0.88rem;"></div>
+            <button id="upload-to-r2" class="btn" style="width:100%;background:linear-gradient(135deg,#d946ef,#06b6d4);">☁️ Upload to R2</button>
+          </div>
         </div>
-      </div>
+
+      </main>
     </div>
   </div>
 
@@ -485,8 +730,8 @@
         }
 
         console.log("Admin access granted!");
-        statusEl.textContent = "✅ Admin Access Granted";
-        statusEl.className = "auth-status success";
+        // Hide the status wrap and reveal the main shell
+        document.getElementById("admin-status-wrap").classList.add("hidden");
         contentEl.classList.remove("hidden");
         
         loadAnnouncements();
@@ -761,14 +1006,17 @@
     // Tab switching logic
     document.querySelectorAll(".nav-tab").forEach(tab => {
       tab.addEventListener("click", () => {
-        // Remove active class from all tabs and contents
+        if (!tab.dataset.tab) return;
         document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-        
-        // Add active class to clicked tab and corresponding content
         tab.classList.add("active");
-        const tabId = `tab-${tab.dataset.tab}`;
-        document.getElementById(tabId).classList.add("active");
+        const tabEl = document.getElementById(`tab-${tab.dataset.tab}`);
+        if (!tabEl) return;
+        tabEl.classList.add("active");
+        // Re-trigger tab animation
+        tabEl.style.animation = "none";
+        void tabEl.offsetWidth;
+        tabEl.style.animation = "";
       });
     });
 
