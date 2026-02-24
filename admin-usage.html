@@ -9,199 +9,410 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3@3.454.0/dist-browser/index.js"></script>
   <style>
-    .admin-card {
-      background: rgba(30, 20, 51, 0.8);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(217, 70, 239, 0.3);
-      border-radius: 16px;
-      padding: 30px;
-      width: 100%;
-      max-width: 1200px;
-      margin: 40px auto;
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ── Animations ─────────────────────────────────────────── */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    
+    @keyframes sidebarFade {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes tabIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Shell layout ───────────────────────────────────────── */
+    .usage-shell {
+      display: flex;
+      gap: 0;
+      min-height: calc(100vh - 100px);
+      max-width: 1300px;
+      margin: 32px auto 60px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(124,58,237,0.2);
+      box-shadow: 0 12px 60px rgba(0,0,0,0.5);
+      animation: fadeSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .usage-sidebar {
+      width: 210px;
+      flex-shrink: 0;
+      background: rgba(10,4,24,0.97);
+      border-right: 1px solid rgba(124,58,237,0.15);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 24px;
+      animation: sidebarFade 0.4s ease both;
+    }
+    .sidebar-brand {
+      padding: 0 20px 22px;
+      border-bottom: 1px solid rgba(124,58,237,0.12);
+      margin-bottom: 14px;
+    }
+    .sidebar-brand h2 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin: 0 0 2px;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sidebar-brand p { font-size: 0.7rem; color: #4b5563; margin: 0; }
+
+    .sidebar-section-label {
+      font-size: 0.67rem;
+      font-weight: 700;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 12px 20px 5px;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-left: 3px solid transparent;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      font-family: inherit;
+      width: 100%;
+      text-align: left;
+      transition: all 0.18s;
+    }
+    .nav-tab:hover:not(.active) {
+      color: #a78bfa;
+      background: rgba(167,139,250,0.06);
+      border-left-color: rgba(167,139,250,0.3);
+    }
+    .nav-tab.active {
+      color: #e2e8f0;
+      background: rgba(124,58,237,0.12);
+      border-left-color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px 0;
+      border-top: 1px solid rgba(124,58,237,0.12);
+    }
+    .sidebar-footer a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #7c3aed;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 7px 0;
+      transition: opacity 0.15s;
+    }
+    .sidebar-footer a:hover { opacity: 0.75; }
+    .sidebar-footer a.green { color: #22c55e; }
+
+    /* ── Main content ─────────────────────────────────────────── */
+    .usage-main {
+      flex: 1;
+      background: rgba(15,5,30,0.92);
+      backdrop-filter: blur(16px);
+      overflow-y: auto;
+    }
+
+    /* Status wrap */
+    .usage-status-wrap { padding: 40px; }
+
+    /* Tab panels */
+    .tab-content {
+      display: none;
+      padding: 32px 36px;
+      animation: tabIn 0.25s ease both;
+    }
+    .tab-content.active { display: block; }
+
+    /* Tab header */
+    .tab-header {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(124,58,237,0.15);
+    }
+    .tab-header h3 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin: 0 0 4px;
+      color: #e2e8f0;
+    }
+    .tab-header p { font-size: 0.85rem; color: #6b7280; margin: 0; }
+    .tab-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    /* ── Date filter bar ────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 12px;
+    }
+    .filter-bar label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    .quick-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 7px;
+      color: #9ca3af;
+      padding: 6px 13px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .quick-btn:hover { border-color: #a78bfa; color: #a78bfa; background: rgba(167,139,250,0.07); }
+    .quick-btn.active { border-color: #a78bfa; color: #e2e8f0; background: rgba(124,58,237,0.18); font-weight: 600; }
+
+    .filter-sep { width: 1px; height: 22px; background: rgba(124,58,237,0.2); margin: 0 4px; flex-shrink: 0; }
+
+    .date-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 7px;
+      padding: 6px 10px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .date-input:focus { outline: none; border-color: rgba(167,139,250,0.5); }
+
+    /* old time-range select kept for JS compat */
+    #time-range { display: none; }
+
+    /* ── Stats grid ─────────────────────────────────────────── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
     }
-    
     .stat-card {
-      background: linear-gradient(135deg, #1a112e 0%, #0f0816 100%);
-      border: 1px solid #2d1b4e;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.18);
       border-radius: 12px;
-      padding: 20px;
+      padding: 18px 16px;
       text-align: center;
+      transition: border-color 0.2s, transform 0.15s;
+      animation: countUp 0.35s ease both;
     }
-    
+    .stat-card:hover { border-color: rgba(167,139,250,0.4); transform: translateY(-1px); }
     .stat-value {
-      font-size: 2rem;
+      font-size: 1.8rem;
       font-weight: 800;
       color: #06b6d4;
       margin: 0;
+      line-height: 1.1;
     }
-    
-    .stat-value.cost {
-      color: #22c55e;
-    }
-    
-    .stat-label {
-      color: #a1a1aa;
-      font-size: 0.9rem;
-      margin-top: 5px;
-    }
-    
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    
-    .data-table th,
-    .data-table td {
-      padding: 12px 15px;
-      text-align: left;
-      border-bottom: 1px solid #2d1b4e;
-    }
-    
-    .data-table th {
-      background: #1a112e;
-      color: #d946ef;
+    .stat-value.cost { color: #22c55e; }
+    .stat-delta {
+      font-size: 0.75rem;
       font-weight: 600;
-      position: sticky;
-      top: 0;
+      margin-top: 3px;
     }
-    
-    .data-table tr:hover {
-      background: rgba(217, 70, 239, 0.1);
+    .stat-delta.up   { color: #4ade80; }
+    .stat-delta.down { color: #f87171; }
+    .stat-delta.neutral { color: #6b7280; }
+    .stat-label { color: #6b7280; font-size: 0.8rem; margin-top: 5px; }
+
+    /* ── Section sub-card ───────────────────────────────────── */
+    .usage-section {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(124,58,237,0.13);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 18px;
     }
-    
-    .data-table td {
-      color: #e4e4e7;
+    .usage-section-title {
+      font-size: 0.77rem;
+      font-weight: 700;
+      color: #7c3aed;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 0 0 14px;
     }
-    
+
+    /* ── Charts ─────────────────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 860px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-box {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(124,58,237,0.13);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .chart-box h4 { margin: 0 0 14px; font-size: 0.88rem; color: #a78bfa; font-weight: 700; }
+    .chart-wrap { position: relative; height: 190px; }
+
+    /* ── Tables ─────────────────────────────────────────────── */
     .table-container {
       max-height: 400px;
       overflow-y: auto;
-      border: 1px solid #2d1b4e;
-      border-radius: 8px;
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 10px;
     }
-    
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td {
+      padding: 11px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(124,58,237,0.1);
+    }
+    .data-table th {
+      background: rgba(124,58,237,0.1);
+      color: #a78bfa;
+      font-weight: 700;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .data-table tr:hover td { background: rgba(167,139,250,0.05); }
+    .data-table td { color: #e2e8f0; font-size: 0.88rem; }
+
     .section-title {
-      color: #d946ef;
-      margin: 30px 0 15px;
-      font-size: 1.2rem;
+      color: #a78bfa;
+      margin: 0 0 14px;
+      font-size: 1rem;
+      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
-    
     .section-title::before {
       content: '';
-      width: 4px;
-      height: 20px;
-      background: linear-gradient(180deg, #d946ef, #06b6d4);
+      width: 3px; height: 16px;
+      background: linear-gradient(180deg, #a78bfa, #06b6d4);
       border-radius: 2px;
     }
-    
-    .date-filter {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    
-    .date-filter label {
-      color: #a1a1aa;
-    }
-    
-    .date-filter input,
-    .date-filter select {
-      background: #0f0816;
-      border: 1px solid #2d1b4e;
-      border-radius: 6px;
-      padding: 8px 12px;
-      color: white;
-      font-family: inherit;
-    }
-    
+
+    /* ── Misc ────────────────────────────────────────────────── */
     .license-key {
       font-family: monospace;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: #06b6d4;
-      max-width: 200px;
+      max-width: 180px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    
     .model-badge {
       display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.72rem;
       font-weight: 600;
-      background: rgba(6, 182, 212, 0.2);
+      background: rgba(6,182,212,0.15);
       color: #06b6d4;
+      border: 1px solid rgba(6,182,212,0.25);
     }
-    
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #a1a1aa;
-    }
-    
+    .loading { text-align: center; padding: 36px; color: #4b5563; font-size: 0.9rem; }
+
     .refresh-btn {
       background: transparent;
       border: 1px solid #06b6d4;
       color: #06b6d4;
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 7px 14px;
+      border-radius: 7px;
       cursor: pointer;
       font-family: inherit;
-      transition: all 0.2s;
+      font-size: 0.85rem;
+      transition: all 0.18s;
+      white-space: nowrap;
     }
-    
-    .refresh-btn:hover {
-      background: rgba(6, 182, 212, 0.2);
-    }
-    
-    .nav-tabs {
+    .refresh-btn:hover { background: rgba(6,182,212,0.12); }
+
+    /* btn tweaks */
+    .btn { transition: transform 0.15s, box-shadow 0.15s !important; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,58,237,0.25); }
+
+    /* Projection list */
+    .proj-list { list-style: none; margin: 0; padding: 0; }
+    .proj-list li {
       display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(124,58,237,0.1);
+      font-size: 0.88rem;
+      color: #9ca3af;
     }
-    
-    .nav-tab {
-      padding: 10px 20px;
-      background: transparent;
-      border: 1px solid #2d1b4e;
-      color: #a1a1aa;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
+    .proj-list li:last-child { border-bottom: none; }
+    .proj-list .proj-val { font-weight: 700; font-size: 0.95rem; }
+
+    /* Form inputs in pricing / plan settings */
+    .form-input-sm {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 7px;
+      padding: 7px 11px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: border-color 0.2s;
     }
-    
-    .nav-tab.active {
-      background: linear-gradient(135deg, #d946ef, #06b6d4);
-      border-color: transparent;
-      color: white;
+    .form-input-sm:focus { outline: none; border-color: rgba(167,139,250,0.5); }
+
+    /* Responsive */
+    @media (max-width: 720px) {
+      .usage-shell { flex-direction: column; border-radius: 14px; }
+      .usage-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 10px; border-right: none; border-bottom: 1px solid rgba(124,58,237,0.15); }
+      .sidebar-brand, .sidebar-section-label, .sidebar-footer { display: none; }
+      .nav-tab { width: auto; border-left: none; border-bottom: 3px solid transparent; border-radius: 8px; padding: 7px 12px; font-size: 0.8rem; }
+      .nav-tab.active { border-bottom-color: #a78bfa; background: rgba(124,58,237,0.15); }
+      .tab-content { padding: 18px; }
+      .chart-grid { grid-template-columns: 1fr; }
     }
-    
-    .nav-tab:hover:not(.active) {
-      border-color: #d946ef;
-      color: #d946ef;
-    }
-    
-    .tab-content {
-      display: none;
-    }
-    
-    .tab-content.active {
-      display: block;
-    }
+
+    .hidden { display: none !important; }
+    .auth-status { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -219,180 +430,246 @@
       </nav>
     </header>
 
-    <div class="admin-card">
-      <h2>Token Usage Dashboard</h2>
-      <p class="auth-subtitle">Monitor AI token usage and costs across all users.</p>
-
+    <!-- Status (shown while checking admin) -->
+    <div id="admin-status-wrap" class="usage-status-wrap">
       <div id="admin-status" class="auth-status">Checking permissions...</div>
+    </div>
 
-      <div id="admin-content" class="hidden">
-        <!-- Overview Stats -->
-        <div class="stats-grid" id="stats-grid">
-          <div class="stat-card">
-            <p class="stat-value" id="total-requests">-</p>
-            <p class="stat-label">Total Requests</p>
+    <!-- Hidden until admin confirmed -->
+    <div id="admin-content" class="usage-shell hidden">
+
+      <!-- ── Sidebar ── -->
+      <aside class="usage-sidebar">
+        <div class="sidebar-brand">
+          <h2>Usage Dashboard</h2>
+          <p>ViriTTS Analytics</p>
+        </div>
+
+        <span class="sidebar-section-label">Analytics</span>
+        <button class="nav-tab active" data-tab="overview">📊 Overview</button>
+        <button class="nav-tab" data-tab="revenue">💰 Revenue</button>
+        <button class="nav-tab" data-tab="users">👤 By User</button>
+        <button class="nav-tab" data-tab="daily">📅 Daily Breakdown</button>
+        <button class="nav-tab" data-tab="models">🤖 By Model</button>
+
+        <span class="sidebar-section-label" style="margin-top: 10px;">Settings</span>
+        <button class="nav-tab" data-tab="costs">💵 API Costs</button>
+        <button class="nav-tab" data-tab="pricing">⚙️ Pricing Config</button>
+
+        <div class="sidebar-footer">
+          <a href="admin.html">← Admin Dashboard</a>
+          <a href="#" id="sidebar-refresh" class="green">↻ Refresh All</a>
+        </div>
+      </aside>
+
+      <!-- ── Main ── -->
+      <main class="usage-main">
+
+        <!-- ═══════════════════════════════════════════════════
+             OVERVIEW TAB  (new – global top-level stats)
+        ══════════════════════════════════════════════════════ -->
+        <div class="tab-content active" id="tab-overview">
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>📊 Usage Overview</h3>
+                <p>Top-level metrics across all users and AI models.</p>
+              </div>
+              <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+            </div>
           </div>
-          <div class="stat-card">
-            <p class="stat-value" id="total-tokens">-</p>
-            <p class="stat-label">Total Tokens</p>
+
+          <!-- Date filter bar -->
+          <div class="filter-bar" id="filter-bar-overview">
+            <label>Range:</label>
+            <button class="quick-btn" data-range="today">Today</button>
+            <button class="quick-btn" data-range="yesterday">Yesterday</button>
+            <button class="quick-btn active" data-range="week">This Week</button>
+            <button class="quick-btn" data-range="last-week">Last Week</button>
+            <button class="quick-btn" data-range="month">This Month</button>
+            <button class="quick-btn" data-range="last-month">Last Month</button>
+            <button class="quick-btn" data-range="30d">Last 30 Days</button>
+            <button class="quick-btn" data-range="all">All Time</button>
+            <div class="filter-sep"></div>
+            <label>Custom:</label>
+            <input type="date" class="date-input" id="custom-start" title="Start date">
+            <span style="color:#4b5563; font-size:0.8rem;">–</span>
+            <input type="date" class="date-input" id="custom-end" title="End date">
+            <button class="quick-btn" id="apply-custom" style="border-color:#a78bfa; color:#a78bfa;">Apply</button>
+            <!-- hidden select keeps the JS logic working -->
+            <select id="time-range" style="display:none;">
+              <option value="today">Today</option>
+              <option value="week" selected>Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+              <option value="all">All Time</option>
+            </select>
           </div>
-          <div class="stat-card">
-            <p class="stat-value cost" id="total-cost">-</p>
-            <p class="stat-label">Total Cost (USD)</p>
+
+          <!-- Top stats -->
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+              <p class="stat-value" id="total-requests">-</p>
+              <p class="stat-delta neutral" id="delta-requests"></p>
+              <p class="stat-label">Total Requests</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-value" id="total-tokens">-</p>
+              <p class="stat-delta neutral" id="delta-tokens"></p>
+              <p class="stat-label">Total Tokens</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-value cost" id="total-cost">-</p>
+              <p class="stat-delta neutral" id="delta-cost"></p>
+              <p class="stat-label">Total Cost (USD)</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-value" id="active-users">-</p>
+              <p class="stat-delta neutral" id="delta-users"></p>
+              <p class="stat-label">Active Users</p>
+            </div>
           </div>
-          <div class="stat-card">
-            <p class="stat-value" id="active-users">-</p>
-            <p class="stat-label">Active Users</p>
+
+          <!-- Mini charts row -->
+          <div class="chart-grid">
+            <div class="chart-box">
+              <h4>📈 Daily Requests</h4>
+              <div class="chart-wrap"><canvas id="overviewDailyChart"></canvas></div>
+            </div>
+            <div class="chart-box">
+              <h4>🤖 Tokens by Model</h4>
+              <div class="chart-wrap"><canvas id="overviewModelChart"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Top users quick view -->
+          <div class="usage-section">
+            <p class="usage-section-title">Top Users by Token Usage</p>
+            <div class="table-container" style="max-height: 260px;">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Twitch Channel</th>
+                  <th>Requests</th>
+                  <th>Total Tokens</th>
+                  <th>Cost (USD)</th>
+                </tr></thead>
+                <tbody id="overview-top-users-body">
+                  <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- Date Filter -->
-        <div class="date-filter">
-          <label>Time Range:</label>
-          <select id="time-range">
-            <option value="today">Today</option>
-            <option value="week">Last 7 Days</option>
-            <option value="month" selected>Last 30 Days</option>
-            <option value="all">All Time</option>
-          </select>
-          <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
-        </div>
+        <!-- ═══════════════════════════════════════════════════
+             REVENUE TAB
+        ══════════════════════════════════════════════════════ -->
+        <div class="tab-content" id="tab-revenue">
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3 style="background: linear-gradient(135deg,#22c55e,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">💰 Business Metrics</h3>
+                <p>Revenue, costs, and profitability breakdown.</p>
+              </div>
+              <button class="refresh-btn" id="refresh-revenue" style="border-color:#22c55e; color:#22c55e;">↻ Refresh</button>
+            </div>
+          </div>
 
-        <!-- Tabs -->
-        <div class="nav-tabs">
-          <button class="nav-tab active" data-tab="revenue" style="border-color: #22c55e; color: #22c55e;">💰 Revenue</button>
-          <button class="nav-tab" data-tab="users">By User</button>
-          <button class="nav-tab" data-tab="daily">Daily Breakdown</button>
-          <button class="nav-tab" data-tab="models">By Model</button>
-          <button class="nav-tab" data-tab="costs" style="border-color: #06b6d4; color: #06b6d4;">API Costs</button>
-          <button class="nav-tab" data-tab="pricing" style="border-color: #f59e0b; color: #f59e0b;">Model Pricing</button>
-        </div>
-
-        <!-- Revenue Tab -->
-        <div class="tab-content active" id="tab-revenue">
-          <h3 class="section-title" style="color: #22c55e;">Monthly Business Metrics</h3>
-          
-          <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <label style="color: #a1a1aa;">Billing Month:</label>
-            <select id="revenue-month" style="background: #0f0816; border: 1px solid #22c55e; border-radius: 6px; padding: 8px 12px; color: white;">
+          <div class="filter-bar">
+            <label>Billing Month:</label>
+            <select id="revenue-month" class="date-input" style="width:auto;">
               <option value="0">Current Month</option>
             </select>
-            <button class="refresh-btn" id="refresh-revenue" style="border-color: #22c55e; color: #22c55e;">↻ Refresh</button>
-            <span id="billing-period-text" style="color: #a1a1aa; font-size: 0.9rem; margin-left: auto;"></span>
+            <span id="billing-period-text" style="color:#4b5563; font-size:0.8rem; margin-left:8px;"></span>
           </div>
 
-          <!-- Revenue Stats Row 1 -->
           <div class="stats-grid" id="revenue-stats">
-            <div class="stat-card" style="border-color: #22c55e;">
-              <p class="stat-value" id="active-subs" style="color: #22c55e;">-</p>
+            <div class="stat-card" style="border-color:#22c55e;">
+              <p class="stat-value" id="active-subs" style="color:#22c55e;">-</p>
               <p class="stat-label">Active Subscribers</p>
             </div>
-            <div class="stat-card" style="border-color: #22c55e;">
+            <div class="stat-card" style="border-color:#22c55e;">
               <p class="stat-value cost" id="gross-revenue">-</p>
               <p class="stat-label">Gross Revenue</p>
             </div>
-            <div class="stat-card" style="border-color: #ef4444;">
-              <p class="stat-value" id="api-costs" style="color: #ef4444;">-</p>
+            <div class="stat-card" style="border-color:#ef4444;">
+              <p class="stat-value" id="api-costs" style="color:#ef4444;">-</p>
               <p class="stat-label">API Costs</p>
             </div>
-            <div class="stat-card" style="border-color: #f59e0b;">
-              <p class="stat-value" id="tax-reserve" style="color: #f59e0b;">-</p>
+            <div class="stat-card" style="border-color:#f59e0b;">
+              <p class="stat-value" id="tax-reserve" style="color:#f59e0b;">-</p>
               <p class="stat-label">Tax Reserve (30%)</p>
             </div>
-          </div>
-
-          <!-- Revenue Stats Row 2 -->
-          <div class="stats-grid" style="margin-top: 20px;">
-            <div class="stat-card" style="border-color: #22c55e; background: linear-gradient(135deg, #0f2e1a 0%, #0f0816 100%);">
-              <p class="stat-value cost" id="net-profit" style="font-size: 1.8rem;">-</p>
+            <div class="stat-card" style="border-color:#22c55e; background: linear-gradient(135deg,rgba(34,197,94,0.07),transparent);">
+              <p class="stat-value cost" id="net-profit" style="font-size:1.6rem;">-</p>
               <p class="stat-label">Net Profit (After Tax)</p>
             </div>
-            <div class="stat-card" style="border-color: #8b5cf6;">
-              <p class="stat-value" id="profit-margin" style="color: #8b5cf6;">-</p>
+            <div class="stat-card" style="border-color:#8b5cf6;">
+              <p class="stat-value" id="profit-margin" style="color:#8b5cf6;">-</p>
               <p class="stat-label">Profit Margin</p>
             </div>
-            <div class="stat-card" style="border-color: #06b6d4;">
-              <p class="stat-value" id="cost-per-user" style="color: #06b6d4;">-</p>
-              <p class="stat-label">API Cost/User</p>
+            <div class="stat-card" style="border-color:#06b6d4;">
+              <p class="stat-value" id="cost-per-user" style="color:#06b6d4;">-</p>
+              <p class="stat-label">API Cost / User</p>
             </div>
-            <div class="stat-card" style="border-color: #f59e0b;">
-              <p class="stat-value" id="price-per-sub" style="color: #f59e0b;">-</p>
-              <p class="stat-label">Price/Sub</p>
-            </div>
-          </div>
-
-          <!-- Charts Section -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px;">
-            <!-- Revenue Breakdown Chart -->
-            <div style="background: rgba(15, 8, 22, 0.8); border: 1px solid #2d1b4e; border-radius: 12px; padding: 20px; height: 280px;">
-              <h4 style="color: #d946ef; margin: 0 0 15px 0;">💰 Revenue Breakdown</h4>
-              <div style="position: relative; height: 200px;">
-                <canvas id="revenueChart"></canvas>
-              </div>
-            </div>
-            
-            <!-- Daily Costs Chart -->
-            <div style="background: rgba(15, 8, 22, 0.8); border: 1px solid #2d1b4e; border-radius: 12px; padding: 20px; height: 280px;">
-              <h4 style="color: #06b6d4; margin: 0 0 15px 0;">📈 Daily API Costs</h4>
-              <div style="position: relative; height: 200px;">
-                <canvas id="dailyCostsChart"></canvas>
-              </div>
+            <div class="stat-card" style="border-color:#f59e0b;">
+              <p class="stat-value" id="price-per-sub" style="color:#f59e0b;">-</p>
+              <p class="stat-label">Price / Sub</p>
             </div>
           </div>
 
-          <!-- Model Costs Pie Chart -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-            <div style="background: rgba(15, 8, 22, 0.8); border: 1px solid #2d1b4e; border-radius: 12px; padding: 20px; height: 280px;">
-              <h4 style="color: #f59e0b; margin: 0 0 15px 0;">🤖 Cost by Model</h4>
-              <div style="position: relative; height: 200px;">
-                <canvas id="modelCostsChart"></canvas>
-              </div>
+          <div class="chart-grid">
+            <div class="chart-box">
+              <h4>💰 Revenue Breakdown</h4>
+              <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
             </div>
-            
-            <!-- Projection Summary -->
-            <div style="background: rgba(15, 8, 22, 0.8); border: 1px solid #2d1b4e; border-radius: 12px; padding: 20px; height: 280px;">
-              <h4 style="color: #22c55e; margin: 0 0 15px 0;">📊 Monthly Projection</h4>
-              <div id="projection-summary" style="color: #a1a1aa; font-size: 0.9rem;">
-                <p style="margin: 10px 0;"><span style="color: #22c55e;">●</span> Current Month Revenue: <span id="proj-revenue" style="color: #22c55e;">-</span></p>
-                <p style="margin: 10px 0;"><span style="color: #ef4444;">●</span> Projected API Costs: <span id="proj-costs" style="color: #ef4444;">-</span></p>
-                <p style="margin: 10px 0;"><span style="color: #f59e0b;">●</span> Tax Reserve (30%): <span id="proj-tax" style="color: #f59e0b;">-</span></p>
-                <p style="margin: 10px 0; padding-top: 10px; border-top: 1px solid #2d1b4e;"><span style="color: #22c55e;">●</span> <strong>Take Home:</strong> <span id="proj-takehome" style="color: #22c55e; font-size: 1.2rem; font-weight: bold;">-</span></p>
-                <p style="margin: 15px 0 0 0; font-size: 0.8rem; color: #6b7280;">Based on current daily average costs</p>
-              </div>
+            <div class="chart-box">
+              <h4 style="color:#06b6d4;">📈 Daily API Costs</h4>
+              <div class="chart-wrap"><canvas id="dailyCostsChart"></canvas></div>
             </div>
           </div>
 
-          <!-- Plan Settings -->
-          <div style="margin-top: 30px; padding: 20px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px;">
-            <h4 style="color: #22c55e; margin: 0 0 15px 0;">💡 Subscription Plan Settings</h4>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+          <div class="chart-grid">
+            <div class="chart-box">
+              <h4 style="color:#f59e0b;">🤖 Cost by Model</h4>
+              <div class="chart-wrap"><canvas id="modelCostsChart"></canvas></div>
+            </div>
+            <div class="chart-box">
+              <h4 style="color:#22c55e;">📊 Monthly Projection</h4>
+              <ul class="proj-list" id="projection-summary">
+                <li>Current Revenue <span class="proj-val" id="proj-revenue" style="color:#22c55e;">-</span></li>
+                <li>Projected API Costs <span class="proj-val" id="proj-costs" style="color:#ef4444;">-</span></li>
+                <li>Tax Reserve (30%) <span class="proj-val" id="proj-tax" style="color:#f59e0b;">-</span></li>
+                <li style="font-size:1rem; font-weight:700; color:#e2e8f0;">Take Home <span class="proj-val" id="proj-takehome" style="color:#22c55e; font-size:1.1rem;">-</span></li>
+              </ul>
+              <p style="margin: 10px 0 0; font-size:0.75rem; color:#4b5563;">Based on current daily average</p>
+            </div>
+          </div>
+
+          <!-- Plan settings -->
+          <div class="usage-section" style="border-color:rgba(34,197,94,0.25); background:rgba(34,197,94,0.04);">
+            <p class="usage-section-title" style="color:#22c55e;">💡 Subscription Plan Settings</p>
+            <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
               <div>
-                <label style="color: #a1a1aa; font-size: 0.85rem;">Plan Name</label>
-                <input type="text" id="plan-name" placeholder="ViriTTS Monthly" style="display: block; background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 180px; margin-top: 5px;">
+                <label style="display:block; color:#6b7280; font-size:0.78rem; margin-bottom:5px;">Plan Name</label>
+                <input type="text" id="plan-name" placeholder="ViriTTS Monthly" class="form-input-sm" style="width:180px;">
               </div>
               <div>
-                <label style="color: #a1a1aa; font-size: 0.85rem;">Monthly Price ($)</label>
-                <input type="number" id="plan-price" placeholder="9.99" step="0.01" style="display: block; background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px; margin-top: 5px;">
+                <label style="display:block; color:#6b7280; font-size:0.78rem; margin-bottom:5px;">Monthly Price ($)</label>
+                <input type="number" id="plan-price" placeholder="9.99" step="0.01" class="form-input-sm" style="width:110px;">
               </div>
-              <button class="refresh-btn" id="save-plan" style="border-color: #22c55e; color: #22c55e; margin-top: 20px;">💾 Update Plan</button>
+              <button class="refresh-btn btn" id="save-plan" style="border-color:#22c55e; color:#22c55e;">💾 Update Plan</button>
             </div>
-            <p id="plan-id" style="display: none;"></p>
+            <p id="plan-id" style="display:none;"></p>
           </div>
 
-          <!-- Daily Table -->
-          <div style="margin-top: 20px;">
-            <h4 style="color: #06b6d4; margin-bottom: 15px;">Daily API Costs This Month</h4>
-            <div class="table-container" style="max-height: 250px;">
+          <!-- Daily table -->
+          <div class="usage-section">
+            <p class="usage-section-title">Daily API Costs This Month</p>
+            <div class="table-container" style="max-height: 240px;">
               <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Requests</th>
-                    <th>Input Tokens</th>
-                    <th>Output Tokens</th>
-                    <th>Cost</th>
-                  </tr>
-                </thead>
+                <thead><tr>
+                  <th>Date</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th>
+                </tr></thead>
                 <tbody id="revenue-daily-body">
                   <tr><td colspan="5" class="loading">Loading...</td></tr>
                 </tbody>
@@ -401,21 +678,26 @@
           </div>
         </div>
 
-        <!-- User Usage Tab -->
+        <!-- ═══════════════════════════════════════════════════
+             BY USER TAB
+        ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-users">
-          <h3 class="section-title">Usage by User</h3>
+          <div class="tab-header">
+            <h3>👤 Usage by User</h3>
+            <p>Token consumption and cost per Twitch channel.</p>
+          </div>
+
+          <!-- Reuse the main filter bar values (overview) -->
           <div class="table-container">
             <table class="data-table" id="user-table">
-              <thead>
-                <tr>
-                  <th>Twitch Channel</th>
-                  <th>Requests</th>
-                  <th>Prompt Tokens</th>
-                  <th>Completion Tokens</th>
-                  <th>Total Tokens</th>
-                  <th>Cost (USD)</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Twitch Channel</th>
+                <th>Requests</th>
+                <th>Prompt Tokens</th>
+                <th>Completion Tokens</th>
+                <th>Total Tokens</th>
+                <th>Cost (USD)</th>
+              </tr></thead>
               <tbody id="user-table-body">
                 <tr><td colspan="6" class="loading">Loading...</td></tr>
               </tbody>
@@ -423,19 +705,41 @@
           </div>
         </div>
 
-        <!-- Daily Breakdown Tab -->
+        <!-- ═══════════════════════════════════════════════════
+             DAILY BREAKDOWN TAB
+        ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-daily">
-          <h3 class="section-title">Daily Breakdown</h3>
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>📅 Daily Breakdown</h3>
+                <p>Day-by-day usage across all users.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inline filter bar for daily tab -->
+          <div class="filter-bar" id="filter-bar-daily">
+            <label>Range:</label>
+            <button class="quick-btn daily-range active" data-range="week">This Week</button>
+            <button class="quick-btn daily-range" data-range="last-week">Last Week</button>
+            <button class="quick-btn daily-range" data-range="month">This Month</button>
+            <button class="quick-btn daily-range" data-range="last-month">Last Month</button>
+            <button class="quick-btn daily-range" data-range="30d">Last 30 Days</button>
+            <button class="quick-btn daily-range" data-range="all">All Time</button>
+            <div class="filter-sep"></div>
+            <label>Custom:</label>
+            <input type="date" class="date-input" id="daily-custom-start" title="Start">
+            <span style="color:#4b5563; font-size:0.8rem;">–</span>
+            <input type="date" class="date-input" id="daily-custom-end" title="End">
+            <button class="quick-btn" id="daily-apply-custom" style="border-color:#a78bfa; color:#a78bfa;">Apply</button>
+          </div>
+
           <div class="table-container">
             <table class="data-table" id="daily-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Requests</th>
-                  <th>Total Tokens</th>
-                  <th>Cost (USD)</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Date</th><th>Requests</th><th>Total Tokens</th><th>Cost (USD)</th>
+              </tr></thead>
               <tbody id="daily-table-body">
                 <tr><td colspan="4" class="loading">Loading...</td></tr>
               </tbody>
@@ -443,20 +747,19 @@
           </div>
         </div>
 
-        <!-- Model Usage Tab -->
+        <!-- ═══════════════════════════════════════════════════
+             BY MODEL TAB
+        ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-models">
-          <h3 class="section-title">Usage by Model</h3>
+          <div class="tab-header">
+            <h3>🤖 Usage by Model</h3>
+            <p>Token distribution and cost split across AI providers.</p>
+          </div>
           <div class="table-container">
             <table class="data-table" id="model-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Provider</th>
-                  <th>Requests</th>
-                  <th>Total Tokens</th>
-                  <th>Cost (USD)</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Model</th><th>Provider</th><th>Requests</th><th>Total Tokens</th><th>Cost (USD)</th>
+              </tr></thead>
               <tbody id="model-table-body">
                 <tr><td colspan="5" class="loading">Loading...</td></tr>
               </tbody>
@@ -464,96 +767,115 @@
           </div>
         </div>
 
-        <!-- API Costs Tab -->
+        <!-- ═══════════════════════════════════════════════════
+             API COSTS TAB
+        ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-costs">
-          <h3 class="section-title" style="color: #06b6d4;">API Cost Breakdown by Model</h3>
-          <p style="color: #a1a1aa; margin-bottom: 20px;">Real-time cost tracking from your VirAI application usage.</p>
-          
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3 style="color:#06b6d4;">💵 API Cost Breakdown</h3>
+                <p>Real-time cost tracking from your VirAI application usage.</p>
+              </div>
+              <button class="refresh-btn btn" id="refresh-costs" style="border-color:#06b6d4; color:#06b6d4;">↻ Refresh Costs</button>
+            </div>
+          </div>
+
           <div class="stats-grid" id="costs-stats">
-            <div class="stat-card" style="border-color: #06b6d4;">
-              <p class="stat-value" id="costs-total-tokens" style="color: #06b6d4;">-</p>
+            <div class="stat-card" style="border-color:#06b6d4;">
+              <p class="stat-value" id="costs-total-tokens" style="color:#06b6d4;">-</p>
               <p class="stat-label">Total Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #06b6d4;">
-              <p class="stat-value" id="costs-input-tokens" style="color: #06b6d4;">-</p>
+            <div class="stat-card" style="border-color:#06b6d4;">
+              <p class="stat-value" id="costs-input-tokens" style="color:#06b6d4;">-</p>
               <p class="stat-label">Input Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #06b6d4;">
-              <p class="stat-value" id="costs-output-tokens" style="color: #06b6d4;">-</p>
+            <div class="stat-card" style="border-color:#06b6d4;">
+              <p class="stat-value" id="costs-output-tokens" style="color:#06b6d4;">-</p>
               <p class="stat-label">Output Tokens</p>
             </div>
-            <div class="stat-card" style="border-color: #ef4444;">
-              <p class="stat-value" id="costs-total-cost" style="color: #ef4444;">-</p>
+            <div class="stat-card" style="border-color:#ef4444;">
+              <p class="stat-value" id="costs-total-cost" style="color:#ef4444;">-</p>
               <p class="stat-label">Total Cost (MTD)</p>
             </div>
           </div>
 
-          <div style="margin: 20px 0;">
-            <button class="refresh-btn" id="refresh-costs" style="border-color: #06b6d4; color: #06b6d4;">↻ Refresh Costs</button>
-            <span id="costs-period" style="margin-left: 15px; color: #a1a1aa; font-size: 0.9rem;"></span>
+          <span id="costs-period" style="color:#4b5563; font-size:0.8rem;"></span>
+
+          <div class="usage-section" style="margin-top:18px;">
+            <p class="usage-section-title">Cost by Model</p>
+            <div class="table-container">
+              <table class="data-table" id="costs-table">
+                <thead><tr>
+                  <th>Model</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th>
+                </tr></thead>
+                <tbody id="costs-table-body">
+                  <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <h4 style="color: #06b6d4; margin: 20px 0 10px;">Cost by Model</h4>
-          <div class="table-container">
-            <table class="data-table" id="costs-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Requests</th>
-                  <th>Input Tokens</th>
-                  <th>Output Tokens</th>
-                  <th>Cost</th>
-                </tr>
-              </thead>
-              <tbody id="costs-table-body">
-                <tr><td colspan="5" class="loading">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <div id="costs-error" style="display: none; margin-top: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444;"></div>
+          <div id="costs-error" style="display:none; margin-top:16px; padding:14px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:10px; color:#f87171; font-size:0.85rem;"></div>
         </div>
 
-        <!-- Model Pricing Tab -->
+        <!-- ═══════════════════════════════════════════════════
+             PRICING CONFIG TAB
+        ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-pricing">
-          <h3 class="section-title" style="color: #f59e0b;">Model Pricing Configuration</h3>
-          <p style="color: #a1a1aa; margin-bottom: 20px;">Update costs per 1M tokens. Changes affect cost calculations in usage tracking.</p>
-          
-          <div style="margin-bottom: 20px;">
-            <button class="refresh-btn" id="refresh-pricing" style="border-color: #f59e0b; color: #f59e0b;">↻ Refresh Pricing</button>
-            <button class="refresh-btn" id="save-pricing" style="border-color: #22c55e; color: #22c55e; margin-left: 10px;">💾 Save Changes</button>
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3 style="color:#f59e0b;">⚙️ Pricing Configuration</h3>
+                <p>Update costs per 1M tokens. Changes affect cost calculations globally.</p>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="refresh-btn btn" id="refresh-pricing" style="border-color:#f59e0b; color:#f59e0b;">↻ Refresh</button>
+                <button class="refresh-btn btn" id="save-pricing" style="border-color:#22c55e; color:#22c55e;">💾 Save All</button>
+              </div>
+            </div>
           </div>
 
-          <div class="table-container" style="max-height: 500px;">
+          <div class="table-container" style="max-height:460px;">
             <table class="data-table" id="pricing-table">
-              <thead>
-                <tr>
-                  <th>Provider</th>
-                  <th>Model</th>
-                  <th>Input Cost (per 1M tokens)</th>
-                  <th>Output Cost (per 1M tokens)</th>
-                  <th>Last Updated</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Provider</th><th>Model</th>
+                <th>Input (per 1M tokens)</th>
+                <th>Output (per 1M tokens)</th>
+                <th>Last Updated</th>
+              </tr></thead>
               <tbody id="pricing-table-body">
                 <tr><td colspan="5" class="loading">Loading...</td></tr>
               </tbody>
             </table>
           </div>
 
-          <div style="margin-top: 20px; padding: 15px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px;">
-            <p style="color: #f59e0b; margin: 0; font-weight: 600;">Add New Model</p>
-            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-              <input type="text" id="new-provider" placeholder="Provider (e.g., openai)" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 120px;">
-              <input type="text" id="new-model" placeholder="Model name" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 180px;">
-              <input type="number" id="new-input-cost" placeholder="Input $" step="0.001" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px;">
-              <input type="number" id="new-output-cost" placeholder="Output $" step="0.001" style="background: #0f0816; border: 1px solid #2d1b4e; border-radius: 6px; padding: 8px 12px; color: white; width: 100px;">
-              <button class="refresh-btn" id="add-model" style="border-color: #22c55e; color: #22c55e;">+ Add</button>
+          <div class="usage-section" style="margin-top:18px; border-color:rgba(245,158,11,0.25); background:rgba(245,158,11,0.04);">
+            <p class="usage-section-title" style="color:#f59e0b;">Add New Model</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+              <div>
+                <label style="display:block; color:#6b7280; font-size:0.75rem; margin-bottom:4px;">Provider</label>
+                <input type="text" id="new-provider" placeholder="e.g. openai" class="form-input-sm" style="width:120px;">
+              </div>
+              <div>
+                <label style="display:block; color:#6b7280; font-size:0.75rem; margin-bottom:4px;">Model name</label>
+                <input type="text" id="new-model" placeholder="gpt-4o" class="form-input-sm" style="width:190px;">
+              </div>
+              <div>
+                <label style="display:block; color:#6b7280; font-size:0.75rem; margin-bottom:4px;">Input $ / 1M</label>
+                <input type="number" id="new-input-cost" placeholder="0.00" step="0.001" class="form-input-sm" style="width:100px;">
+              </div>
+              <div>
+                <label style="display:block; color:#6b7280; font-size:0.75rem; margin-bottom:4px;">Output $ / 1M</label>
+                <input type="number" id="new-output-cost" placeholder="0.00" step="0.001" class="form-input-sm" style="width:100px;">
+              </div>
+              <button class="refresh-btn btn" id="add-model" style="border-color:#22c55e; color:#22c55e;">+ Add Model</button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
+      </main>
+    </div><!-- /usage-shell -->
   </div>
 
   <script type="module">
@@ -563,22 +885,17 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const statusEl = document.getElementById("admin-status");
+    const statusEl  = document.getElementById("admin-status");
     const contentEl = document.getElementById("admin-content");
+    const statusWrap = document.getElementById("admin-status-wrap");
 
-    // Check admin access
+    // ─── Admin check ──────────────────────────────────────────────────────────
     async function checkAdmin() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = "account.html";
-        return false;
-      }
+      if (!user) { window.location.href = "account.html"; return false; }
 
       const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
+        .from("profiles").select("is_admin").eq("id", user.id).single();
 
       if (error || !profile?.is_admin) {
         statusEl.textContent = "Access Denied: You are not an admin.";
@@ -586,36 +903,147 @@
         return false;
       }
 
-      statusEl.textContent = "Welcome, Admin.";
-      statusEl.className = "auth-status success";
+      statusWrap.classList.add("hidden");
       contentEl.classList.remove("hidden");
       return true;
     }
 
-    // Get date filter
-    function getDateFilter() {
-      const range = document.getElementById("time-range").value;
-      const now = new Date();
-      let startDate;
+    // ─── Date-range helpers ───────────────────────────────────────────────────
+    // Global active range state
+    let activeRange   = "week";
+    let customStart   = null;   // ISO string or null
+    let customEnd     = null;   // ISO string or null
+
+    // Daily-tab independent range
+    let dailyRange    = "week";
+    let dailyCustomS  = null;
+    let dailyCustomE  = null;
+
+    function rangeToFilter(range, cStart = null, cEnd = null) {
+      const now  = new Date();
+      const ymd  = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+      if (range === "custom" && cStart) {
+        const start = new Date(cStart + "T00:00:00");
+        const end   = cEnd ? new Date(cEnd + "T23:59:59") : new Date();
+        return { startIso: start.toISOString(), endIso: end.toISOString() };
+      }
+
+      let startDate, endDate = null;
 
       switch (range) {
         case "today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          startDate = ymd(now);
           break;
-        case "week":
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "yesterday": {
+          const y = new Date(now); y.setDate(y.getDate() - 1);
+          startDate = ymd(y);
+          endDate   = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999);
           break;
+        }
+        case "week": {
+          const dow = now.getDay();
+          startDate = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow));
+          break;
+        }
+        case "last-week": {
+          const dow = now.getDay();
+          const endOfLastWeek   = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow - 1, 23, 59, 59);
+          const startOfLastWeek = new Date(endOfLastWeek.getFullYear(), endOfLastWeek.getMonth(), endOfLastWeek.getDate() - 6);
+          startDate = startOfLastWeek;
+          endDate   = endOfLastWeek;
+          break;
+        }
         case "month":
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case "last-month": {
+          const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          startDate = lm;
+          endDate   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+          break;
+        }
+        case "30d":
+          startDate = new Date(now.getTime() - 30 * 86400 * 1000);
           break;
         case "all":
         default:
-          return null;
+          return { startIso: null, endIso: null };
       }
 
-      return startDate.toISOString();
+      return {
+        startIso: startDate ? startDate.toISOString() : null,
+        endIso:   endDate   ? endDate.toISOString()   : null
+      };
     }
 
+    function getDateFilter() {
+      // Returns startIso (or null for "all")
+      const { startIso } = rangeToFilter(activeRange, customStart, customEnd);
+      return startIso;
+    }
+
+    function getDateFilterFull() {
+      return rangeToFilter(activeRange, customStart, customEnd);
+    }
+
+    function getDailyFilter() {
+      return rangeToFilter(dailyRange, dailyCustomS, dailyCustomE);
+    }
+
+    // ─── Quick-filter button wiring ───────────────────────────────────────────
+    function setupQuickFilters() {
+      // Overview quick buttons
+      document.querySelectorAll("#filter-bar-overview .quick-btn[data-range]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (btn.id === "apply-custom") return;
+          activeRange  = btn.dataset.range;
+          customStart  = null;
+          customEnd    = null;
+          document.querySelectorAll("#filter-bar-overview .quick-btn[data-range]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          loadAllDataForRange();
+        });
+      });
+
+      document.getElementById("apply-custom").addEventListener("click", () => {
+        const s = document.getElementById("custom-start").value;
+        const e = document.getElementById("custom-end").value;
+        if (!s) return;
+        activeRange = "custom";
+        customStart = s;
+        customEnd   = e || null;
+        document.querySelectorAll("#filter-bar-overview .quick-btn[data-range]").forEach(b => b.classList.remove("active"));
+        document.getElementById("apply-custom").classList.add("active");
+        loadAllDataForRange();
+      });
+
+      // Daily tab quick buttons
+      document.querySelectorAll(".daily-range").forEach(btn => {
+        btn.addEventListener("click", () => {
+          dailyRange   = btn.dataset.range;
+          dailyCustomS = null;
+          dailyCustomE = null;
+          document.querySelectorAll(".daily-range").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          loadDailyUsage();
+        });
+      });
+
+      document.getElementById("daily-apply-custom").addEventListener("click", () => {
+        const s = document.getElementById("daily-custom-start").value;
+        const e = document.getElementById("daily-custom-end").value;
+        if (!s) return;
+        dailyRange   = "custom";
+        dailyCustomS = s;
+        dailyCustomE = e || null;
+        document.querySelectorAll(".daily-range").forEach(b => b.classList.remove("active"));
+        document.getElementById("daily-apply-custom").classList.add("active");
+        loadDailyUsage();
+      });
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
     function asNumber(value, fallback = 0) {
       const n = Number(value);
       return Number.isFinite(n) ? n : fallback;
@@ -625,13 +1053,12 @@
       return String((row?.twitch_channel || row?.twitch_username || "")).trim();
     }
 
-    async function fetchTokenUsageRows(dateFilter) {
+    async function fetchTokenUsageRows(startIso = null, endIso = null) {
       let query = supabase
         .from("token_usage")
         .select("created_at,license_key,twitch_channel,twitch_username,provider,model,prompt_tokens,completion_tokens,cost_usd");
-      if (dateFilter) {
-        query = query.gte("created_at", dateFilter);
-      }
+      if (startIso) query = query.gte("created_at", startIso);
+      if (endIso)   query = query.lte("created_at", endIso);
       const { data, error } = await query;
       if (error) throw error;
       return Array.isArray(data) ? data : [];
@@ -640,174 +1067,173 @@
     function monthRangeIso(monthsAgo = 0) {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1, 0, 0, 0, 0);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59, 999);
+      const monthEnd   = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59, 999);
       return { startIso: monthStart.toISOString(), endIso: monthEnd.toISOString(), monthStart, monthEnd };
     }
 
-    // Load overview stats
+    // ─── Overview / stats ─────────────────────────────────────────────────────
     async function loadStats() {
-      const dateFilter = getDateFilter();
-
+      const { startIso, endIso } = getDateFilterFull();
       let data = [];
-      try {
-        data = await fetchTokenUsageRows(dateFilter);
-      } catch (error) {
-        console.error("Error loading stats:", error);
-      }
+      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      catch (e) { console.error("Error loading stats:", e); }
 
       const totalRequests = data.length;
-      const totalTokens = data.reduce((sum, r) => sum + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens), 0);
-      const totalCost = data.reduce((sum, r) => sum + asNumber(r.cost_usd), 0);
-      const uniqueUsers = new Set(data.map(r => String(r.license_key || "").trim()).filter(Boolean)).size;
+      const totalTokens   = data.reduce((s, r) => s + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens), 0);
+      const totalCost     = data.reduce((s, r) => s + asNumber(r.cost_usd), 0);
+      const uniqueUsers   = new Set(data.map(r => String(r.license_key || "").trim()).filter(Boolean)).size;
 
       document.getElementById("total-requests").textContent = totalRequests.toLocaleString();
-      document.getElementById("total-tokens").textContent = totalTokens.toLocaleString();
-      document.getElementById("total-cost").textContent = "$" + totalCost.toFixed(4);
-      document.getElementById("active-users").textContent = uniqueUsers;
+      document.getElementById("total-tokens").textContent   = totalTokens.toLocaleString();
+      document.getElementById("total-cost").textContent     = "$" + totalCost.toFixed(4);
+      document.getElementById("active-users").textContent   = uniqueUsers;
+
+      // Overview top-users mini table
+      const userStats = aggregateByUser(data);
+      const topUsers  = Object.values(userStats).sort((a, b) => b.tokens - a.tokens).slice(0, 10);
+      const topBody   = document.getElementById("overview-top-users-body");
+      if (!topUsers.length) {
+        topBody.innerHTML = `<tr><td colspan="4" class="loading">No data for selected range.</td></tr>`;
+      } else {
+        topBody.innerHTML = topUsers.map(u => `
+          <tr>
+            <td>${u.twitch
+              ? `<a href="https://twitch.tv/${u.twitch}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch}</a>`
+              : `<span class="license-key" title="${u.license}">${u.license.substring(0,15)}…</span>`
+            }</td>
+            <td>${u.requests.toLocaleString()}</td>
+            <td>${u.tokens.toLocaleString()}</td>
+            <td>$${u.cost.toFixed(4)}</td>
+          </tr>`).join("");
+      }
+
+      // Mini charts
+      buildOverviewDailyChart(data);
+      buildOverviewModelChart(data);
     }
 
-    // Load user usage table
+    function aggregateByUser(data) {
+      const m = {};
+      data.forEach(row => {
+        const twitch  = getTwitchName(row);
+        const license = String(row.license_key || "").trim();
+        const key     = twitch || license;
+        if (!key) return;
+        if (!m[key]) m[key] = { twitch, license, requests: 0, tokens: 0, cost: 0 };
+        m[key].requests++;
+        m[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
+        m[key].cost   += asNumber(row.cost_usd);
+      });
+      return m;
+    }
+
+    // ─── User usage table ─────────────────────────────────────────────────────
     async function loadUserUsage() {
-      const dateFilter = getDateFilter();
+      const { startIso, endIso } = getDateFilterFull();
       const tbody = document.getElementById("user-table-body");
-
       let data = [];
-      try {
-        data = await fetchTokenUsageRows(dateFilter);
-      } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="6">Error loading data: ${error.message}</td></tr>`;
-        return;
-      }
+      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      catch (e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; return; }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`;
-        return;
-      }
+      if (!data.length) { tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`; return; }
 
-      // Aggregate by user (using twitch_channel as primary, fallback to license_key)
       const userStats = {};
       data.forEach(row => {
-        const twitch = getTwitchName(row);
+        const twitch  = getTwitchName(row);
         const license = String(row.license_key || "").trim();
-        const key = twitch || license; // Prefer twitch name
+        const key     = twitch || license;
         if (!key) return;
-        if (!userStats[key]) {
-          userStats[key] = { twitch: twitch, license: license, requests: 0, prompt: 0, completion: 0, cost: 0 };
-        }
+        if (!userStats[key]) userStats[key] = { twitch, license, requests: 0, prompt: 0, completion: 0, cost: 0 };
         userStats[key].requests++;
-        userStats[key].prompt += asNumber(row.prompt_tokens);
+        userStats[key].prompt     += asNumber(row.prompt_tokens);
         userStats[key].completion += asNumber(row.completion_tokens);
-        userStats[key].cost += asNumber(row.cost_usd);
+        userStats[key].cost       += asNumber(row.cost_usd);
       });
 
-      // Sort by cost descending
       const sorted = Object.entries(userStats).sort((a, b) => b[1].cost - a[1].cost);
-
-      tbody.innerHTML = sorted.map(([key, stats]) => `
+      tbody.innerHTML = sorted.map(([, s]) => `
         <tr>
-          <td>
-            ${stats.twitch 
-              ? `<a href="https://twitch.tv/${stats.twitch}" target="_blank" style="color: #9146FF; text-decoration: none; font-weight: 600;">📺 ${stats.twitch}</a>` 
-              : `<span class="license-key" title="${stats.license}">${stats.license.substring(0, 15)}...</span>`
-            }
-          </td>
-          <td>${stats.requests.toLocaleString()}</td>
-          <td>${stats.prompt.toLocaleString()}</td>
-          <td>${stats.completion.toLocaleString()}</td>
-          <td>${(stats.prompt + stats.completion).toLocaleString()}</td>
-          <td>$${stats.cost.toFixed(4)}</td>
-        </tr>
-      `).join("");
+          <td>${s.twitch
+            ? `<a href="https://twitch.tv/${s.twitch}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${s.twitch}</a>`
+            : `<span class="license-key" title="${s.license}">${s.license.substring(0,15)}…</span>`
+          }</td>
+          <td>${s.requests.toLocaleString()}</td>
+          <td>${s.prompt.toLocaleString()}</td>
+          <td>${s.completion.toLocaleString()}</td>
+          <td>${(s.prompt + s.completion).toLocaleString()}</td>
+          <td>$${s.cost.toFixed(4)}</td>
+        </tr>`).join("");
     }
 
-    // Load daily breakdown
+    // ─── Daily breakdown (independent filter) ────────────────────────────────
     async function loadDailyUsage() {
-      const dateFilter = getDateFilter();
+      const { startIso, endIso } = getDailyFilter();
       const tbody = document.getElementById("daily-table-body");
-
       let data = [];
-      try {
-        data = await fetchTokenUsageRows(dateFilter);
-      } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error loading data: ${error.message}</td></tr>`;
-        return;
-      }
+      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      catch (e) { tbody.innerHTML = `<tr><td colspan="4">Error: ${e.message}</td></tr>`; return; }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4">No usage data found.</td></tr>`;
-        return;
-      }
+      if (!data.length) { tbody.innerHTML = `<tr><td colspan="4">No usage data found.</td></tr>`; return; }
 
-      // Aggregate by date
       const dailyStats = {};
       data.forEach(row => {
-        const date = new Date(row.created_at).toISOString().split('T')[0];
-        if (!dailyStats[date]) {
-          dailyStats[date] = { requests: 0, tokens: 0, cost: 0 };
-        }
+        const date = new Date(row.created_at).toISOString().split("T")[0];
+        if (!dailyStats[date]) dailyStats[date] = { requests: 0, tokens: 0, cost: 0 };
         dailyStats[date].requests++;
         dailyStats[date].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        dailyStats[date].cost += asNumber(row.cost_usd);
+        dailyStats[date].cost   += asNumber(row.cost_usd);
       });
 
-      // Sort by date descending
       const sorted = Object.entries(dailyStats).sort((a, b) => b[0].localeCompare(a[0]));
-
-      tbody.innerHTML = sorted.map(([date, stats]) => `
+      tbody.innerHTML = sorted.map(([date, s]) => `
         <tr>
           <td>${date}</td>
-          <td>${stats.requests.toLocaleString()}</td>
-          <td>${stats.tokens.toLocaleString()}</td>
-          <td>$${stats.cost.toFixed(4)}</td>
-        </tr>
-      `).join("");
+          <td>${s.requests.toLocaleString()}</td>
+          <td>${s.tokens.toLocaleString()}</td>
+          <td>$${s.cost.toFixed(4)}</td>
+        </tr>`).join("");
     }
 
-    // Load model usage
+    // ─── Model usage ──────────────────────────────────────────────────────────
     async function loadModelUsage() {
-      const dateFilter = getDateFilter();
+      const { startIso, endIso } = getDateFilterFull();
       const tbody = document.getElementById("model-table-body");
-
       let data = [];
-      try {
-        data = await fetchTokenUsageRows(dateFilter);
-      } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading data: ${error.message}</td></tr>`;
-        return;
-      }
+      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      catch (e) { tbody.innerHTML = `<tr><td colspan="5">Error: ${e.message}</td></tr>`; return; }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`;
-        return;
-      }
+      if (!data.length) { tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`; return; }
 
-      // Aggregate by model
       const modelStats = {};
       data.forEach(row => {
         const key = `${row.provider}|${row.model}`;
-        if (!modelStats[key]) {
-          modelStats[key] = { provider: row.provider, model: row.model, requests: 0, tokens: 0, cost: 0 };
-        }
+        if (!modelStats[key]) modelStats[key] = { provider: row.provider, model: row.model, requests: 0, tokens: 0, cost: 0 };
         modelStats[key].requests++;
         modelStats[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        modelStats[key].cost += asNumber(row.cost_usd);
+        modelStats[key].cost   += asNumber(row.cost_usd);
       });
 
-      // Sort by requests descending
       const sorted = Object.values(modelStats).sort((a, b) => b.requests - a.requests);
-
-      tbody.innerHTML = sorted.map(stats => `
+      tbody.innerHTML = sorted.map(s => `
         <tr>
-          <td><span class="model-badge">${stats.model}</span></td>
-          <td>${stats.provider}</td>
-          <td>${stats.requests.toLocaleString()}</td>
-          <td>${stats.tokens.toLocaleString()}</td>
-          <td>$${stats.cost.toFixed(4)}</td>
-        </tr>
-      `).join("");
+          <td><span class="model-badge">${s.model}</span></td>
+          <td>${s.provider}</td>
+          <td>${s.requests.toLocaleString()}</td>
+          <td>${s.tokens.toLocaleString()}</td>
+          <td>$${s.cost.toFixed(4)}</td>
+        </tr>`).join("");
     }
 
-    // Load all data
+    // ─── Load everything for the current global range ────────────────────────
+    async function loadAllDataForRange() {
+      await Promise.all([
+        loadStats(),
+        loadUserUsage(),
+        loadModelUsage(),
+        loadRevenue()
+      ]);
+    }
+
     async function loadAllData() {
       await Promise.all([
         loadStats(),
@@ -819,10 +1245,84 @@
       ]);
     }
 
-    // Chart instances (for cleanup)
-    let revenueChart = null;
-    let dailyCostsChart = null;
-    let modelCostsChart = null;
+    // ─── Chart instances ──────────────────────────────────────────────────────
+    let revenueChart      = null;
+    let dailyCostsChart   = null;
+    let modelCostsChart   = null;
+    let overviewDailyChart = null;
+    let overviewModelChart = null;
+
+    const CHART_COLORS = ['#d946ef','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#a78bfa'];
+
+    function chartDefaults() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#6b7280' }, grid: { color: 'rgba(124,58,237,0.1)' } },
+          x: { ticks: { color: '#6b7280', maxRotation: 40 }, grid: { display: false } }
+        }
+      };
+    }
+
+    // Overview – daily request line chart
+    function buildOverviewDailyChart(data) {
+      const ctx = document.getElementById("overviewDailyChart");
+      if (!ctx) return;
+      if (overviewDailyChart) overviewDailyChart.destroy();
+
+      const dayMap = {};
+      data.forEach(r => {
+        const d = new Date(r.created_at).toISOString().split("T")[0];
+        dayMap[d] = (dayMap[d] || 0) + 1;
+      });
+      const sorted = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
+
+      overviewDailyChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: sorted.map(([d]) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })),
+          datasets: [{
+            label: "Requests",
+            data: sorted.map(([, v]) => v),
+            borderColor: "#a78bfa",
+            backgroundColor: "rgba(167,139,250,0.12)",
+            fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: "#a78bfa"
+          }]
+        },
+        options: { ...chartDefaults(), plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.raw + " req" } } } }
+      });
+    }
+
+    // Overview – model token doughnut
+    function buildOverviewModelChart(data) {
+      const ctx = document.getElementById("overviewModelChart");
+      if (!ctx) return;
+      if (overviewModelChart) overviewModelChart.destroy();
+
+      const modelMap = {};
+      data.forEach(r => {
+        const k = r.model || "unknown";
+        modelMap[k] = (modelMap[k] || 0) + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens);
+      });
+      const entries = Object.entries(modelMap).sort((a, b) => b[1] - a[1]);
+
+      overviewModelChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: entries.map(([k]) => k),
+          datasets: [{ data: entries.map(([, v]) => v), backgroundColor: CHART_COLORS, borderColor: "rgba(15,5,30,0.8)", borderWidth: 2 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "right", labels: { color: "#9ca3af", boxWidth: 10, padding: 8, font: { size: 11 } } },
+            tooltip: { callbacks: { label: c => c.label + ": " + c.raw.toLocaleString() } }
+          }
+        }
+      });
+    }
 
     async function loadRevenueFallback(monthsAgo = 0) {
       const tbody = document.getElementById("revenue-daily-body");
@@ -1354,89 +1854,75 @@
       await loadPricing();
     }
 
-    // Tab switching
-    document.querySelectorAll(".nav-tab").forEach(tab => {
+    // ─── Tab switching ────────────────────────────────────────────────────────
+    document.querySelectorAll(".nav-tab[data-tab]").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
-        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-        
+        document.querySelectorAll(".tab-content").forEach(c => {
+          c.classList.remove("active");
+          c.style.animation = "none";
+        });
         tab.classList.add("active");
-        document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
+        const panel = document.getElementById(`tab-${tab.dataset.tab}`);
+        if (panel) {
+          panel.classList.add("active");
+          void panel.offsetWidth;
+          panel.style.animation = "";
+        }
       });
     });
 
-    // Time range change
-    document.getElementById("time-range").addEventListener("change", loadAllData);
+    // ─── Refresh / event wiring ───────────────────────────────────────────────
+    document.getElementById("refresh-btn").addEventListener("click", loadAllDataForRange);
+    document.getElementById("sidebar-refresh").addEventListener("click", (e) => { e.preventDefault(); loadAllData(); });
 
-    // Refresh button
-    document.getElementById("refresh-btn").addEventListener("click", loadAllData);
-
-    // Revenue refresh button
     document.getElementById("refresh-revenue").addEventListener("click", () => {
-      const month = document.getElementById("revenue-month").value;
-      loadRevenue(parseInt(month));
+      loadRevenue(parseInt(document.getElementById("revenue-month").value));
     });
-    
-    // Month selector change
     document.getElementById("revenue-month").addEventListener("change", (e) => {
       loadRevenue(parseInt(e.target.value));
     });
-    
-    // Save plan button
     document.getElementById("save-plan").addEventListener("click", savePlan);
-    
-    // Costs refresh button
     document.getElementById("refresh-costs").addEventListener("click", () => loadRevenue(0));
-
-    // Pricing buttons
     document.getElementById("refresh-pricing").addEventListener("click", loadPricing);
     document.getElementById("save-pricing").addEventListener("click", savePricing);
     document.getElementById("add-model").addEventListener("click", addModelPricing);
 
-    // Load available months for selector
+    // ─── Month selector ───────────────────────────────────────────────────────
     async function loadMonthSelector() {
+      const select = document.getElementById("revenue-month");
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
-        
         const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=months`, {
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${token}`
-          }
+          headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
         });
-        
         const result = await response.json();
-        const select = document.getElementById("revenue-month");
-        
         if (result.months?.length) {
-          select.innerHTML = result.months.map(m => 
+          select.innerHTML = result.months.map(m =>
             `<option value="${m.value}">${m.label}${m.is_current ? " (Current)" : ""}</option>`
           ).join("");
-        } else {
-          throw new Error("No month data from edge function");
+          return;
         }
-      } catch (err) {
-        console.warn("Error loading months from edge function, using local fallback:", err);
-        const select = document.getElementById("revenue-month");
-        const options = [];
-        for (let i = 0; i < 12; i++) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          const label = d.toLocaleString("en-US", { month: "long", year: "numeric" });
-          options.push(`<option value="${i}" ${i === 0 ? "selected" : ""}>${label}${i === 0 ? " (Current)" : ""}</option>`);
-        }
-        select.innerHTML = options.join("");
+      } catch (_) { /* fall through */ }
+
+      // Local fallback
+      const opts = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(); d.setMonth(d.getMonth() - i);
+        const label = d.toLocaleString("en-US", { month: "long", year: "numeric" });
+        opts.push(`<option value="${i}" ${i === 0 ? "selected" : ""}>${label}${i === 0 ? " (Current)" : ""}</option>`);
       }
+      select.innerHTML = opts.join("");
     }
 
-    // Initialize
+    // ─── Init ─────────────────────────────────────────────────────────────────
     async function init() {
       const isAdmin = await checkAdmin();
-      if (isAdmin) {
-        await loadMonthSelector();
-        await loadAllData();
-      }
+      if (!isAdmin) return;
+      setupQuickFilters();
+      await loadMonthSelector();
+      await loadAllData();
     }
 
     init();
