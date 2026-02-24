@@ -617,16 +617,19 @@
         $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
       }
 
-      loadKeys();
+      loadKeys(user);
     }
 
     // ── Load license keys ─────────────────────────────────────────
-    async function loadKeys() {
+    async function loadKeys(user) {
       const keysList = $("keys-list");
       keysList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div>Loading licenses...</div>`;
 
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData?.user;
+      // If no user passed in, fall back to fetching from the session
+      if (!user) {
+        const { data: userData } = await supabase.auth.getUser();
+        user = userData?.user;
+      }
       if (!user) {
         keysList.innerHTML = `<div class="empty-state">Please sign in to view your licenses.</div>`;
         return;
