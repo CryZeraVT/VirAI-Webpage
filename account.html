@@ -265,34 +265,58 @@
 
         <!-- ── Signed OUT view ────────────────────────────── -->
         <div id="view-signed-out">
-          <h2>License Portal</h2>
-          <p class="subtitle">Sign in to view and manage your ViriTTS license.</p>
 
-          <div class="field-group">
-            <label>Email</label>
-            <input id="email" type="email" placeholder="you@example.com">
-          </div>
-          <div class="field-group" id="twitch-field">
-            <label>Twitch Username <span style="color:#6b7280;font-weight:400;text-transform:none;">(required for new accounts)</span></label>
-            <input id="twitch-username" type="text" placeholder="YourTwitchName">
-          </div>
-          <div class="field-group">
-            <label>Password</label>
-            <input id="password" type="password" placeholder="••••••••">
+          <!-- Sign In mode (default) -->
+          <div id="mode-signin">
+            <h2>Welcome Back</h2>
+            <p class="subtitle">Sign in to view your ViriTTS license.</p>
+
+            <div class="field-group">
+              <label>Email</label>
+              <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+            </div>
+            <div class="field-group">
+              <label>Password</label>
+              <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+
+            <button id="sign-in" class="btn" style="width:100%;margin-top:4px;">Sign In</button>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:0.85rem;">
+              <button class="text-link" id="reset-password">Forgot password?</button>
+              <button class="text-link" id="goto-signup">No account? Sign up →</button>
+            </div>
+
+            <p style="font-size:0.78rem;color:#4b5563;margin-top:16px;text-align:center;line-height:1.5;">
+              Beta users: use the email you applied with.<br>Check your inbox for the account setup link.
+            </p>
           </div>
 
-          <div class="btn-row">
-            <button id="sign-in" class="btn">Sign In</button>
-            <button id="sign-up" class="btn btn-outline">Create Account</button>
+          <!-- Create Account mode -->
+          <div id="mode-signup" class="hidden">
+            <h2>Create Account</h2>
+            <p class="subtitle">Set up your ViriTTS account to access your license.</p>
+
+            <div class="field-group">
+              <label>Email</label>
+              <input id="signup-email" type="email" placeholder="you@example.com" autocomplete="email">
+            </div>
+            <div class="field-group">
+              <label>Twitch Username</label>
+              <input id="twitch-username" type="text" placeholder="YourTwitchName">
+            </div>
+            <div class="field-group">
+              <label>Password</label>
+              <input id="signup-password" type="password" placeholder="••••••••" autocomplete="new-password">
+            </div>
+
+            <button id="sign-up" class="btn" style="width:100%;margin-top:4px;">Create Account</button>
+
+            <div style="text-align:center;margin-top:14px;">
+              <button class="text-link" id="goto-signin">← Back to Sign In</button>
+            </div>
           </div>
 
-          <div style="text-align:center; margin-top:14px;">
-            <button class="text-link" id="reset-password">Forgot password?</button>
-          </div>
-
-          <p style="font-size:0.8rem;color:#4b5563;margin-top:16px;text-align:center;">
-            Beta users: use the email you signed up with. Check your inbox for a setup link.
-          </p>
         </div>
 
         <!-- ── Password setup panel (recovery / invite) ───── -->
@@ -397,6 +421,13 @@
       ["view-signed-out", "view-signed-in", "view-password-setup"].forEach(v => {
         $(v).classList.toggle("hidden", v !== name);
       });
+      // Always start on sign-in mode when showing signed-out view
+      if (name === "view-signed-out") showMode("signin");
+    }
+
+    function showMode(mode) {
+      $("mode-signin").classList.toggle("hidden", mode !== "signin");
+      $("mode-signup").classList.toggle("hidden", mode !== "signup");
     }
 
     function getAuthLinkTypeFromHash() {
@@ -584,6 +615,9 @@
     }
 
     // ── Button handlers ───────────────────────────────────────────
+    $("goto-signup").addEventListener("click", () => { clearStatus(); showMode("signup"); });
+    $("goto-signin").addEventListener("click", () => { clearStatus(); showMode("signin"); });
+
     $("sign-in").addEventListener("click", async () => {
       const email = $("email").value.trim();
       const password = $("password").value.trim();
@@ -593,11 +627,11 @@
     });
 
     $("sign-up").addEventListener("click", async () => {
-      const email = $("email").value.trim();
+      const email = $("signup-email").value.trim();
       const twitchUsername = $("twitch-username").value.trim();
-      const password = $("password").value.trim();
+      const password = $("signup-password").value.trim();
       if (!email || !password) return setStatus("Enter email and password.", "error");
-      if (!twitchUsername) return setStatus("Twitch username is required for new accounts.", "error");
+      if (!twitchUsername) return setStatus("Twitch username is required.", "error");
 
       const { data, error } = await supabase.auth.signUp({
         email, password,
@@ -606,12 +640,12 @@
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
-          return setStatus("An account with this email already exists — try signing in instead.", "error");
+          return setStatus("Account already exists — sign in instead.", "error");
         }
         return setStatus(error.message, "error");
       }
       if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-        return setStatus("An account with this email already exists — try signing in instead.", "error");
+        return setStatus("Account already exists — sign in instead.", "error");
       }
       if (data?.session) {
         setStatus("Account created and signed in.", "success");
@@ -625,8 +659,8 @@
     });
 
     $("reset-password").addEventListener("click", async () => {
-      const email = $("email").value.trim();
-      if (!email) return setStatus("Enter your email address first.", "error");
+      const email = ($("email").value || "").trim();
+      if (!email) return setStatus("Enter your email address above first.", "error");
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: PASSWORD_RESET_REDIRECT });
       if (error) return setStatus(error.message, "error");
       setStatus("Password reset email sent — check your inbox.", "success");
