@@ -235,7 +235,112 @@
       font-family: inherit;
     }
 
-    /* ── Sections visibility ─────────────────────────────────── */
+    /* ── Animations ─────────────────────────────────────────── */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-10px); }
+    }
+    @keyframes statusSlide {
+      from { opacity: 0; transform: translateY(-6px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; }
+      to   { opacity: 1; transform: translateY(0);   max-height: 80px; padding-top: 10px; padding-bottom: 10px; margin-bottom: 18px; }
+    }
+    @keyframes cardPop {
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+    @keyframes avatarPop {
+      0%   { transform: scale(0.5); opacity: 0; }
+      70%  { transform: scale(1.1); }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
+    }
+    @keyframes licensePulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
+      50%      { box-shadow: 0 0 0 4px rgba(167,139,250,0.12); }
+    }
+
+    .account-card {
+      animation: cardPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    /* View transitions */
+    .view-enter {
+      animation: fadeSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .view-exit {
+      animation: fadeSlideOut 0.18s ease-in both;
+      pointer-events: none;
+    }
+
+    /* Status bar animation */
+    .status-bar.show {
+      animation: statusSlide 0.25s ease both;
+      overflow: hidden;
+    }
+
+    /* Avatar entrance */
+    .avatar-circle {
+      animation: avatarPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
+    }
+
+    /* Shimmer on license key */
+    .license-key-display {
+      background: linear-gradient(90deg, #a78bfa 0%, #e2e8f0 40%, #a78bfa 60%, #06b6d4 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 4s linear infinite;
+    }
+
+    /* License card entrance (staggered) */
+    .license-card {
+      animation: fadeSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .license-card:nth-child(1) { animation-delay: 0.05s; }
+    .license-card:nth-child(2) { animation-delay: 0.12s; }
+    .license-card:nth-child(3) { animation-delay: 0.19s; }
+    .license-card:nth-child(4) { animation-delay: 0.26s; }
+
+    /* Active license subtle pulse */
+    .license-card.active-license {
+      animation: fadeSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both,
+                 licensePulse 3s ease-in-out 0.8s infinite;
+    }
+
+    /* Button hover lift */
+    .btn {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease !important;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(124,58,237,0.25);
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    /* Input focus glow */
+    .field-group input {
+      transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+    .field-group input:focus {
+      box-shadow: 0 0 0 3px rgba(167,139,250,0.15);
+    }
+
+    /* Text link hover */
+    .text-link {
+      transition: color 0.15s ease;
+    }
+    .text-link:hover { color: #c4b5fd; }
+
+    /* Sections visibility ─────────────────────────────────── */
     .hidden { display: none !important; }
   </style>
 </head>
@@ -418,16 +523,53 @@
     }
 
     function showView(name) {
-      ["view-signed-out", "view-signed-in", "view-password-setup"].forEach(v => {
-        $(v).classList.toggle("hidden", v !== name);
-      });
-      // Always start on sign-in mode when showing signed-out view
+      const views = ["view-signed-out", "view-signed-in", "view-password-setup"];
+      const current = views.find(v => !$(v).classList.contains("hidden") && v !== name);
+
+      if (current) {
+        const currentEl = $(current);
+        currentEl.classList.add("view-exit");
+        setTimeout(() => {
+          currentEl.classList.add("hidden");
+          currentEl.classList.remove("view-exit");
+          activateView(name);
+        }, 160);
+      } else {
+        activateView(name);
+      }
       if (name === "view-signed-out") showMode("signin");
     }
 
+    function activateView(name) {
+      ["view-signed-out", "view-signed-in", "view-password-setup"].forEach(v => {
+        $(v).classList.toggle("hidden", v !== name);
+      });
+      const el = $(name);
+      el.classList.remove("view-enter");
+      void el.offsetWidth; // force reflow
+      el.classList.add("view-enter");
+    }
+
     function showMode(mode) {
-      $("mode-signin").classList.toggle("hidden", mode !== "signin");
-      $("mode-signup").classList.toggle("hidden", mode !== "signup");
+      const fromEl = mode === "signin" ? $("mode-signup") : $("mode-signin");
+      const toEl   = mode === "signin" ? $("mode-signin") : $("mode-signup");
+
+      if (!fromEl.classList.contains("hidden")) {
+        fromEl.classList.add("view-exit");
+        setTimeout(() => {
+          fromEl.classList.add("hidden");
+          fromEl.classList.remove("view-exit");
+          toEl.classList.remove("hidden");
+          toEl.classList.remove("view-enter");
+          void toEl.offsetWidth;
+          toEl.classList.add("view-enter");
+        }, 160);
+      } else {
+        toEl.classList.remove("hidden");
+        toEl.classList.remove("view-enter");
+        void toEl.offsetWidth;
+        toEl.classList.add("view-enter");
+      }
     }
 
     function getAuthLinkTypeFromHash() {
@@ -537,7 +679,7 @@
           : "";
 
         return `
-          <div class="license-card">
+          <div class="license-card${isActive && !isExpired ? " active-license" : ""}">
             <div class="lc-top">
               <div class="license-key-display">${row.license_key}</div>
               <span class="license-status-badge ${badgeClass}">${badgeLabel}</span>
