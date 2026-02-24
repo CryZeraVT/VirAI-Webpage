@@ -88,12 +88,39 @@ async function findUserByEmail(email: string) {
   return null;
 }
 
-async function listUsers(limitInput: unknown) {
+async function listUsers(limitInput: unknown, searchEmail?: string) {
   const limit = Math.max(1, Math.min(500, Number(limitInput) || 200));
-  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: limit });
-  if (error) throw error;
+  const wanted = normalizeEmail(searchEmail);
 
-  const users = data?.users ?? [];
+  let users: Array<{ id: string; email?: string | null; created_at?: string | null; last_sign_in_at?: string | null }> = [];
+
+  if (wanted) {
+    // Server-side search: paginate all users and match by email
+    const pageSize = 200;
+    let page = 1;
+    while (page <= 20) {
+      const { data: pageData, error: pageErr } = await supabase.auth.admin.listUsers({ page, perPage: pageSize });
+      if (pageErr) throw pageErr;
+      const batch = pageData?.users ?? [];
+      const matched = batch.filter((u) => normalizeEmail(u.email).includes(wanted));
+      users.push(...matched);
+      if (batch.length < pageSize) break;
+      page += 1;
+    }
+  } else {
+    // No search — fetch up to `limit` users across pages
+    const pageSize = 200;
+    let page = 1;
+    while (users.length < limit) {
+      const { data: pageData, error: pageErr } = await supabase.auth.admin.listUsers({ page, perPage: pageSize });
+      if (pageErr) throw pageErr;
+      const batch = pageData?.users ?? [];
+      users.push(...batch);
+      if (batch.length < pageSize) break;
+      page += 1;
+    }
+    users = users.slice(0, limit);
+  }
   const ids = users.map((u) => u.id).filter(Boolean);
   const emails = Array.from(new Set(users.map((u) => normalizeEmail(u.email)).filter(Boolean)));
 
@@ -169,7 +196,7 @@ serve(async (req) => {
 
   try {
     if (action === "list") {
-      const data = await listUsers(payload?.limit);
+      const data = await listUsers(payload?.limit, payload?.search);
       return jsonResponse({ success: true, ...data });
     }
 

@@ -1216,8 +1216,16 @@
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {
       async function invokeOnce() {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) {
+          throw new Error("Session expired. Please sign in again.");
+        }
         return supabase.functions.invoke("admin-users", {
           body: { action, ...payload },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
       }
 
@@ -1236,8 +1244,15 @@
         let detailed = "";
         try {
           if (error.context) {
-            const errJson = await error.context.json();
-            detailed = errJson?.details || errJson?.error || "";
+            const errText = await error.context.text();
+            if (errText) {
+              try {
+                const errJson = JSON.parse(errText);
+                detailed = errJson?.details || errJson?.error || errText;
+              } catch {
+                detailed = errText;
+              }
+            }
           }
         } catch {
           detailed = "";
@@ -1253,15 +1268,12 @@
 
     async function loadUsers() {
       const listEl = document.getElementById("users-list");
-      const search = (document.getElementById("users-search").value || "").trim().toLowerCase();
+      const search = (document.getElementById("users-search").value || "").trim();
       listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-secondary);">Loading users...</div>`;
 
       try {
-        const res = await callAdminUsers("list", { limit: 200 });
-        let users = Array.isArray(res.users) ? res.users : [];
-        if (search) {
-          users = users.filter(u => String(u.email || "").toLowerCase().includes(search));
-        }
+        const res = await callAdminUsers("list", { limit: 500, search: search || undefined });
+        const users = Array.isArray(res.users) ? res.users : [];
 
         if (!users.length) {
           listEl.innerHTML = `<p style="text-align:center;color:var(--text-secondary);padding:30px;">No users found.</p>`;
