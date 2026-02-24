@@ -567,103 +567,87 @@
 
         // ── Beta Testers Carousel ──────────────────────────────────────────
         async function buildTestersCarousel() {
-          const SUPABASE_URL     = 'https://rgigtqpesabuyaumibaj.supabase.co';
+          const SUPABASE_URL      = 'https://rgigtqpesabuyaumibaj.supabase.co';
           const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
 
-          const track     = document.getElementById('testers-track');
+          const track      = document.getElementById('testers-track');
           const countBadge = document.getElementById('testers-count');
           if (!track) return;
 
+          // ── Pull from the edge function which uses service role to read beta_signups + profiles ──
           let testers = [];
           try {
-            // Fetch active licenses joined with profiles for twitch names
-            const res = await fetch(
-              `${SUPABASE_URL}/rest/v1/licenses?select=email,status&status=eq.active&limit=200`,
-              { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
-            );
-            const licenses = await res.json();
-
-            // Fetch all profiles that have a twitch_username set
-            const pRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/profiles?select=twitch_username&twitch_username=not.is.null&limit=200`,
-              { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
-            );
-            const profiles = await pRes.json();
-
-            // Build unique list: prefer twitch usernames, fall back to anonymised email prefix
-            const seen = new Set();
-
-            if (Array.isArray(profiles)) {
-              profiles.forEach(p => {
-                const name = String(p.twitch_username || '').trim();
-                if (name && !seen.has(name.toLowerCase())) {
-                  seen.add(name.toLowerCase());
-                  testers.push({ display: name, twitch: name });
-                }
-              });
-            }
-
-            // Add anonymous entries for licenses without a matched profile
-            if (Array.isArray(licenses)) {
-              licenses.forEach(l => {
-                const emailPrefix = String(l.email || '').split('@')[0];
-                const anonKey = 'anon_' + emailPrefix.toLowerCase();
-                if (emailPrefix && !seen.has(anonKey) && testers.length < 60) {
-                  seen.add(anonKey);
-                  testers.push({ display: emailPrefix, twitch: null });
-                }
-              });
-            }
+            const res  = await fetch(`${SUPABASE_URL}/functions/v1/get-testers`, {
+              headers: { apikey: SUPABASE_ANON_KEY }
+            });
+            const data = await res.json();
+            if (Array.isArray(data.testers)) testers = data.testers;
           } catch (err) {
-            console.warn('Testers carousel: failed to fetch', err);
-            // Graceful fallback — hide the section
-            const section = track.closest('.testers-section');
-            if (section) section.style.display = 'none';
-            return;
+            console.warn('Testers carousel fetch failed:', err);
           }
 
+          // ── Never hide — show placeholders if no real data yet ──
           if (!testers.length) {
-            const section = track.closest('.testers-section');
-            if (section) section.style.display = 'none';
-            return;
+            testers = [
+              { twitch: 'cryzera',    display: 'CryZera'     },
+              { twitch: null,         display: 'Beta Tester' },
+              { twitch: null,         display: 'Coming Soon' },
+            ];
           }
 
-          // Update badge count
-          countBadge.textContent = testers.length + ' testers';
+          // Update badge
+          countBadge.textContent = testers.length + ' tester' + (testers.length !== 1 ? 's' : '');
 
-          // Build card HTML
-          function cardHTML(t) {
-            const initials = t.display.slice(0, 2).toUpperCase();
-            const avatarHtml = t.twitch
-              ? `<img class="tester-avatar" src="https://avatar.iran.liara.run/username?username=${encodeURIComponent(t.display)}" onerror="this.replaceWith(makePlaceholder('${initials}'))" alt="${t.display}">`
-              : `<div class="tester-avatar-placeholder">${initials}</div>`;
-
-            const nameHtml = t.twitch
-              ? `<div>
-                   <div class="tester-name">${t.display}</div>
-                   <div class="tester-twitch">twitch.tv/${t.display}</div>
-                 </div>`
-              : `<div class="tester-name">${t.display}</div>`;
-
-            return `<div class="tester-card">${avatarHtml}${nameHtml}</div>`;
+          // ── Build cards as DOM nodes (safe, no inline onerror strings) ──
+          function escHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
           }
 
-          // Double the list for seamless infinite scroll
-          const doubled = [...testers, ...testers];
-          track.innerHTML = doubled.map(cardHTML).join('');
+          function makeCard(t) {
+            const card     = document.createElement('div');
+            card.className = 'tester-card';
+            const initials = (t.display || '??').slice(0, 2).toUpperCase();
 
-          // Adjust animation speed based on card count
-          const duration = Math.max(18, testers.length * 2.2);
+            if (t.twitch) {
+              // unavatar.io proxies Twitch profile pictures — no API key needed
+              const img      = document.createElement('img');
+              img.className  = 'tester-avatar';
+              img.alt        = t.display;
+              img.src        = `https://unavatar.io/twitch/${encodeURIComponent(t.twitch)}`;
+              img.onerror    = () => {
+                const ph       = document.createElement('div');
+                ph.className   = 'tester-avatar-placeholder';
+                ph.textContent = initials;
+                img.replaceWith(ph);
+              };
+              card.appendChild(img);
+
+              const info       = document.createElement('div');
+              info.innerHTML   = `<div class="tester-name">${escHtml(t.display)}</div>
+                                  <div class="tester-twitch">twitch.tv/${escHtml(t.twitch)}</div>`;
+              card.appendChild(info);
+            } else {
+              const ph       = document.createElement('div');
+              ph.className   = 'tester-avatar-placeholder';
+              ph.textContent = initials;
+              card.appendChild(ph);
+
+              const info     = document.createElement('div');
+              info.innerHTML = `<div class="tester-name">${escHtml(t.display)}</div>`;
+              card.appendChild(info);
+            }
+
+            return card;
+          }
+
+          // Double list for seamless infinite scroll
+          track.innerHTML = '';
+          [...testers, ...testers].forEach(t => track.appendChild(makeCard(t)));
+
+          // Scale duration: more testers = slightly faster scroll so it feels live
+          const duration = Math.max(20, testers.length * 3);
           track.style.animationDuration = duration + 's';
         }
-
-        // Helper exposed to inline onerror handlers
-        window.makePlaceholder = function(initials) {
-          const div = document.createElement('div');
-          div.className = 'tester-avatar-placeholder';
-          div.textContent = initials;
-          return div;
-        };
 
         buildTestersCarousel();
     </script>
