@@ -1541,29 +1541,45 @@
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {
-      async function invokeOnce() {
+      async function getToken() {
+        // Always get a fresh token — refreshSession re-uses the existing one
+        // if it's still valid, and fetches a new one if it's expired.
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshData?.session?.access_token) {
+          return refreshData.session.access_token;
+        }
+        // Fallback to cached session
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
-        if (!token) {
-          throw new Error("Session expired. Please sign in again.");
-        }
+        if (!token) throw new Error("Session expired. Please sign in again.");
+        return token;
+      }
+
+      async function invokeOnce(token) {
         return supabase.functions.invoke("admin-users", {
           body: { action, ...payload },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
       }
 
-      let { data, error } = await invokeOnce();
+      const token = await getToken();
+      let { data, error } = await invokeOnce(token);
 
-      // If token is stale, refresh once and retry.
-      if (error && (error.status === 401 || String(error.message || "").includes("401"))) {
-        const { error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
+      // supabase.functions.invoke wraps HTTP errors — check multiple places for 401
+      const is401 = error && (
+        error.status === 401 ||
+        error.context?.status === 401 ||
+        String(error.message || "").includes("401") ||
+        String(error.message || "").toLowerCase().includes("invalid jwt")
+      );
+
+      if (is401) {
+        // Force a hard refresh and retry once
+        const { data: retryRefresh, error: retryRefreshError } = await supabase.auth.refreshSession();
+        if (retryRefreshError || !retryRefresh?.session?.access_token) {
           throw new Error("Session expired. Please sign in again.");
         }
-        ({ data, error } = await invokeOnce());
+        ({ data, error } = await invokeOnce(retryRefresh.session.access_token));
       }
 
       if (error) {
