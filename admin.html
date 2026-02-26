@@ -1664,49 +1664,6 @@
       loadUsers();
     });
 
-    // ── Site Settings (carousel toggle) ──────────────────────────────────────
-    const SETTINGS_KEY = "site_settings";
-
-    async function loadSiteSettings() {
-      try {
-        const { data } = await supabase
-          .from("announcements")
-          .select("title")
-          .eq("version", SETTINGS_KEY)
-          .maybeSingle();
-
-        if (data?.title) {
-          const settings = JSON.parse(data.title);
-          document.getElementById("carousel-enabled").checked = settings.carousel_enabled !== false;
-        }
-      } catch (e) {
-        console.warn("loadSiteSettings failed:", e);
-      }
-    }
-
-    async function saveSiteSettings() {
-      const carouselEnabled = document.getElementById("carousel-enabled").checked;
-      const statusEl = document.getElementById("site-settings-status");
-      statusEl.textContent = "Saving…";
-
-      const payload = JSON.stringify({ carousel_enabled: carouselEnabled });
-
-      const { error } = await supabase
-        .from("announcements")
-        .upsert({ version: SETTINGS_KEY, title: payload, active: false }, { onConflict: "version" });
-
-      if (error) {
-        statusEl.style.color = "var(--error, #ef4444)";
-        statusEl.textContent = "Failed: " + error.message;
-      } else {
-        statusEl.style.color = "#22c55e";
-        statusEl.textContent = "✓ Saved!";
-        setTimeout(() => statusEl.textContent = "", 2500);
-      }
-    }
-
-    document.getElementById("save-site-settings").addEventListener("click", saveSiteSettings);
-
     // ─────────────────────────────────────────────────────────────────────────
 
     checkAdmin();
