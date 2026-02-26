@@ -600,27 +600,44 @@
     }
 
     // ── Signed-in UI ─────────────────────────────────────────────
+    let _enteringSignedIn = false;
+
     async function enterSignedIn(user) {
-      showView("view-signed-in");
-      $("signed-in-email").textContent = user.email ?? "Unknown";
-      $("avatar-initials").textContent = (user.email ?? "?")[0].toUpperCase();
-      clearStatus();
+      // Prevent concurrent calls from multiple auth events
+      if (_enteringSignedIn) return;
+      _enteringSignedIn = true;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin, twitch_username")
-        .eq("id", user.id)
-        .maybeSingle();
+      try {
+        // Reset UI to clean state before populating
+        $("admin-link").classList.add("hidden");
+        $("signed-in-sub").textContent = "ViriTTS Beta";
+        $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
 
-      if (profile?.is_admin) {
-        $("admin-link").classList.remove("hidden");
-        $("signed-in-sub").textContent = "Admin · ViriTTS Beta";
+        showView("view-signed-in");
+        $("signed-in-email").textContent = user.email ?? "Unknown";
+        $("avatar-initials").textContent = (user.email ?? "?")[0].toUpperCase();
+        clearStatus();
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_admin, twitch_username")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile?.is_admin) {
+          $("admin-link").classList.remove("hidden");
+          $("signed-in-sub").textContent = "Admin · ViriTTS Beta";
+        }
+        if (profile?.twitch_username) {
+          $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
+        }
+
+        await loadKeys(user);
+      } catch (err) {
+        console.error("enterSignedIn error:", err);
+      } finally {
+        _enteringSignedIn = false;
       }
-      if (profile?.twitch_username) {
-        $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
-      }
-
-      loadKeys(user);
     }
 
     // ── Load license keys ─────────────────────────────────────────
@@ -628,50 +645,53 @@
       const keysList = $("keys-list");
       keysList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div>Loading licenses...</div>`;
 
-      // If no user passed in, restore from cached session (getSession reads local storage,
-      // avoiding a network round-trip that can fail if the JWT is mid-refresh)
-      if (!user) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        user = sessionData?.session?.user ?? null;
-        // If session expired, try a hard refresh once
+      try {
+        // If no user passed in, restore from session
         if (!user) {
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          user = refreshData?.session?.user ?? null;
+          const { data: sessionData } = await supabase.auth.getSession();
+          user = sessionData?.session?.user ?? null;
+          if (!user) {
+            const { data: refreshData } = await supabase.auth.refreshSession();
+            user = refreshData?.session?.user ?? null;
+          }
         }
-      }
-      if (!user) {
-        keysList.innerHTML = `<div class="empty-state">Please sign in to view your licenses.</div>`;
-        return;
-      }
+        if (!user) {
+          keysList.innerHTML = `<div class="empty-state">Please sign in to view your licenses.</div>`;
+          return;
+        }
 
-      let downloadUrl = null;
-      const { data: versionData } = await supabase
-        .from("r2_versions")
-        .select("download_url, version")
-        .eq("is_active", true)
-        .maybeSingle();
-      if (versionData) downloadUrl = versionData.download_url;
+        let downloadUrl = null;
+        try {
+          const { data: versionData } = await supabase
+            .from("r2_versions")
+            .select("download_url, version")
+            .eq("is_active", true)
+            .maybeSingle();
+          if (versionData) downloadUrl = versionData.download_url;
+        } catch (e) {
+          console.warn("Could not load active version:", e);
+        }
 
-      const { data, error } = await supabase
-        .from("licenses")
-        .select("license_key,status,expires_at,created_at")
-        .ilike("email", user.email)
-        .order("created_at", { ascending: false });
+        const { data, error } = await supabase
+          .from("licenses")
+          .select("license_key,status,expires_at,created_at")
+          .ilike("email", user.email)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${error.message}). Try refreshing.</div>`;
-        return;
-      }
+        if (error) {
+          keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${error.message}). Try refreshing.</div>`;
+          return;
+        }
 
-      if (!data || data.length === 0) {
-        keysList.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">🔍</div>
-            No licenses found for <strong style="color:#a78bfa">${user.email}</strong>.<br>
-            <span style="font-size:0.8rem;">Contact support if you believe this is an error.</span>
-          </div>`;
-        return;
-      }
+        if (!data || data.length === 0) {
+          keysList.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">🔍</div>
+              No licenses found for <strong style="color:#a78bfa">${user.email}</strong>.<br>
+              <span style="font-size:0.8rem;">Contact support if you believe this is an error.</span>
+            </div>`;
+          return;
+        }
 
       keysList.innerHTML = data.map((row) => {
         const isActive = row.status === "active";
@@ -736,6 +756,11 @@
           }
         });
       });
+
+      } catch (err) {
+        console.error("loadKeys error:", err);
+        keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Failed to load licenses. <button class="text-link" onclick="location.reload()">Reload page</button></div>`;
+      }
     }
 
     // ── Auth state machine ────────────────────────────────────────
@@ -753,6 +778,11 @@
       }
 
       if (event === "SIGNED_OUT") {
+        _enteringSignedIn = false;
+        // Reset signed-in view to clean state for next login
+        $("admin-link").classList.add("hidden");
+        $("signed-in-sub").textContent = "ViriTTS Beta";
+        $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
         showView("view-signed-out");
         clearStatus();
         return;
