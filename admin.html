@@ -1623,7 +1623,10 @@
                   Created: ${u.created_at ? new Date(u.created_at).toLocaleString() : "unknown"} • Last sign-in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "never"}
                 </p>
               </div>
-              <div style="display:flex; gap:8px;">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-outline set-password-btn" data-id="${u.id}" data-email="${u.email || ""}" style="border-color:#a78bfa;color:#a78bfa;padding:8px 14px;font-size:0.85em;">
+                  🔐 Set Password
+                </button>
                 <button class="btn btn-outline delete-user-btn" data-id="${u.id}" data-email="${u.email || ""}" style="border-color:#ef4444;color:#ef4444;padding:8px 14px;font-size:0.85em;">
                   🗑 Delete User
                 </button>
@@ -1631,6 +1634,28 @@
             </div>
           </div>
         `).join("");
+
+        document.querySelectorAll(".set-password-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const userId = btn.getAttribute("data-id");
+            const email = btn.getAttribute("data-email");
+            const newPassword = prompt(`Set a new password for ${email}:\n(minimum 6 characters)`);
+            if (!newPassword) return;
+            if (newPassword.length < 6) { alert("Password must be at least 6 characters."); return; }
+
+            btn.disabled = true;
+            btn.textContent = "⏳ Saving...";
+            try {
+              await callAdminUsers("set_password", { user_id: userId, password: newPassword });
+              alert(`✅ Password updated for ${email}`);
+            } catch (e) {
+              alert(`❌ Failed to set password: ${e.message}`);
+            } finally {
+              btn.disabled = false;
+              btn.textContent = "🔐 Set Password";
+            }
+          });
+        });
 
         document.querySelectorAll(".delete-user-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {

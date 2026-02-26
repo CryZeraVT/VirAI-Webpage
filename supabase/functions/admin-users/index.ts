@@ -200,6 +200,21 @@ serve(async (req) => {
       return jsonResponse({ success: true, ...data });
     }
 
+    if (action === "set_password") {
+      const userId = String(payload?.user_id ?? "").trim();
+      const password = String(payload?.password ?? "").trim();
+
+      if (!userId) return jsonResponse({ error: "user_id is required." }, 400);
+      if (!password || password.length < 6) {
+        return jsonResponse({ error: "Password must be at least 6 characters." }, 400);
+      }
+
+      const { error: pwErr } = await supabase.auth.admin.updateUserById(userId, { password });
+      if (pwErr) return jsonResponse({ error: pwErr.message }, 500);
+
+      return jsonResponse({ success: true });
+    }
+
     if (action !== "delete") {
       return jsonResponse({ error: `Unsupported action: ${action}` }, 400);
     }
