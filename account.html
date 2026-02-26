@@ -554,6 +554,7 @@
       const fromEl = mode === "signin" ? $("mode-signup") : $("mode-signin");
       const toEl   = mode === "signin" ? $("mode-signin") : $("mode-signup");
 
+      // Always ensure the target is shown, regardless of fromEl state
       if (!fromEl.classList.contains("hidden")) {
         fromEl.classList.add("view-exit");
         setTimeout(() => {
@@ -565,6 +566,8 @@
           toEl.classList.add("view-enter");
         }, 160);
       } else {
+        // fromEl already hidden — just show the target directly
+        fromEl.classList.add("hidden"); // ensure it's truly hidden
         toEl.classList.remove("hidden");
         toEl.classList.remove("view-enter");
         void toEl.offsetWidth;
@@ -735,49 +738,50 @@
       });
     }
 
-    // ── Auth events ───────────────────────────────────────────────
-    // Whether the signed-in view is currently rendered (prevents double-render
-    // when both getSession and onAuthStateChange fire on load)
-    let _signedInRendered = false;
+    // ── Auth state machine ────────────────────────────────────────
+    // Single source of truth: onAuthStateChange drives everything.
+    // INITIAL_SESSION fires on every page load (including back-navigation)
+    // with the current session from localStorage — no need for a separate
+    // getSession() call that races with the auth listener.
 
     supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[auth]", event, session?.user?.email ?? "no user");
+
       if (event === "PASSWORD_RECOVERY") {
         enterPasswordSetupMode("recovery");
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        const linkType = getAuthLinkTypeFromHash();
-        if (linkType === "invite") {
-          enterPasswordSetupMode("invite");
-        } else if (session?.user) {
-          if (!_signedInRendered) {
-            _signedInRendered = true;
-            await enterSignedIn(session.user);
-          } else {
-            // Already showing the signed-in view — just silently reload keys
-            // so returning from admin always refreshes the license list
-            loadKeys(session.user);
-          }
-        }
-      } else if (event === "SIGNED_OUT") {
-        _signedInRendered = false;
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
         showView("view-signed-out");
         clearStatus();
+        return;
+      }
+
+      // INITIAL_SESSION  → page load (logged in or not)
+      // SIGNED_IN        → after signInWithPassword / invite link
+      // TOKEN_REFRESHED  → silent token refresh (e.g. returning from admin)
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        const linkType = getAuthLinkTypeFromHash();
+        if (linkType === "invite" && event === "SIGNED_IN") {
+          enterPasswordSetupMode("invite");
+          return;
+        }
+        if (session?.user) {
+          await enterSignedIn(session.user);
+        } else if (event === "INITIAL_SESSION") {
+          // No session on first load — show login
+          showView("view-signed-out");
+        }
       }
     });
 
-    // ── Initial page load ─────────────────────────────────────────
+    // Handle password-reset / invite links that arrive via URL hash
+    // (Supabase fires PASSWORD_RECOVERY or SIGNED_IN automatically,
+    //  but we show the setup view immediately to avoid flash)
     const initialLinkType = getAuthLinkTypeFromHash();
-    if (initialLinkType === "recovery" || initialLinkType === "invite") {
-      enterPasswordSetupMode(initialLinkType);
-    } else {
-      // getSession reads localStorage (no network) — fast and reliable on
-      // every page visit including navigating back from admin.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        _signedInRendered = true;
-        await enterSignedIn(session.user);
-      } else {
-        showView("view-signed-out");
-      }
+    if (initialLinkType === "recovery") {
+      enterPasswordSetupMode("recovery");
     }
 
     // ── Button handlers ───────────────────────────────────────────
@@ -794,18 +798,13 @@
       btn.textContent = "Signing in…";
       setStatus("Signing in…", "");
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       btn.disabled    = false;
       btn.textContent = "Sign In";
 
       if (error) return setStatus(error.message, "error");
-
-      // Don't wait for onAuthStateChange — enter signed-in state immediately
-      if (data?.user) {
-        _signedInRendered = true;
-        await enterSignedIn(data.user);
-      }
+      // onAuthStateChange SIGNED_IN will fire and call enterSignedIn
     });
 
     $("sign-up").addEventListener("click", async () => {
@@ -837,7 +836,13 @@
     });
 
     $("sign-out").addEventListener("click", async () => {
+      const btn = $("sign-out");
+      btn.disabled    = true;
+      btn.textContent = "Signing out…";
       await supabase.auth.signOut();
+      // onAuthStateChange SIGNED_OUT will fire and call showView("view-signed-out")
+      btn.disabled    = false;
+      btn.textContent = "Sign Out";
     });
 
     $("reset-password").addEventListener("click", async () => {
