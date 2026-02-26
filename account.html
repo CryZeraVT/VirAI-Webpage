@@ -666,7 +666,9 @@
             .from("r2_versions")
             .select("download_url, version")
             .eq("is_active", true)
-            .maybeSingle();
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
           if (versionData) downloadUrl = versionData.download_url;
         } catch (e) {
           console.warn("Could not load active version:", e);
@@ -865,16 +867,18 @@
       }
     });
 
-    $("sign-out").addEventListener("click", async () => {
+    $("sign-out").addEventListener("click", () => {
       const btn = $("sign-out");
-      btn.disabled    = true;
+      btn.disabled = true;
       btn.textContent = "Signing out…";
-      await supabase.auth.signOut();
-      // Always reset — view may already be hidden but keeps state clean
-      btn.disabled    = false;
-      btn.textContent = "Sign Out";
-      // If onAuthStateChange didn't fire for any reason, force the view
-      showView("view-signed-out");
+      supabase.auth.signOut().finally(() => {
+        btn.disabled = false;
+        btn.textContent = "Sign Out";
+        // Force view switch regardless of whether onAuthStateChange fired
+        _enteringSignedIn = false;
+        showView("view-signed-out");
+        clearStatus();
+      });
     });
 
     $("reset-password").addEventListener("click", async () => {
