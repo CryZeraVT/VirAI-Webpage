@@ -840,9 +840,11 @@
       btn.disabled    = true;
       btn.textContent = "Signing out…";
       await supabase.auth.signOut();
-      // onAuthStateChange SIGNED_OUT will fire and call showView("view-signed-out")
+      // Always reset — view may already be hidden but keeps state clean
       btn.disabled    = false;
       btn.textContent = "Sign Out";
+      // If onAuthStateChange didn't fire for any reason, force the view
+      showView("view-signed-out");
     });
 
     $("reset-password").addEventListener("click", async () => {
