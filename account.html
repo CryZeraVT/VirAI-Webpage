@@ -736,23 +736,29 @@
     }
 
     // ── Auth events ───────────────────────────────────────────────
-    // Track whether we're already in the signed-in view to avoid double-loading
-    let _signedInHandled = false;
+    // Whether the signed-in view is currently rendered (prevents double-render
+    // when both getSession and onAuthStateChange fire on load)
+    let _signedInRendered = false;
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         enterPasswordSetupMode("recovery");
-      } else if (event === "SIGNED_IN") {
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         const linkType = getAuthLinkTypeFromHash();
         if (linkType === "invite") {
           enterPasswordSetupMode("invite");
-        } else if (session?.user && !_signedInHandled) {
-          // Only run if the sign-in button handler hasn't already handled it
-          _signedInHandled = true;
-          await enterSignedIn(session.user);
+        } else if (session?.user) {
+          if (!_signedInRendered) {
+            _signedInRendered = true;
+            await enterSignedIn(session.user);
+          } else {
+            // Already showing the signed-in view — just silently reload keys
+            // so returning from admin always refreshes the license list
+            loadKeys(session.user);
+          }
         }
       } else if (event === "SIGNED_OUT") {
-        _signedInHandled = false;
+        _signedInRendered = false;
         showView("view-signed-out");
         clearStatus();
       }
@@ -763,12 +769,11 @@
     if (initialLinkType === "recovery" || initialLinkType === "invite") {
       enterPasswordSetupMode(initialLinkType);
     } else {
-      // Use getSession (reads localStorage, no network) so we don't race with
-      // the token refresh on page load. onAuthStateChange will also fire
-      // SIGNED_IN but _signedInHandled prevents double-loading.
+      // getSession reads localStorage (no network) — fast and reliable on
+      // every page visit including navigating back from admin.
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        _signedInHandled = true;
+        _signedInRendered = true;
         await enterSignedIn(session.user);
       } else {
         showView("view-signed-out");
@@ -798,7 +803,7 @@
 
       // Don't wait for onAuthStateChange — enter signed-in state immediately
       if (data?.user) {
-        _signedInHandled = true;
+        _signedInRendered = true;
         await enterSignedIn(data.user);
       }
     });
