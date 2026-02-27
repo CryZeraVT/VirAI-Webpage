@@ -575,10 +575,21 @@
       }
     }
 
-    function getAuthLinkTypeFromHash() {
+    function getAuthLinkTypeFromUrl() {
       const hash = String(window.location.hash || "").toLowerCase();
-      if (hash.includes("type=recovery")) return "recovery";
-      if (hash.includes("type=invite")) return "invite";
+      const search = String(window.location.search || "").toLowerCase();
+      const combined = `${search}&${hash}`;
+
+      // Supabase recovery links may surface type in either query or hash.
+      if (combined.includes("type=recovery")) return "recovery";
+      if (combined.includes("type=invite")) return "invite";
+
+      // Fallback: some providers preserve tokens but lose explicit type.
+      // If recovery tokens are present, treat as password recovery flow.
+      if (combined.includes("access_token=") && combined.includes("refresh_token=")) {
+        return "recovery";
+      }
+
       return "";
     }
 
@@ -840,9 +851,13 @@
       // SIGNED_IN        → after signInWithPassword / invite link
       // TOKEN_REFRESHED  → silent token refresh (e.g. returning from admin)
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        const linkType = getAuthLinkTypeFromHash();
+        const linkType = getAuthLinkTypeFromUrl();
         if (linkType === "invite" && event === "SIGNED_IN") {
           enterPasswordSetupMode("invite");
+          return;
+        }
+        if (linkType === "recovery") {
+          enterPasswordSetupMode("recovery");
           return;
         }
         if (session?.user) {
@@ -857,9 +872,11 @@
     // Handle password-reset / invite links that arrive via URL hash
     // (Supabase fires PASSWORD_RECOVERY or SIGNED_IN automatically,
     //  but we show the setup view immediately to avoid flash)
-    const initialLinkType = getAuthLinkTypeFromHash();
+    const initialLinkType = getAuthLinkTypeFromUrl();
     if (initialLinkType === "recovery") {
       enterPasswordSetupMode("recovery");
+    } else if (initialLinkType === "invite") {
+      enterPasswordSetupMode("invite");
     }
 
     // ── Button handlers ───────────────────────────────────────────
