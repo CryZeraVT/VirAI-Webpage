@@ -633,29 +633,14 @@
     let _passwordSetupActive = false;
     let _passwordSetupMode = "";
     let _currentUser = null;
+    let _currentSession = null;
 
     async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
       _enteringSignedIn = true;
 
       try {
-        // For cached sessions (INITIAL_SESSION), validate the token server-side.
-        // getUser() hits the auth endpoint and triggers auto-refresh if needed,
-        // without racing with Supabase's internal refresh cycle.
-        if (authEvent === "INITIAL_SESSION") {
-          const { data: { user: freshUser }, error: authErr } = await withTimeout(
-            supabase.auth.getUser(),
-            8000,
-            "Auth validation timed out"
-          );
-          if (authErr || !freshUser) {
-            console.warn("Cached session invalid, signing out:", authErr?.message);
-            await supabase.auth.signOut();
-            return;
-          }
-          user = freshUser;
-          _currentUser = freshUser;
-        }
+        _currentUser = user ?? _currentUser;
 
         // Reset UI to clean state before populating
         $("admin-link").classList.add("hidden");
@@ -669,16 +654,24 @@
 
         let profile = null;
         try {
-          const { data } = await withTimeout(
-            supabase
-              .from("profiles")
-              .select("is_admin, twitch_username")
-              .eq("id", user.id)
-              .maybeSingle(),
+          const profileParams = new URLSearchParams({
+            select: "is_admin,twitch_username",
+            id: `eq.${user.id}`,
+          });
+          const profileRes = await withTimeout(
+            fetch(`${SUPABASE_URL}/rest/v1/profiles?${profileParams.toString()}`, {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": `Bearer ${_currentSession?.access_token || SUPABASE_ANON_KEY}`,
+              },
+            }),
             6000,
             "Profile query timed out"
           );
-          profile = data;
+          if (profileRes.ok) {
+            const profileRows = await profileRes.json();
+            profile = Array.isArray(profileRows) ? (profileRows[0] || null) : null;
+          }
         } catch (profileErr) {
           console.warn("Profile load skipped:", profileErr?.message || profileErr);
         }
@@ -719,43 +712,57 @@
 
         let downloadUrl = null;
         try {
-          const { data: versionData } = await withTimeout(
-            supabase
-              .from("r2_versions")
-              .select("download_url, version")
-              .eq("is_active", true)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .single(),
+          const versionParams = new URLSearchParams({
+            select: "download_url,version",
+            is_active: "eq.true",
+            order: "created_at.desc",
+            limit: "1",
+          });
+          const versionRes = await withTimeout(
+            fetch(`${SUPABASE_URL}/rest/v1/r2_versions?${versionParams.toString()}`, {
+              headers: { "apikey": SUPABASE_ANON_KEY },
+            }),
             5000,
             "Version query timed out"
           );
-          if (versionData) downloadUrl = versionData.download_url;
+          if (versionRes.ok) {
+            const versionRows = await versionRes.json();
+            const versionData = Array.isArray(versionRows) ? (versionRows[0] || null) : null;
+            if (versionData) downloadUrl = versionData.download_url;
+          }
         } catch (e) {
           console.warn("Could not load active version:", e);
         }
 
-        const runLicenseQuery = () => withTimeout(
-          supabase
-            .from("licenses")
-            .select("license_key,status,expires_at,created_at")
-            .ilike("email", user.email)
-            .order("created_at", { ascending: false }),
+        const accessToken = _currentSession?.access_token;
+        if (!accessToken) {
+          keysList.innerHTML = `<div class="empty-state">Session expired. Please sign in again.</div>`;
+          showView("view-signed-out");
+          return;
+        }
+
+        const licenseParams = new URLSearchParams({
+          select: "license_key,status,expires_at,created_at",
+          email: `ilike.${user.email}`,
+          order: "created_at.desc",
+        });
+        const licenseRes = await withTimeout(
+          fetch(`${SUPABASE_URL}/rest/v1/licenses?${licenseParams.toString()}`, {
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }),
           10000,
           "License query timed out"
         );
-        let { data, error } = await runLicenseQuery();
-        const lockErr = String(error?.message || "").toLowerCase();
-        if (error && lockErr.includes("lock broken by another request")) {
-          // Allow auth lock contention to settle, then retry once.
-          await new Promise((r) => setTimeout(r, 500));
-          ({ data, error } = await runLicenseQuery());
-        }
-
-        if (error) {
-          keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${error.message}). Try refreshing.</div>`;
+        if (!licenseRes.ok) {
+          const errText = await licenseRes.text();
+          keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${licenseRes.status}). Try refreshing.</div>`;
+          console.error("License REST error:", licenseRes.status, errText);
           return;
         }
+        const data = await licenseRes.json();
 
         if (!data || data.length === 0) {
           keysList.innerHTML = `
@@ -852,6 +859,7 @@
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[auth]", event, session?.user?.email ?? "no user");
+      _currentSession = session ?? null;
       _currentUser = session?.user ?? null;
 
       if (event === "PASSWORD_RECOVERY") {
