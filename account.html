@@ -602,6 +602,7 @@
 
     function enterPasswordSetupMode(mode = "recovery") {
       const titleEl = $("reset-panel-title");
+      _passwordSetupActive = true;
       showView("view-password-setup");
       if (mode === "invite") {
         titleEl.textContent = "Create Your Password";
@@ -613,12 +614,14 @@
     }
 
     function exitPasswordSetupMode() {
+      _passwordSetupActive = false;
       showView("view-signed-out");
       clearStatus();
     }
 
     // ── Signed-in UI ─────────────────────────────────────────────
     let _enteringSignedIn = false;
+    let _passwordSetupActive = false;
 
     async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
@@ -860,6 +863,10 @@
           enterPasswordSetupMode("recovery");
           return;
         }
+        if (_passwordSetupActive) {
+          // Keep user in reset/setup flow until they finish or cancel.
+          return;
+        }
         if (session?.user) {
           await enterSignedIn(session.user, event);
         } else if (event === "INITIAL_SESSION") {
@@ -971,6 +978,7 @@
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) return setStatus(error.message, "error");
       setStatus("Password saved! Taking you to your account...", "success");
+      _passwordSetupActive = false;
       setTimeout(() => { window.location.href = "/account.html"; }, 1400);
     });
 
