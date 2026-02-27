@@ -603,11 +603,20 @@
     let _enteringSignedIn = false;
 
     async function enterSignedIn(user) {
-      // Prevent concurrent calls from multiple auth events
       if (_enteringSignedIn) return;
       _enteringSignedIn = true;
 
       try {
+        // Always refresh the session first to ensure a valid JWT.
+        // Cached sessions from localStorage often have expired tokens.
+        const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr || !refreshed?.session) {
+          console.warn("Session expired, signing out:", refreshErr?.message);
+          await supabase.auth.signOut();
+          return;
+        }
+        user = refreshed.session.user;
+
         // Reset UI to clean state before populating
         $("admin-link").classList.add("hidden");
         $("signed-in-sub").textContent = "ViriTTS Beta";
