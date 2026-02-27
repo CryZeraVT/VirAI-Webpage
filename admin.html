@@ -1303,17 +1303,20 @@
       // Resolve twitch names by license email (when available from beta signups).
       const emails = [...new Set(data.map(lic => String(lic.email || "").trim().toLowerCase()).filter(Boolean))];
       const twitchByEmail = new Map();
+      const signupNameByEmail = new Map();
       if (emails.length > 0) {
         const { data: signupRows } = await supabase
           .from("beta_signups")
-          .select("email,twitch_username,created_at")
+          .select("email,name,twitch_username,created_at")
           .in("email", emails)
           .order("created_at", { ascending: false });
 
         for (const row of (signupRows || [])) {
           const emailKey = String(row.email || "").trim().toLowerCase();
           if (!emailKey || twitchByEmail.has(emailKey)) continue;
+          const signupName = String(row.name || "").trim();
           const twitch = String(row.twitch_username || "").trim();
+          if (signupName) signupNameByEmail.set(emailKey, signupName);
           if (twitch) twitchByEmail.set(emailKey, twitch);
         }
       }
@@ -1337,6 +1340,14 @@
               data-status="${lic.status}"
               style="border-color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; padding: 5px 10px; font-size: 0.8em;">
               ${lic.status === 'active' ? 'Deactivate' : 'Activate'}
+            </button>
+            <button class="btn btn-outline resend-beta-email-btn"
+              data-key="${lic.license_key}"
+              data-email="${lic.email}"
+              data-name="${signupNameByEmail.get(String(lic.email || "").trim().toLowerCase()) || String(lic.email || "").split("@")[0] || "Beta User"}"
+              data-expires="${lic.expires_at || ""}"
+              style="border-color:#06b6d4;color:#06b6d4;padding:5px 10px;font-size:0.8em;">
+              Resend Beta Email
             </button>
             <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Revoke</button>
           </div>
@@ -1366,6 +1377,47 @@
           const { error } = await supabase.from("licenses").delete().eq("license_key", key);
           if (error) alert(error.message);
           else loadAdminLicenses();
+        });
+      });
+
+      document.querySelectorAll(".resend-beta-email-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const email = (btn.getAttribute("data-email") || "").trim().toLowerCase();
+          const licenseKey = (btn.getAttribute("data-key") || "").trim();
+          const name = (btn.getAttribute("data-name") || "Beta User").trim();
+          const expiresAt = btn.getAttribute("data-expires") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+          if (!email || !licenseKey) {
+            alert("Missing email or license key for resend.");
+            return;
+          }
+          if (!confirm(`Resend beta email to ${email}?\n\nLicense: ${licenseKey}`)) return;
+
+          const oldText = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "📧 Sending...";
+          try {
+            const { data: emailData, error: invokeErr } = await supabase.functions.invoke("send-beta-approval", {
+              body: {
+                name,
+                email,
+                license_key: licenseKey,
+                expires_at: expiresAt,
+              },
+            });
+
+            if (invokeErr) throw invokeErr;
+            if (!emailData?.success) {
+              alert(`Email failed: ${emailData?.error || "Unknown error"}`);
+            } else {
+              alert(`✅ Beta email resent to ${email}`);
+            }
+          } catch (err) {
+            alert(`Failed to resend email: ${err?.message || err}`);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = oldText;
+          }
         });
       });
     }
