@@ -522,17 +522,24 @@
       el.className = "status-bar";
     }
 
+    let _viewTransitionTimer = null;
+
     function showView(name) {
+      if (_viewTransitionTimer) {
+        clearTimeout(_viewTransitionTimer);
+        _viewTransitionTimer = null;
+      }
       const views = ["view-signed-out", "view-signed-in", "view-password-setup"];
       const current = views.find(v => !$(v).classList.contains("hidden") && v !== name);
 
       if (current) {
         const currentEl = $(current);
         currentEl.classList.add("view-exit");
-        setTimeout(() => {
+        _viewTransitionTimer = setTimeout(() => {
           currentEl.classList.add("hidden");
           currentEl.classList.remove("view-exit");
           activateView(name);
+          _viewTransitionTimer = null;
         }, 160);
       } else {
         activateView(name);
