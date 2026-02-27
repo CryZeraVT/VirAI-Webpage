@@ -603,6 +603,7 @@
     function enterPasswordSetupMode(mode = "recovery") {
       const titleEl = $("reset-panel-title");
       _passwordSetupActive = true;
+      _passwordSetupMode = mode;
       showView("view-password-setup");
       if (mode === "invite") {
         titleEl.textContent = "Create Your Password";
@@ -615,6 +616,7 @@
 
     function exitPasswordSetupMode() {
       _passwordSetupActive = false;
+      _passwordSetupMode = "";
       showView("view-signed-out");
       clearStatus();
     }
@@ -622,6 +624,7 @@
     // ── Signed-in UI ─────────────────────────────────────────────
     let _enteringSignedIn = false;
     let _passwordSetupActive = false;
+    let _passwordSetupMode = "";
 
     async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
@@ -831,6 +834,13 @@
     // with the current session from localStorage — no need for a separate
     // getSession() call that races with the auth listener.
 
+    // Pre-lock reset/invite mode before auth callbacks run to prevent
+    // initial-session routing from flashing the wrong view.
+    const initialLinkType = getAuthLinkTypeFromUrl();
+    if (initialLinkType === "recovery" || initialLinkType === "invite") {
+      enterPasswordSetupMode(initialLinkType);
+    }
+
     supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[auth]", event, session?.user?.email ?? "no user");
 
@@ -840,6 +850,10 @@
       }
 
       if (event === "SIGNED_OUT") {
+        if (_passwordSetupActive) {
+          enterPasswordSetupMode(_passwordSetupMode || "recovery");
+          return;
+        }
         _enteringSignedIn = false;
         // Reset signed-in view to clean state for next login
         $("admin-link").classList.add("hidden");
@@ -876,15 +890,7 @@
       }
     });
 
-    // Handle password-reset / invite links that arrive via URL hash
-    // (Supabase fires PASSWORD_RECOVERY or SIGNED_IN automatically,
-    //  but we show the setup view immediately to avoid flash)
-    const initialLinkType = getAuthLinkTypeFromUrl();
-    if (initialLinkType === "recovery") {
-      enterPasswordSetupMode("recovery");
-    } else if (initialLinkType === "invite") {
-      enterPasswordSetupMode("invite");
-    }
+    // Initial reset/invite routing is handled above before auth callbacks.
 
     // ── Button handlers ───────────────────────────────────────────
     $("goto-signup").addEventListener("click", () => { clearStatus(); showMode("signup"); });
