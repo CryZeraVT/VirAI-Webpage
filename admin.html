@@ -1233,7 +1233,7 @@
     });
 
     document.getElementById("generate-license").addEventListener("click", async () => {
-      const email = document.getElementById("license-email").value.trim();
+      const email = document.getElementById("license-email").value.trim().toLowerCase();
       let key = document.getElementById("license-key-input").value.trim();
       const duration = parseInt(document.getElementById("license-duration").value) || 30;
       const status = document.getElementById("license-status-select").value;
@@ -1443,7 +1443,7 @@
       document.querySelectorAll(".approve-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
           const id = btn.getAttribute("data-id");
-          const email = btn.getAttribute("data-email");
+          const email = btn.getAttribute("data-email").trim().toLowerCase();
           const name = btn.getAttribute("data-name");
 
           if (!confirm(`Approve ${name} (${email}) and send them a license key?`)) return;
@@ -1479,25 +1479,23 @@
             alert("License created but failed to update signup status: " + upErr.message);
           }
 
-          // Send invite / magic link via Supabase built-in email
+          // Send invite / magic link via Supabase edge function (includes JWT automatically)
           btn.textContent = "📧 Sending email...";
           try {
-            const emailRes = await fetch(
-              `${SUPABASE_URL}/functions/v1/send-beta-approval`,
+            const { data: emailData, error: invokeErr } = await supabase.functions.invoke(
+              "send-beta-approval",
               {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                   name,
                   email,
                   license_key: key,
                   expires_at: expiresAt.toISOString(),
-                }),
+                },
               }
             );
-            const emailData = await emailRes.json();
-            if (!emailRes.ok) {
-              alert(`⚠️ License created but email failed: ${emailData.error}\n\nManually share:\nKey: ${key}\nAccount page: ${SUPABASE_URL.replace("https://rgigtqpesabuyaumibaj.supabase.co","https://viritts.com")}/account.html`);
+            if (invokeErr) throw invokeErr;
+            if (!emailData?.success) {
+              alert(`⚠️ License created but email failed: ${emailData?.error || "Unknown error"}\n\nManually share:\nKey: ${key}\nAccount page: https://viritts.com/account.html`);
             } else if (emailData.already_exists) {
               // User already has an account — show magic link for them to sign in
               const link = emailData.action_link || "https://viritts.com/account.html";
