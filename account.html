@@ -582,6 +582,13 @@
       return "";
     }
 
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
+      ]);
+    }
+
     function enterPasswordSetupMode(mode = "recovery") {
       const titleEl = $("reset-panel-title");
       showView("view-password-setup");
@@ -611,7 +618,11 @@
         // getUser() hits the auth endpoint and triggers auto-refresh if needed,
         // without racing with Supabase's internal refresh cycle.
         if (authEvent === "INITIAL_SESSION") {
-          const { data: { user: freshUser }, error: authErr } = await supabase.auth.getUser();
+          const { data: { user: freshUser }, error: authErr } = await withTimeout(
+            supabase.auth.getUser(),
+            8000,
+            "Auth validation timed out"
+          );
           if (authErr || !freshUser) {
             console.warn("Cached session invalid, signing out:", authErr?.message);
             await supabase.auth.signOut();
@@ -630,11 +641,21 @@
         $("avatar-initials").textContent = (user.email ?? "?")[0].toUpperCase();
         clearStatus();
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_admin, twitch_username")
-          .eq("id", user.id)
-          .maybeSingle();
+        let profile = null;
+        try {
+          const { data } = await withTimeout(
+            supabase
+              .from("profiles")
+              .select("is_admin, twitch_username")
+              .eq("id", user.id)
+              .maybeSingle(),
+            6000,
+            "Profile query timed out"
+          );
+          profile = data;
+        } catch (profileErr) {
+          console.warn("Profile load skipped:", profileErr?.message || profileErr);
+        }
 
         if (profile?.is_admin) {
           $("admin-link").classList.remove("hidden");
@@ -679,23 +700,31 @@
 
         let downloadUrl = null;
         try {
-          const { data: versionData } = await supabase
-            .from("r2_versions")
-            .select("download_url, version")
-            .eq("is_active", true)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
+          const { data: versionData } = await withTimeout(
+            supabase
+              .from("r2_versions")
+              .select("download_url, version")
+              .eq("is_active", true)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single(),
+            5000,
+            "Version query timed out"
+          );
           if (versionData) downloadUrl = versionData.download_url;
         } catch (e) {
           console.warn("Could not load active version:", e);
         }
 
-        const { data, error } = await supabase
-          .from("licenses")
-          .select("license_key,status,expires_at,created_at")
-          .ilike("email", user.email)
-          .order("created_at", { ascending: false });
+        const { data, error } = await withTimeout(
+          supabase
+            .from("licenses")
+            .select("license_key,status,expires_at,created_at")
+            .ilike("email", user.email)
+            .order("created_at", { ascending: false }),
+          10000,
+          "License query timed out"
+        );
 
         if (error) {
           keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${error.message}). Try refreshing.</div>`;
@@ -884,18 +913,21 @@
       }
     });
 
-    $("sign-out").addEventListener("click", () => {
+    $("sign-out").addEventListener("click", async () => {
       const btn = $("sign-out");
       btn.disabled = true;
       btn.textContent = "Signing out…";
-      supabase.auth.signOut().finally(() => {
+      try {
+        await withTimeout(supabase.auth.signOut(), 5000, "Sign-out timed out");
+      } catch (e) {
+        console.warn("Sign-out timeout/failure, forcing UI reset:", e?.message || e);
+      } finally {
         btn.disabled = false;
         btn.textContent = "Sign Out";
-        // Force view switch regardless of whether onAuthStateChange fired
         _enteringSignedIn = false;
         showView("view-signed-out");
         clearStatus();
-      });
+      }
     });
 
     $("reset-password").addEventListener("click", async () => {
