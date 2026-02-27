@@ -1397,16 +1397,25 @@
           btn.disabled = true;
           btn.textContent = "📧 Sending...";
           try {
-            const { data: emailData, error: invokeErr } = await supabase.functions.invoke("send-beta-approval", {
-              body: {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/send-beta-approval`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
                 name,
                 email,
                 license_key: licenseKey,
                 expires_at: expiresAt,
-              },
+              }),
             });
 
-            if (invokeErr) throw invokeErr;
+            const emailData = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(emailData?.error || emailData?.message || `HTTP ${res.status}`);
+            }
             if (!emailData?.success) {
               alert(`Email failed: ${emailData?.error || "Unknown error"}`);
             } else {
