@@ -607,16 +607,17 @@
       _enteringSignedIn = true;
 
       try {
-        // Only refresh for cached sessions (INITIAL_SESSION).
-        // SIGNED_IN and TOKEN_REFRESHED already have a fresh JWT.
+        // For cached sessions (INITIAL_SESSION), validate the token server-side.
+        // getUser() hits the auth endpoint and triggers auto-refresh if needed,
+        // without racing with Supabase's internal refresh cycle.
         if (authEvent === "INITIAL_SESSION") {
-          const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-          if (refreshErr || !refreshed?.session) {
-            console.warn("Cached session expired, signing out:", refreshErr?.message);
+          const { data: { user: freshUser }, error: authErr } = await supabase.auth.getUser();
+          if (authErr || !freshUser) {
+            console.warn("Cached session invalid, signing out:", authErr?.message);
             await supabase.auth.signOut();
             return;
           }
-          user = refreshed.session.user;
+          user = freshUser;
         }
 
         // Reset UI to clean state before populating
