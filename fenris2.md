@@ -347,3 +347,70 @@ beta.html (form submit)
 ### Tension to Watch
 
 If `virflowsocial.com` is only verified in Resend for SMTP relay (Postfix relayhost) but not for API sends, the Resend HTTP API calls will fail silently. The edge function logs this but doesn't block signup success — correct tradeoff, but verify during deployment.
+
+---
+
+## Session: Beta Approval & License Visibility Fixes (2026-02-26)
+
+### TL;DR
+
+Fixed two bugs: (1) approved beta users had no password and were forced to reset before logging in, (2) users couldn't see their license keys after page refresh due to case-sensitive email matching in RLS.
+
+### Bug 1: No Temp Password on Approval
+
+**Root Cause**: `send-beta-approval` edge function used `inviteUserByEmail()` which creates a user with no password. Users clicked the invite link, got confirmed, but then had no credentials to sign in with.
+
+**Fix**: Replaced `inviteUserByEmail()` with `admin.createUser()` + a generated temp password (`email_confirm: true`). The temp password is now included in the approval email alongside the license key.
+
+**Changes**:
+- `supabase/functions/send-beta-approval/index.ts` — rewritten (deployed as v8)
+  - New user path: `admin.createUser({ email, password: tempPassword, email_confirm: true })`
+  - `generateTempPassword()` creates 13-char password (10 alphanumeric + 1 special + 2 digits)
+  - Temp password displayed in styled block in approval email
+  - Emails normalized to lowercase throughout
+  - Fallback magic link still generated for convenience
+
+### Bug 2: License Keys Invisible to Users
+
+**Root Cause**: Two issues compounding:
+1. RLS policy on `licenses` used `email = auth.email()` — case-sensitive text comparison in Postgres. Admin entered `User@Example.com` but auth stored `user@example.com` → zero rows.
+2. Frontend `account.html` passed `user.email` directly without normalizing case.
+
+**Fix**:
+1. Updated RLS policy to use `lower()` on both sides:
+   ```sql
+   DROP POLICY "Users can view their own licenses" ON public.licenses;
+   CREATE POLICY "Users can view their own licenses" ON public.licenses
+     FOR SELECT TO public USING (lower(email) = lower(auth.email()));
+   ```
+2. `account.html`: normalize email before query — `(user.email || "").trim().toLowerCase()`
+3. `admin.html`: normalize email to lowercase when generating licenses
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/send-beta-approval/index.ts` | Rewritten: createUser + temp password instead of inviteUserByEmail |
+| `account.html` | Lowercase email in loadKeys query |
+| `admin.html` | Lowercase email in license generation |
+| Supabase RLS (live) | `licenses` SELECT policy now uses `lower()` on both sides |
+
+### Deployment Status
+
+| Change | Status |
+|--------|--------|
+| Edge function `send-beta-approval` v8 | **Live** — deployed via MCP |
+| RLS policy update | **Live** — applied via `execute_sql` |
+| `account.html` + `admin.html` | **Pending** — needs GitHub push |
+
+### Blast Radius
+
+**Tier 3** — Auth surface. The edge function creates users and sets passwords. The RLS change affects license visibility for all users. Both changes are additive (no behavior removed). Rollback: redeploy previous edge function version, restore old RLS policy.
+
+### Debt Update
+
+- **D3** (Discord placeholder link) — **Resolved** in this branch. `discord.gg/yourdiscord` → `discord.gg/MkJVue2Rr4` across `beta.html`, `index.html`, `vircast.html`.
+
+### Also Created
+
+- `blueprint.md` — Full Supabase schema blueprint (10 tables, 10 edge functions, 13 migrations, all RLS policies) for context-saving reference.

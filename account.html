@@ -226,10 +226,11 @@
         downloadUrl = versionData.download_url;
       }
 
+      const userEmail = (user.email || "").trim().toLowerCase();
       const { data, error } = await supabase
         .from("licenses")
         .select("license_key,status,expires_at,created_at")
-        .eq("email", user.email)
+        .eq("email", userEmail)
         .order("created_at", { ascending: false });
 
       if (error) {

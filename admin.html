@@ -867,7 +867,7 @@
     });
 
     document.getElementById("generate-license").addEventListener("click", async () => {
-      const email = document.getElementById("license-email").value.trim();
+      const email = document.getElementById("license-email").value.trim().toLowerCase();
       let key = document.getElementById("license-key-input").value.trim();
       const duration = parseInt(document.getElementById("license-duration").value) || 30;
       const status = document.getElementById("license-status-select").value;
