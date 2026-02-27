@@ -963,12 +963,28 @@
     $("reset-password").addEventListener("click", async () => {
       const email = ($("email").value || "").trim();
       if (!email) return setStatus("Enter your email address above first.", "error");
-
-      const { data, error } = await supabase.functions.invoke("send-password-reset", {
-        body: { email },
-      });
-      if (error) return setStatus(error.message || "Failed to send reset email.", "error");
-      if (data?.error) return setStatus(String(data.error), "error");
+      try {
+        const res = await withTimeout(
+          fetch(`${SUPABASE_URL}/functions/v1/send-password-reset`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ email }),
+          }),
+          10000,
+          "Password reset request timed out"
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return setStatus(data?.error || `Failed to send reset email (${res.status}).`, "error");
+        }
+        if (data?.error) return setStatus(String(data.error), "error");
+      } catch (err) {
+        return setStatus(err?.message || "Failed to send reset email.", "error");
+      }
 
       setStatus(
         "If that email exists, a password reset link was sent. Check inbox/spam.",
