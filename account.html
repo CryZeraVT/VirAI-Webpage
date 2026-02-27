@@ -602,20 +602,22 @@
     // ── Signed-in UI ─────────────────────────────────────────────
     let _enteringSignedIn = false;
 
-    async function enterSignedIn(user) {
+    async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
       _enteringSignedIn = true;
 
       try {
-        // Always refresh the session first to ensure a valid JWT.
-        // Cached sessions from localStorage often have expired tokens.
-        const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-        if (refreshErr || !refreshed?.session) {
-          console.warn("Session expired, signing out:", refreshErr?.message);
-          await supabase.auth.signOut();
-          return;
+        // Only refresh for cached sessions (INITIAL_SESSION).
+        // SIGNED_IN and TOKEN_REFRESHED already have a fresh JWT.
+        if (authEvent === "INITIAL_SESSION") {
+          const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+          if (refreshErr || !refreshed?.session) {
+            console.warn("Cached session expired, signing out:", refreshErr?.message);
+            await supabase.auth.signOut();
+            return;
+          }
+          user = refreshed.session.user;
         }
-        user = refreshed.session.user;
 
         // Reset UI to clean state before populating
         $("admin-link").classList.add("hidden");
@@ -809,7 +811,7 @@
           return;
         }
         if (session?.user) {
-          await enterSignedIn(session.user);
+          await enterSignedIn(session.user, event);
         } else if (event === "INITIAL_SESSION") {
           // No session on first load — show login
           showView("view-signed-out");
