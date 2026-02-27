@@ -1300,6 +1300,24 @@
         return;
       }
 
+      // Resolve twitch names by license email (when available from beta signups).
+      const emails = [...new Set(data.map(lic => String(lic.email || "").trim().toLowerCase()).filter(Boolean))];
+      const twitchByEmail = new Map();
+      if (emails.length > 0) {
+        const { data: signupRows } = await supabase
+          .from("beta_signups")
+          .select("email,twitch_username,created_at")
+          .in("email", emails)
+          .order("created_at", { ascending: false });
+
+        for (const row of (signupRows || [])) {
+          const emailKey = String(row.email || "").trim().toLowerCase();
+          if (!emailKey || twitchByEmail.has(emailKey)) continue;
+          const twitch = String(row.twitch_username || "").trim();
+          if (twitch) twitchByEmail.set(emailKey, twitch);
+        }
+      }
+
       listEl.innerHTML = data.map(lic => `
         <div class="announcement-item">
           <div class="announcement-info">
@@ -1310,6 +1328,7 @@
               </span>
             </h4>
             <p>📧 ${lic.email}</p>
+            <p>🎮 ${twitchByEmail.get(String(lic.email || "").trim().toLowerCase()) || "—"}</p>
             <p style="font-size: 0.8em; color: #888;">Expires: ${lic.expires_at ? new Date(lic.expires_at).toLocaleDateString() : 'Never'}</p>
           </div>
           <div style="display: flex; gap: 10px;">
