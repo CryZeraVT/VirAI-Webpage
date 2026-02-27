@@ -659,6 +659,11 @@
 
       try {
         // If no user passed in, restore from session
+        // Guard against accidental click-event object being passed in.
+        if (user && typeof user === "object" && !("email" in user) && "target" in user) {
+          user = null;
+        }
+
         if (!user) {
           const { data: sessionData } = await supabase.auth.getSession();
           user = sessionData?.session?.user ?? null;
@@ -912,7 +917,7 @@
       setTimeout(() => { window.location.href = "/account.html"; }, 1400);
     });
 
-    $("load-keys").addEventListener("click", loadKeys);
+    $("load-keys").addEventListener("click", () => loadKeys());
   </script>
 </body>
 </html>
