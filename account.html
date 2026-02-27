@@ -632,6 +632,7 @@
     let _enteringSignedIn = false;
     let _passwordSetupActive = false;
     let _passwordSetupMode = "";
+    let _currentUser = null;
 
     async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
@@ -653,6 +654,7 @@
             return;
           }
           user = freshUser;
+          _currentUser = freshUser;
         }
 
         // Reset UI to clean state before populating
@@ -709,14 +711,7 @@
           user = null;
         }
 
-        if (!user) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          user = sessionData?.session?.user ?? null;
-          if (!user) {
-            const { data: refreshData } = await supabase.auth.refreshSession();
-            user = refreshData?.session?.user ?? null;
-          }
-        }
+        if (!user && _currentUser) user = _currentUser;
         if (!user) {
           keysList.innerHTML = `<div class="empty-state">Please sign in to view your licenses.</div>`;
           return;
@@ -740,7 +735,7 @@
           console.warn("Could not load active version:", e);
         }
 
-        const { data, error } = await withTimeout(
+        const runLicenseQuery = () => withTimeout(
           supabase
             .from("licenses")
             .select("license_key,status,expires_at,created_at")
@@ -749,6 +744,13 @@
           10000,
           "License query timed out"
         );
+        let { data, error } = await runLicenseQuery();
+        const lockErr = String(error?.message || "").toLowerCase();
+        if (error && lockErr.includes("lock broken by another request")) {
+          // Allow auth lock contention to settle, then retry once.
+          await new Promise((r) => setTimeout(r, 500));
+          ({ data, error } = await runLicenseQuery());
+        }
 
         if (error) {
           keysList.innerHTML = `<div class="empty-state" style="color:#f87171;">Error loading licenses (${error.message}). Try refreshing.</div>`;
@@ -850,6 +852,7 @@
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[auth]", event, session?.user?.email ?? "no user");
+      _currentUser = session?.user ?? null;
 
       if (event === "PASSWORD_RECOVERY") {
         enterPasswordSetupMode("recovery");
@@ -857,6 +860,7 @@
       }
 
       if (event === "SIGNED_OUT") {
+        _currentUser = null;
         if (_passwordSetupActive) {
           enterPasswordSetupMode(_passwordSetupMode || "recovery");
           return;
