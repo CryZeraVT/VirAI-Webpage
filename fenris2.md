@@ -347,3 +347,38 @@ beta.html (form submit)
 ### Tension to Watch
 
 If `virflowsocial.com` is only verified in Resend for SMTP relay (Postfix relayhost) but not for API sends, the Resend HTTP API calls will fail silently. The edge function logs this but doesn't block signup success — correct tradeoff, but verify during deployment.
+
+---
+
+## 2026-02-26 — Bug Fix: Approval Email + License Visibility
+
+### Bug 1: Approved beta users never receive temp password
+
+**Root Cause**: `admin.html` called the `send-beta-approval` edge function via raw `fetch()` without Authorization or apikey headers. The function has `verify_jwt: true`, so Supabase gateway rejected every call with 401. The license was created in the DB, but the email with the temp password never sent.
+
+**Fix**: Replaced raw `fetch()` with `supabase.functions.invoke("send-beta-approval", ...)` which automatically includes the admin's JWT and apikey.
+
+**File**: `admin.html` (approval flow, ~line 1484)
+
+### Bug 2: Users can't see license keys after login
+
+**Root Cause**: Email case mismatch. The approval flow inserted licenses with the original-case email from `beta_signups` (e.g., `SirArminius.gaming@gmail.com`), but `send-beta-approval` created the auth user with `email.trim().toLowerCase()`. The RLS policy `email = auth.email()` is case-sensitive in PostgreSQL, so `SirArminius.gaming@gmail.com != sirarminius.gaming@gmail.com` → zero rows returned.
+
+**Fixes applied**:
+1. `admin.html`: Both license generation flows now `.toLowerCase()` the email before insert
+2. RLS policy on `licenses` changed from `email = auth.email()` to `lower(email) = lower(auth.email())`
+3. Existing data normalized: `UPDATE licenses SET email = lower(email)` — 1 row fixed (`VIRI-BETA-1RB5-RA2Q`)
+
+**Files**: `admin.html` (2 locations), Supabase RLS policy (live DB)
+
+### Blast Radius
+
+**Tier 3** — Auth-adjacent (RLS policy change affects who can see what). Changes are backward-compatible: lowercased emails still match the lowered RLS comparison. No data loss risk. Rollback: revert RLS policy to exact match and revert admin.html changes.
+
+### Validate
+
+- [ ] Approve a new beta user → confirm email arrives with temp password
+- [ ] Sign in with temp password → confirm it works without password reset
+- [ ] After sign-in → confirm license key and download link are visible
+- [ ] Hit Refresh → confirm license persists
+- [ ] Check existing user `sirarminius.gaming@gmail.com` can now see their license
