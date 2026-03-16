@@ -469,76 +469,107 @@
         <div class="tab-content" id="tab-ai-engine">
           <div class="tab-header">
             <h3>🤖 AI Engine</h3>
-            <p>Configure the global AI provider, model, and generation params for all Built-in AI users. Changes take effect on the next app launch.</p>
+            <p>Two independent configs — changing one never affects the other. Legacy = existing testers (<code style="color:#a78bfa;">api_mode: builtin</code>). New Prod = new users (<code style="color:#06b6d4;">api_mode: proxy</code>).</p>
           </div>
 
-          <div class="admin-section">
-            <div class="admin-section-title">Provider &amp; Model</div>
+          <!-- ── LEGACY CONFIG ─────────────────────────────────────────────── -->
+          <div class="admin-section" style="border-color:rgba(167,139,250,0.3);">
+            <div class="admin-section-title" style="color:#a78bfa;">🏛️ Legacy Config <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— builtin_ai_provider · existing testers</span></div>
             <div class="form-row">
               <div class="form-group">
                 <label>Provider</label>
-                <select id="ai-provider" class="form-input">
+                <select id="leg-provider" class="form-input">
                   <option value="openai">OpenAI</option>
                   <option value="grok">Grok (X.AI)</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Model</label>
-                <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
+                <input id="leg-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
               </div>
             </div>
-          </div>
-
-          <div class="admin-section">
-            <div class="admin-section-title">Standard Model Params <span style="font-weight:400;text-transform:none;color:#4b5563;font-size:0.78rem;">(OpenAI / Grok non-reasoning)</span></div>
             <div class="form-row">
               <div class="form-group">
-                <label>Temperature <span id="ai-temp-display" style="color:#a78bfa;font-weight:700;">0.9</span></label>
-                <input id="ai-temperature" type="range" min="0" max="2" step="0.05" value="0.9"
-                  class="form-input" style="padding:6px 0;cursor:pointer;"
-                  oninput="document.getElementById('ai-temp-display').textContent=parseFloat(this.value).toFixed(2)">
+                <label>Temperature <span id="leg-temp-display" style="color:#a78bfa;font-weight:700;">0.9</span></label>
+                <input id="leg-temperature" type="range" min="0" max="2" step="0.05" value="0.9" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-temp-display').textContent=parseFloat(this.value).toFixed(2)">
               </div>
               <div class="form-group">
                 <label>Max Tokens</label>
-                <input id="ai-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
+                <input id="leg-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Top P <span id="ai-topp-display" style="color:#a78bfa;font-weight:700;">1.0</span></label>
-                <input id="ai-top-p" type="range" min="0" max="1" step="0.05" value="1.0"
-                  class="form-input" style="padding:6px 0;cursor:pointer;"
-                  oninput="document.getElementById('ai-topp-display').textContent=parseFloat(this.value).toFixed(2)">
+                <label>Top P <span id="leg-topp-display" style="color:#a78bfa;font-weight:700;">1.0</span></label>
+                <input id="leg-top-p" type="range" min="0" max="1" step="0.05" value="1.0" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-topp-display').textContent=parseFloat(this.value).toFixed(2)">
               </div>
               <div class="form-group">
-                <label>Frequency Penalty <span id="ai-freqp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
-                <input id="ai-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3"
-                  class="form-input" style="padding:6px 0;cursor:pointer;"
-                  oninput="document.getElementById('ai-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
+                <label>Freq Penalty <span id="leg-freqp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="leg-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
               </div>
-            </div>
-            <div class="form-row">
               <div class="form-group">
-                <label>Presence Penalty <span id="ai-presp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
-                <input id="ai-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3"
-                  class="form-input" style="padding:6px 0;cursor:pointer;"
-                  oninput="document.getElementById('ai-presp-display').textContent=parseFloat(this.value).toFixed(2)">
+                <label>Presence Penalty <span id="leg-presp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="leg-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-presp-display').textContent=parseFloat(this.value).toFixed(2)">
               </div>
             </div>
-          </div>
-
-          <div class="admin-section">
-            <div class="admin-section-title">Reasoning Model Params <span style="font-weight:400;text-transform:none;color:#4b5563;font-size:0.78rem;">(Grok 4 / GPT-5 / o1 / o3 / o4)</span></div>
-            <p style="font-size:0.8rem;color:#4b5563;margin:0 0 14px;">Reasoning models ignore temperature, top_p, and penalties. Only max_completion_tokens applies.</p>
             <div class="form-group" style="max-width:240px;">
-              <label>Max Completion Tokens</label>
-              <input id="ai-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+              <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
+              <input id="leg-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+              <button id="save-legacy-config" class="btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);padding:10px 24px;">💾 Save Legacy Config</button>
+              <span id="legacy-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
             </div>
           </div>
 
-          <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
-            <button id="update-ai-config" class="btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);padding:12px 28px;">💾 Save AI Config</button>
-            <span id="ai-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
+          <!-- ── NEW PROD CONFIG ───────────────────────────────────────────── -->
+          <div class="admin-section" style="border-color:rgba(6,182,212,0.3);">
+            <div class="admin-section-title" style="color:#06b6d4;">🚀 New Prod Config <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— proxy_ai_provider · new users</span></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Provider</label>
+                <select id="prod-provider" class="form-input">
+                  <option value="openai">OpenAI</option>
+                  <option value="grok">Grok (X.AI)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Model</label>
+                <input id="prod-model" type="text" placeholder="e.g. grok-4-latest" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Temperature <span id="prod-temp-display" style="color:#06b6d4;font-weight:700;">0.9</span></label>
+                <input id="prod-temperature" type="range" min="0" max="2" step="0.05" value="0.9" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('prod-temp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Max Tokens</label>
+                <input id="prod-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Top P <span id="prod-topp-display" style="color:#06b6d4;font-weight:700;">1.0</span></label>
+                <input id="prod-top-p" type="range" min="0" max="1" step="0.05" value="1.0" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('prod-topp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Freq Penalty <span id="prod-freqp-display" style="color:#06b6d4;font-weight:700;">0.3</span></label>
+                <input id="prod-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('prod-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Presence Penalty <span id="prod-presp-display" style="color:#06b6d4;font-weight:700;">0.3</span></label>
+                <input id="prod-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('prod-presp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+            <div class="form-group" style="max-width:240px;">
+              <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
+              <input id="prod-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+              <button id="save-prod-config" class="btn" style="background:linear-gradient(135deg,#0891b2,#06b6d4);padding:10px 24px;">💾 Save New Prod Config</button>
+              <span id="prod-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
+            </div>
           </div>
         </div>
 
@@ -810,8 +841,7 @@
     const statusEl = document.getElementById("admin-status");
     const contentEl = document.getElementById("admin-content");
     const listEl = document.getElementById("announcements-list");
-    const aiProviderEl = document.getElementById("ai-provider");
-    const aiModelEl = document.getElementById("ai-model");
+    // AI Engine tab uses prefix-based selectors (leg-* / prod-*); no shared refs needed
     const r2AccountIdEl = document.getElementById("r2-account-id");
     const r2AccessKeyEl = document.getElementById("r2-access-key");
     const r2SecretKeyEl = document.getElementById("r2-secret-key");
@@ -1072,40 +1102,69 @@
       }
     }
 
-    function syncSliderDisplay(inputId, displayId) {
+    function syncSlider(inputId, displayId) {
       const el = document.getElementById(inputId);
       if (el) document.getElementById(displayId).textContent = parseFloat(el.value).toFixed(2);
     }
 
+    function applyAiValues(v, prefix) {
+      const s = (id) => document.getElementById(id);
+      s(`${prefix}-provider`).value = v.provider || "openai";
+      s(`${prefix}-model`).value    = v.model    || "";
+      if (v.temperature           != null) { s(`${prefix}-temperature`).value         = v.temperature;         syncSlider(`${prefix}-temperature`,         `${prefix}-temp-display`);  }
+      if (v.max_tokens            != null)   s(`${prefix}-max-tokens`).value           = v.max_tokens;
+      if (v.top_p                 != null) { s(`${prefix}-top-p`).value                = v.top_p;               syncSlider(`${prefix}-top-p`,               `${prefix}-topp-display`);  }
+      if (v.frequency_penalty     != null) { s(`${prefix}-frequency-penalty`).value   = v.frequency_penalty;   syncSlider(`${prefix}-frequency-penalty`,   `${prefix}-freqp-display`); }
+      if (v.presence_penalty      != null) { s(`${prefix}-presence-penalty`).value    = v.presence_penalty;    syncSlider(`${prefix}-presence-penalty`,    `${prefix}-presp-display`); }
+      if (v.max_completion_tokens != null)   s(`${prefix}-max-completion-tokens`).value = v.max_completion_tokens;
+    }
+
+    function readAiValues(prefix) {
+      const g = (id) => document.getElementById(id);
+      return {
+        provider:             g(`${prefix}-provider`).value,
+        model:                g(`${prefix}-model`).value.trim(),
+        temperature:          parseFloat(g(`${prefix}-temperature`).value),
+        max_tokens:           parseInt(g(`${prefix}-max-tokens`).value, 10),
+        top_p:                parseFloat(g(`${prefix}-top-p`).value),
+        frequency_penalty:    parseFloat(g(`${prefix}-frequency-penalty`).value),
+        presence_penalty:     parseFloat(g(`${prefix}-presence-penalty`).value),
+        max_completion_tokens: parseInt(g(`${prefix}-max-completion-tokens`).value, 10),
+      };
+    }
+
     async function loadAIConfig() {
       try {
-        const { data, error } = await supabase
-          .from("system_config")
-          .select("value")
-          .eq("key", "builtin_ai_provider")
-          .single();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error loading AI config:", error);
-        }
-
-        if (data?.value) {
-          const v = data.value;
-          aiProviderEl.value = v.provider || "openai";
-          aiModelEl.value    = v.model    || "";
-
-          // Standard params
-          if (v.temperature           != null) { document.getElementById("ai-temperature").value         = v.temperature;         syncSliderDisplay("ai-temperature",         "ai-temp-display"); }
-          if (v.max_tokens            != null)   document.getElementById("ai-max-tokens").value           = v.max_tokens;
-          if (v.top_p                 != null) { document.getElementById("ai-top-p").value                = v.top_p;               syncSliderDisplay("ai-top-p",               "ai-topp-display"); }
-          if (v.frequency_penalty     != null) { document.getElementById("ai-frequency-penalty").value   = v.frequency_penalty;   syncSliderDisplay("ai-frequency-penalty",   "ai-freqp-display"); }
-          if (v.presence_penalty      != null) { document.getElementById("ai-presence-penalty").value    = v.presence_penalty;    syncSliderDisplay("ai-presence-penalty",    "ai-presp-display"); }
-
-          // Reasoning param
-          if (v.max_completion_tokens != null)   document.getElementById("ai-max-completion-tokens").value = v.max_completion_tokens;
-        }
+        const [legRes, prodRes] = await Promise.all([
+          supabase.from("system_config").select("value").eq("key", "builtin_ai_provider").maybeSingle(),
+          supabase.from("system_config").select("value").eq("key", "proxy_ai_provider").maybeSingle(),
+        ]);
+        if (legRes.data?.value)  applyAiValues(legRes.data.value,  "leg");
+        if (prodRes.data?.value) applyAiValues(prodRes.data.value, "prod");
       } catch (err) {
         console.error("Unexpected error in loadAIConfig:", err);
+      }
+    }
+
+    async function saveAiConfig(configKey, prefix, statusId) {
+      const statusEl = document.getElementById(statusId);
+      const value = readAiValues(prefix);
+      if (!value.model) {
+        statusEl.textContent = "Enter a model name.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+      statusEl.textContent = "Saving…";
+      statusEl.style.color = "#4b5563";
+      const { error } = await supabase.from("system_config")
+        .upsert({ key: configKey, value, updated_at: new Date().toISOString() });
+      if (error) {
+        statusEl.textContent = "Error: " + error.message;
+        statusEl.style.color = "#ef4444";
+      } else {
+        statusEl.textContent = "✓ Saved";
+        statusEl.style.color = "#10b981";
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
       }
     }
 
@@ -1321,46 +1380,12 @@
       }
     });
 
-    document.getElementById("update-ai-config").addEventListener("click", async () => {
-      const statusEl = document.getElementById("ai-config-status");
-      const provider = aiProviderEl.value;
-      const model    = aiModelEl.value.trim();
-
-      if (!model) {
-        statusEl.textContent = "Enter a model name.";
-        statusEl.style.color = "#ef4444";
-        return;
-      }
-
-      statusEl.textContent = "Saving…";
-      statusEl.style.color = "#4b5563";
-
-      const value = {
-        provider,
-        model,
-        // Standard params
-        temperature:           parseFloat(document.getElementById("ai-temperature").value),
-        max_tokens:            parseInt(document.getElementById("ai-max-tokens").value, 10),
-        top_p:                 parseFloat(document.getElementById("ai-top-p").value),
-        frequency_penalty:     parseFloat(document.getElementById("ai-frequency-penalty").value),
-        presence_penalty:      parseFloat(document.getElementById("ai-presence-penalty").value),
-        // Reasoning param
-        max_completion_tokens: parseInt(document.getElementById("ai-max-completion-tokens").value, 10),
-      };
-
-      const { error } = await supabase
-        .from("system_config")
-        .upsert({ key: "builtin_ai_provider", value, updated_at: new Date().toISOString() });
-
-      if (error) {
-        statusEl.textContent = "Error: " + error.message;
-        statusEl.style.color = "#ef4444";
-      } else {
-        statusEl.textContent = "✓ Saved — apps update on next launch";
-        statusEl.style.color = "#10b981";
-        setTimeout(() => { statusEl.textContent = ""; }, 4000);
-      }
-    });
+    document.getElementById("save-legacy-config").addEventListener("click", () =>
+      saveAiConfig("builtin_ai_provider", "leg", "legacy-config-status")
+    );
+    document.getElementById("save-prod-config").addEventListener("click", () =>
+      saveAiConfig("proxy_ai_provider", "prod", "prod-config-status")
+    );
 
     document.getElementById("generate-license").addEventListener("click", async () => {
       const email = document.getElementById("license-email").value.trim().toLowerCase();
