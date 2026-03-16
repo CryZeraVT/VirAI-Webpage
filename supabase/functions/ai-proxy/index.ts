@@ -1,3 +1,4 @@
+// verify_jwt: false — auth is handled via license_key validation below
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -25,23 +26,12 @@ serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  // Validate JWT from Authorization header
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return jsonResponse({ error: "Missing authorization" }, 401);
-  }
-  const token = authHeader.slice(7);
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-  // Verify the JWT by resolving the user
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
-    return jsonResponse({ error: "Invalid or expired token" }, 401);
-  }
-
-  // Parse request body
-  let body: { messages?: unknown[]; license_key?: string; twitch_channel?: string };
+  // Parse request body first so we can read license_key
+  let body: {
+    messages?: unknown[];
+    license_key?: string;
+    twitch_channel?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -54,20 +44,28 @@ serve(async (req) => {
 
   const { messages, license_key, twitch_channel } = body;
 
-  // Validate license if provided
-  if (license_key) {
-    const { data: license, error: licError } = await supabase
-      .from("licenses")
-      .select("status, expires_at")
-      .eq("license_key", license_key)
-      .single();
+  // Auth: require a license_key — this is the desktop app's proof of subscription
+  if (!license_key || typeof license_key !== "string" || !license_key.trim()) {
+    return jsonResponse({ error: "license_key is required" }, 401);
+  }
 
-    if (licError || !license || license.status !== "active") {
-      return jsonResponse({ error: "Invalid or inactive license" }, 403);
-    }
-    if (license.expires_at && new Date(license.expires_at) < new Date()) {
-      return jsonResponse({ error: "License expired" }, 403);
-    }
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // Validate license
+  const { data: license, error: licError } = await supabase
+    .from("licenses")
+    .select("status, expires_at")
+    .eq("license_key", license_key.trim())
+    .single();
+
+  if (licError || !license) {
+    return jsonResponse({ error: "License not found" }, 403);
+  }
+  if (license.status !== "active") {
+    return jsonResponse({ error: "License is inactive" }, 403);
+  }
+  if (license.expires_at && new Date(license.expires_at) < new Date()) {
+    return jsonResponse({ error: "License has expired" }, 403);
   }
 
   // Read AI provider config
