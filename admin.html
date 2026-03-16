@@ -469,10 +469,11 @@
         <div class="tab-content" id="tab-ai-engine">
           <div class="tab-header">
             <h3>🤖 AI Engine</h3>
-            <p>Switch the global AI provider and model for all Built-in AI users instantly.</p>
+            <p>Configure the global AI provider, model, and generation params for all Built-in AI users. Changes take effect on the next app launch.</p>
           </div>
+
           <div class="admin-section">
-            <div class="admin-section-title">Global Configuration</div>
+            <div class="admin-section-title">Provider &amp; Model</div>
             <div class="form-row">
               <div class="form-group">
                 <label>Provider</label>
@@ -486,7 +487,58 @@
                 <input id="ai-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
               </div>
             </div>
-            <button id="update-ai-config" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;width:100%;margin-top:4px;">Update Global AI Engine</button>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Standard Model Params <span style="font-weight:400;text-transform:none;color:#4b5563;font-size:0.78rem;">(OpenAI / Grok non-reasoning)</span></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Temperature <span id="ai-temp-display" style="color:#a78bfa;font-weight:700;">0.9</span></label>
+                <input id="ai-temperature" type="range" min="0" max="2" step="0.05" value="0.9"
+                  class="form-input" style="padding:6px 0;cursor:pointer;"
+                  oninput="document.getElementById('ai-temp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Max Tokens</label>
+                <input id="ai-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Top P <span id="ai-topp-display" style="color:#a78bfa;font-weight:700;">1.0</span></label>
+                <input id="ai-top-p" type="range" min="0" max="1" step="0.05" value="1.0"
+                  class="form-input" style="padding:6px 0;cursor:pointer;"
+                  oninput="document.getElementById('ai-topp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Frequency Penalty <span id="ai-freqp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="ai-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3"
+                  class="form-input" style="padding:6px 0;cursor:pointer;"
+                  oninput="document.getElementById('ai-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Presence Penalty <span id="ai-presp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="ai-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3"
+                  class="form-input" style="padding:6px 0;cursor:pointer;"
+                  oninput="document.getElementById('ai-presp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Reasoning Model Params <span style="font-weight:400;text-transform:none;color:#4b5563;font-size:0.78rem;">(Grok 4 / GPT-5 / o1 / o3 / o4)</span></div>
+            <p style="font-size:0.8rem;color:#4b5563;margin:0 0 14px;">Reasoning models ignore temperature, top_p, and penalties. Only max_completion_tokens applies.</p>
+            <div class="form-group" style="max-width:240px;">
+              <label>Max Completion Tokens</label>
+              <input id="ai-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
+            <button id="update-ai-config" class="btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);padding:12px 28px;">💾 Save AI Config</button>
+            <span id="ai-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
           </div>
         </div>
 
@@ -1020,24 +1072,37 @@
       }
     }
 
+    function syncSliderDisplay(inputId, displayId) {
+      const el = document.getElementById(inputId);
+      if (el) document.getElementById(displayId).textContent = parseFloat(el.value).toFixed(2);
+    }
+
     async function loadAIConfig() {
       try {
-        console.log("Loading AI config...");
         const { data, error } = await supabase
           .from("system_config")
           .select("value")
           .eq("key", "builtin_ai_provider")
           .single();
 
-        console.log("AI config loaded:", data ? "Found" : "Not found", "Error:", error);
-
-        if (error && error.code !== 'PGRST116') {
+        if (error && error.code !== "PGRST116") {
           console.error("Error loading AI config:", error);
         }
 
-        if (data) {
-          aiProviderEl.value = data.value.provider;
-          aiModelEl.value = data.value.model;
+        if (data?.value) {
+          const v = data.value;
+          aiProviderEl.value = v.provider || "openai";
+          aiModelEl.value    = v.model    || "";
+
+          // Standard params
+          if (v.temperature           != null) { document.getElementById("ai-temperature").value         = v.temperature;         syncSliderDisplay("ai-temperature",         "ai-temp-display"); }
+          if (v.max_tokens            != null)   document.getElementById("ai-max-tokens").value           = v.max_tokens;
+          if (v.top_p                 != null) { document.getElementById("ai-top-p").value                = v.top_p;               syncSliderDisplay("ai-top-p",               "ai-topp-display"); }
+          if (v.frequency_penalty     != null) { document.getElementById("ai-frequency-penalty").value   = v.frequency_penalty;   syncSliderDisplay("ai-frequency-penalty",   "ai-freqp-display"); }
+          if (v.presence_penalty      != null) { document.getElementById("ai-presence-penalty").value    = v.presence_penalty;    syncSliderDisplay("ai-presence-penalty",    "ai-presp-display"); }
+
+          // Reasoning param
+          if (v.max_completion_tokens != null)   document.getElementById("ai-max-completion-tokens").value = v.max_completion_tokens;
         }
       } catch (err) {
         console.error("Unexpected error in loadAIConfig:", err);
@@ -1257,26 +1322,43 @@
     });
 
     document.getElementById("update-ai-config").addEventListener("click", async () => {
+      const statusEl = document.getElementById("ai-config-status");
       const provider = aiProviderEl.value;
-      const model = aiModelEl.value.trim();
+      const model    = aiModelEl.value.trim();
 
       if (!model) {
-        alert("Please enter a model name.");
+        statusEl.textContent = "Enter a model name.";
+        statusEl.style.color = "#ef4444";
         return;
       }
 
+      statusEl.textContent = "Saving…";
+      statusEl.style.color = "#4b5563";
+
+      const value = {
+        provider,
+        model,
+        // Standard params
+        temperature:           parseFloat(document.getElementById("ai-temperature").value),
+        max_tokens:            parseInt(document.getElementById("ai-max-tokens").value, 10),
+        top_p:                 parseFloat(document.getElementById("ai-top-p").value),
+        frequency_penalty:     parseFloat(document.getElementById("ai-frequency-penalty").value),
+        presence_penalty:      parseFloat(document.getElementById("ai-presence-penalty").value),
+        // Reasoning param
+        max_completion_tokens: parseInt(document.getElementById("ai-max-completion-tokens").value, 10),
+      };
+
       const { error } = await supabase
         .from("system_config")
-        .upsert({ 
-          key: "builtin_ai_provider", 
-          value: { provider, model },
-          updated_at: new Date().toISOString()
-        });
+        .upsert({ key: "builtin_ai_provider", value, updated_at: new Date().toISOString() });
 
       if (error) {
-        alert("Error updating AI config: " + error.message);
+        statusEl.textContent = "Error: " + error.message;
+        statusEl.style.color = "#ef4444";
       } else {
-        alert("Global AI Engine updated! All apps will switch on next launch.");
+        statusEl.textContent = "✓ Saved — apps update on next launch";
+        statusEl.style.color = "#10b981";
+        setTimeout(() => { statusEl.textContent = ""; }, 4000);
       }
     });
 
