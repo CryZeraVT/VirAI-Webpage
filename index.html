@@ -660,16 +660,15 @@
           const SUPABASE_URL      = 'https://rgigtqpesabuyaumibaj.supabase.co';
           const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
 
-          // ── Check if carousel is enabled in site settings ──
+          // ── Check if carousel is enabled in site_settings table ──
           try {
             const settingsRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/announcements?version=eq.site_settings&select=title&limit=1`,
+              `${SUPABASE_URL}/rest/v1/site_settings?key=eq.show_testers_carousel&select=value&limit=1`,
               { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
             );
             const settingsData = await settingsRes.json();
             if (Array.isArray(settingsData) && settingsData.length > 0) {
-              const settings = JSON.parse(settingsData[0].title || '{}');
-              if (settings.carousel_enabled === false) {
+              if (settingsData[0].value === 'false') {
                 const section = document.querySelector('.testers-section');
                 if (section) section.style.display = 'none';
                 return;

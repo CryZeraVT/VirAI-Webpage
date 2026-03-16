@@ -366,6 +366,9 @@
         <button class="nav-tab" data-tab="ai-engine">
           <span class="tab-icon">🤖</span><span class="tab-label">AI Engine</span>
         </button>
+        <button class="nav-tab" data-tab="api-keys">
+          <span class="tab-icon">🗝️</span><span class="tab-label">API Keys</span>
+        </button>
         <button class="nav-tab" data-tab="storage">
           <span class="tab-icon">☁️</span><span class="tab-label">Storage (R2)</span>
         </button>
@@ -484,6 +487,50 @@
               </div>
             </div>
             <button id="update-ai-config" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;width:100%;margin-top:4px;">Update Global AI Engine</button>
+          </div>
+        </div>
+
+        <!-- Tab: API Keys -->
+        <div class="tab-content" id="tab-api-keys">
+          <div class="tab-header">
+            <h3>🗝️ API Keys</h3>
+            <p>Store your AI provider API keys securely server-side. Keys are never exposed to clients — all AI calls proxy through the edge function.</p>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">OpenAI</div>
+            <div class="form-group">
+              <label>API Key</label>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <input id="apikey-openai" type="password" placeholder="sk-..." class="form-input" autocomplete="off">
+                <button type="button" id="toggle-openai-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
+              </div>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">OpenAI</strong>.</p>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Grok (X.AI)</div>
+            <div class="form-group">
+              <label>API Key</label>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <input id="apikey-grok" type="password" placeholder="xai-..." class="form-input" autocomplete="off">
+                <button type="button" id="toggle-grok-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
+              </div>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Grok</strong>.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
+            <button id="save-api-keys" class="btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);padding:12px 28px;">🗝️ Save API Keys</button>
+            <span id="api-keys-status" style="font-size:0.85rem;color:#4b5563;"></span>
+          </div>
+
+          <div class="admin-section" style="margin-top:24px;border-color:rgba(6,182,212,0.2);">
+            <div class="admin-section-title" style="color:#06b6d4;">Proxy Endpoint</div>
+            <p style="font-size:0.85rem;color:#9ca3af;margin:0 0 10px;">ViriTTS app calls this edge function instead of OpenAI/Grok directly:</p>
+            <code id="proxy-url-display" style="display:block;background:rgba(0,0,0,0.3);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#a78bfa;word-break:break-all;"></code>
+            <button id="copy-proxy-url" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;margin-top:10px;font-size:0.82rem;">📋 Copy URL</button>
           </div>
         </div>
 
@@ -773,6 +820,7 @@
         
         loadAnnouncements();
         loadAIConfig();
+        loadApiKeys();
         loadR2Config();
         loadVersions();
         loadSiteSettings();
@@ -1612,6 +1660,21 @@
           else loadBetaSignups();
         });
       });
+
+      // Toggle carousel visibility
+      document.querySelectorAll(".carousel-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const isHidden = btn.getAttribute("data-hidden") === "true";
+          const newHidden = !isHidden;
+          const { error } = await supabase
+            .from("beta_signups")
+            .update({ hidden_from_carousel: newHidden })
+            .eq("id", id);
+          if (error) alert("Error: " + error.message);
+          else loadBetaSignups();
+        });
+      });
     }
 
     document.getElementById("beta-filter").addEventListener("change", loadBetaSignups);
@@ -1779,6 +1842,97 @@
     document.getElementById("refresh-users").addEventListener("click", loadUsers);
     document.getElementById("users-search").addEventListener("input", () => {
       loadUsers();
+    });
+
+    // ── API Keys ──────────────────────────────────────────────────────────────
+
+    async function loadApiKeys() {
+      // Keys are stored in system_config but only service_role can read them.
+      // To allow the admin to see masked versions, we call via the admin session
+      // which satisfies the "Admins can manage system config" ALL policy.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Use service-role-equivalent admin read by fetching with the user's JWT
+      // (admin policy allows ALL including SELECT)
+      const { data, error } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "ai_api_keys")
+        .maybeSingle();
+
+      if (!error && data?.value) {
+        const keys = data.value;
+        if (keys.openai) document.getElementById("apikey-openai").value = keys.openai;
+        if (keys.grok)   document.getElementById("apikey-grok").value   = keys.grok;
+      }
+
+      // Set proxy URL display
+      document.getElementById("proxy-url-display").textContent =
+        `${SUPABASE_URL}/functions/v1/ai-proxy`;
+    }
+
+    document.getElementById("save-api-keys").addEventListener("click", async () => {
+      const statusEl = document.getElementById("api-keys-status");
+      const openaiKey = document.getElementById("apikey-openai").value.trim();
+      const grokKey   = document.getElementById("apikey-grok").value.trim();
+
+      if (!openaiKey && !grokKey) {
+        statusEl.textContent = "Enter at least one API key.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+
+      statusEl.textContent = "Saving…";
+      statusEl.style.color = "#4b5563";
+
+      // Read existing keys first so we don't wipe a key we didn't touch
+      const { data: existing } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "ai_api_keys")
+        .maybeSingle();
+
+      const currentKeys = (existing?.value || {});
+      const merged = {
+        ...currentKeys,
+        ...(openaiKey ? { openai: openaiKey } : {}),
+        ...(grokKey   ? { grok: grokKey }     : {}),
+      };
+
+      const { error } = await supabase
+        .from("system_config")
+        .upsert({ key: "ai_api_keys", value: merged, updated_at: new Date().toISOString() });
+
+      if (error) {
+        statusEl.textContent = "Error: " + error.message;
+        statusEl.style.color = "#ef4444";
+      } else {
+        statusEl.textContent = "✓ Keys saved securely";
+        statusEl.style.color = "#10b981";
+        setTimeout(() => { statusEl.textContent = ""; }, 4000);
+      }
+    });
+
+    // Show/hide toggles
+    function wireKeyToggle(inputId, btnId) {
+      document.getElementById(btnId).addEventListener("click", () => {
+        const input = document.getElementById(inputId);
+        const isHidden = input.type === "password";
+        input.type = isHidden ? "text" : "password";
+        document.getElementById(btnId).textContent = isHidden ? "🙈 Hide" : "👁 Show";
+      });
+    }
+    wireKeyToggle("apikey-openai", "toggle-openai-key");
+    wireKeyToggle("apikey-grok",   "toggle-grok-key");
+
+    document.getElementById("copy-proxy-url").addEventListener("click", () => {
+      const url = document.getElementById("proxy-url-display").textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById("copy-proxy-url");
+        btn.textContent = "✅ Copied!";
+        setTimeout(() => { btn.textContent = "📋 Copy URL"; }, 2000);
+      });
     });
 
     // ─────────────────────────────────────────────────────────────────────────
