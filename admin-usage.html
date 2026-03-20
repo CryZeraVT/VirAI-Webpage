@@ -3,13 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ViriTTS - Token Usage Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <title>Token Usage — AiRi by VirForge Software</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3@3.454.0/dist-browser/index.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #08060f;
+      --bg2:          #0c0a16;
+      --surface:      #100d1c;
+      --card:         rgba(255,255,255,0.028);
+      --primary:      #7c3aed;
+      --accent:       #d946ef;
+      --cyan:         #06b6d4;
+      --green:        #22c55e;
+      --text:         #f4f4f5;
+      --text-muted:   #71717a;
+      --text-dim:     #3f3f46;
+      --border:       rgba(255,255,255,0.07);
+      --border-p:     rgba(124,58,237,0.25);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; opacity: 0.35;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.85);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-text { height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-links a.nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 7px 16px; border-radius: 8px;
+    }
+    .nav-links a.nav-cta:hover { background: #6d28d9; }
+    .nav-links a.nav-green { color: var(--green); font-weight: 700; }
+
+    /* ── Wrap ── */
+    .wrap { position: relative; z-index: 1; padding-top: 64px; }
+    .container { max-width: 1380px; margin: 0 auto; padding: 0 24px; }
 
     /* ── Animations ─────────────────────────────────────────── */
     @keyframes fadeSlideIn {
@@ -33,7 +92,7 @@
     .usage-shell {
       display: flex;
       gap: 0;
-      min-height: calc(100vh - 100px);
+      min-height: calc(100vh - 120px);
       max-width: 1300px;
       margin: 32px auto 60px;
       border-radius: 20px;
@@ -416,19 +475,22 @@
   </style>
 </head>
 <body>
-  <div id="interactive-bg"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="wrap">
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
+    </a>
+    <div class="nav-links">
+      <a href="admin-usage.html" class="nav-green">Token Usage</a>
+      <a href="account.html">Account</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="admin.html" class="nav-cta">← Admin Dashboard</a>
+    </div>
+  </nav>
 
   <div class="container">
-    <header>
-      <a href="index.html" class="logo">
-        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
-        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
-      </a>
-      <nav>
-        <a href="admin.html">Admin Dashboard</a>
-        <a href="account.html">Account</a>
-      </nav>
-    </header>
 
     <!-- Status (shown while checking admin) -->
     <div id="admin-status-wrap" class="usage-status-wrap">
@@ -2022,5 +2084,47 @@
 
     init();
   </script>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, pts;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    function init() {
+      resize();
+      const count = Math.floor((W * H) / 18000);
+      pts = Array.from({ length: count }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2,
+      }));
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const LINK = 140;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(124,58,237,0.5)'; ctx.fill();
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j], dx = p.x - q.x, dy = p.y - q.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < LINK) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(124,58,237,${0.15 * (1 - d / LINK)})`; ctx.lineWidth = 0.5; ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    init(); draw();
+  })();
+  </script>
+
+  </div><!-- /wrap -->
 </body>
 </html>
