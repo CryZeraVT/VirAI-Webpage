@@ -957,12 +957,35 @@
           btn.disabled = true;
           btn.textContent = "Resetting...";
           try {
-            const { data, error } = await supabase.functions.invoke("reset-license", { body: { license_key: key } });
-            if (error) { alert("Error: " + (error.message || "Failed to reset")); return; }
-            if (data.success) { setStatus("✅ License reset — you can now activate on a new PC.", "success"); loadKeys(); }
-            else alert("Error: " + data.message);
+            // Get a fresh session so we always have a valid JWT
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              setStatus("Session expired — please sign in again.", "error");
+              showView("view-signed-out");
+              return;
+            }
+
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/reset-license`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`,
+                "apikey": SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({ license_key: key }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              setStatus("✅ License reset — you can now activate on a new PC.", "success");
+              loadKeys();
+            } else {
+              setStatus(data.message || `Reset failed (${res.status}). Try again.`, "error");
+            }
           } catch (err) {
-            alert("Failed to reset. Please try again.");
+            console.error("Reset error:", err);
+            setStatus("Network error during reset. Please try again.", "error");
           } finally {
             btn.disabled = false;
             btn.textContent = "🔄 Reset PC";
