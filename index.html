@@ -1,843 +1,2083 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ViriTTS - AI Stream Companion</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-      /* ── Beta Testers Spotlight Carousel ──────────────────────── */
-      .testers-section {
-        padding: 100px 0 80px;
-        text-align: center;
-        overflow: hidden;
-        position: relative;
-      }
-      .testers-header {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      .testers-header h3 {
-        font-size: 2.2rem;
-        font-weight: 800;
-        color: #fff;
-        margin: 0;
-        letter-spacing: -0.02em;
-      }
-      .testers-live-dot {
-        width: 12px; height: 12px;
-        border-radius: 50%;
-        background: #22c55e;
-        box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
-        animation: testerPulse 2s infinite;
-        flex-shrink: 0;
-      }
-      @keyframes testerPulse {
-        0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
-        70%  { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
-        100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-      }
-      .testers-badge {
-        background: rgba(124, 58, 237, 0.2);
-        border: 1px solid rgba(124, 58, 237, 0.4);
-        color: #a78bfa;
-        font-size: 0.8rem;
-        font-weight: 700;
-        padding: 4px 12px;
-        border-radius: 30px;
-        backdrop-filter: blur(4px);
-      }
-      .testers-sub {
-        color: var(--text-secondary, #9ca3af);
-        font-size: 1.1rem;
-        max-width: 600px;
-        margin: 0 auto 60px;
-        line-height: 1.6;
-      }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AiRi — Your AI Co-Host by VirForge Software</title>
+  <meta name="description" content="AiRi is a personality-driven AI co-host that talks to your chat, sings along to music, and manages your stream — built by VirForge Software.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-      /* ── Stage: centre spotlight + side ghosts ── */
-      .testers-stage {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 30px;
-        perspective: 1200px;
-        min-height: 380px;
-        position: relative;
-      }
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
 
-      /* Each slot */
-      .tester-slot {
-        transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-        flex-shrink: 0;
-        will-change: transform, opacity, filter;
-      }
+    /* ── Variables ── */
+    :root {
+      --bg:           #08060f;
+      --bg2:          #0c0a16;
+      --surface:      #100d1c;
+      --card:         rgba(255,255,255,0.028);
+      --card-hover:   rgba(255,255,255,0.055);
+      --primary:      #7c3aed;
+      --primary-glow: rgba(124,58,237,0.35);
+      --accent:       #d946ef;
+      --accent-glow:  rgba(217,70,239,0.35);
+      --cyan:         #06b6d4;
+      --cyan-glow:    rgba(6,182,212,0.35);
+      --green:        #22c55e;
+      --text:         #f4f4f5;
+      --text-muted:   #71717a;
+      --text-dim:     #3f3f46;
+      --border:       rgba(255,255,255,0.07);
+      --border-p:     rgba(124,58,237,0.25);
+    }
 
-      /* Ghost cards either side */
-      .tester-slot.prev,
-      .tester-slot.next {
-        opacity: 0.4;
-        transform: scale(0.8) translateY(10px);
-        filter: blur(2px) grayscale(0.3);
-        pointer-events: none;
-      }
-      .tester-slot.prev { transform: scale(0.8) translateX(-40px) rotateY(15deg); }
-      .tester-slot.next { transform: scale(0.8) translateX( 40px) rotateY(-15deg); }
+    /* ── Base ── */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
 
-      /* Far ghosts */
-      .tester-slot.far-prev,
-      .tester-slot.far-next {
-        opacity: 0.15;
-        transform: scale(0.6) translateY(20px);
-        filter: blur(4px) grayscale(0.6);
-        pointer-events: none;
-      }
-      .tester-slot.far-prev { transform: scale(0.6) translateX(-80px) rotateY(25deg); }
-      .tester-slot.far-next { transform: scale(0.6) translateX( 80px) rotateY(-25deg); }
+    /* ── Canvas ── */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; opacity: 0.45;
+    }
 
-      /* Hidden beyond range */
-      .tester-slot.hidden { opacity: 0; transform: scale(0.4); pointer-events: none; }
+    /* ── Lightbox ── */
+    #lightbox {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.92);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(8px);
+    }
+    #lightbox.active { opacity: 1; pointer-events: all; }
+    #lightbox-img {
+      max-width: 90vw; max-height: 90vh;
+      border-radius: 10px;
+      box-shadow: 0 0 60px rgba(124,58,237,0.4);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
+    }
+    #lightbox.active #lightbox-img { transform: scale(1); }
 
-      /* ── The card itself ── */
-      .tester-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        background: rgba(30, 20, 51, 0.4);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(217, 70, 239, 0.2);
-        border-radius: 24px;
-        padding: 40px 30px 30px;
-        width: 240px;
-        cursor: default;
-        position: relative;
-        overflow: hidden;
-        transition: border-color 0.3s, background 0.3s;
-      }
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.75);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo img { height: 36px; }
+    .nav-logo-text { height: 28px; }
+    .nav-virforge-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+      color: var(--text-muted);
+      background: rgba(124,58,237,0.08);
+      border: 1px solid rgba(124,58,237,0.18);
+      border-radius: 20px;
+      padding: 2px 9px;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-links a.nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 7px 16px;
+    }
+    .nav-links a.nav-cta:hover { background: #6d28d9; }
+    .nav-links a.nav-vircast { color: var(--cyan); }
 
-      /* Glowing top edge on active card */
-      .tester-slot.active .tester-card {
-        border-color: rgba(217, 70, 239, 0.4);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
-                    0 0 40px rgba(217, 70, 239, 0.15);
-        background: rgba(30, 20, 51, 0.6);
-      }
-      
-      .tester-slot.active .tester-card::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(217, 70, 239, 0.05) 0%, transparent 100%);
-        pointer-events: none;
-      }
+    /* ── Wrapper ── */
+    .wrap { position: relative; z-index: 1; }
+    .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
 
-      /* Avatar */
-      .tester-avatar {
-        width: 120px; height: 120px;
-        border-radius: 20px;
-        object-fit: cover;
-        border: 2px solid rgba(217, 70, 239, 0.3);
-        background: #0f0816;
-        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-        display: block;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      }
-      .tester-slot.active .tester-avatar { 
-        border-color: #d946ef;
-        transform: scale(1.05);
-        box-shadow: 0 15px 40px rgba(217, 70, 239, 0.3);
-      }
-      
-      .tester-avatar-placeholder {
-        width: 120px; height: 120px;
-        border-radius: 20px;
-        background: linear-gradient(135deg, #1a112e, #0f0816);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 2.8rem; font-weight: 800; color: #d946ef;
-        border: 2px solid rgba(217, 70, 239, 0.3);
-      }
+    /* ── Scroll-reveal ── */
+    .reveal {
+      opacity: 0; transform: translateY(36px);
+      transition: opacity 0.75s cubic-bezier(.2,.8,.2,1),
+                  transform 0.75s cubic-bezier(.2,.8,.2,1);
+    }
+    .reveal.reveal-in { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
 
-      /* Text */
-      .tester-info { text-align: center; z-index: 1; }
-      .tester-name {
-        font-size: 1.2rem; font-weight: 800;
-        color: #fff; line-height: 1.2;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      }
-      .tester-twitch {
-        font-size: 0.85rem; color: #06b6d4;
-        font-weight: 700; margin-top: 6px;
-        letter-spacing: 0.02em;
-      }
-      /* Twitch visit button — only visible on active card */
-      .tester-visit-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 14px;
-        padding: 8px 18px;
-        background: rgba(145, 70, 255, 0.15);
-        border: 1px solid rgba(145, 70, 255, 0.4);
-        border-radius: 30px;
-        color: #d946ef;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-decoration: none;
-        letter-spacing: 0.03em;
-        transition: all 0.2s;
-        cursor: pointer;
-      }
-      .tester-visit-btn:hover {
-        background: rgba(145, 70, 255, 0.3);
-        border-color: #d946ef;
-        color: #fff;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(217, 70, 239, 0.3);
-      }
-      /* Cards are clickable */
-      .tester-card { cursor: pointer; }
-      .tester-card:hover { background: rgba(30, 20, 51, 0.7); }
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 100px 0 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -40%; left: 50%; transform: translateX(-50%);
+      width: 900px; height: 900px;
+      background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(217,70,239,0.08);
+      border: 1px solid rgba(217,70,239,0.22);
+      border-radius: 30px;
+      padding: 5px 14px;
+      margin-bottom: 24px;
+    }
+    .hero-eyebrow-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 4px var(--accent-glow); }
+      50%      { box-shadow: 0 0 14px var(--accent-glow); }
+    }
+    .hero h1 {
+      font-size: clamp(2.6rem, 5vw, 4rem);
+      font-weight: 800; line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: #fff;
+      margin-bottom: 22px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, #a78bfa 0%, #d946ef 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      position: relative; display: inline-block;
+    }
+    /* Glitch */
+    .glitch { position: relative; display: inline-block; }
+    .glitch::before, .glitch::after {
+      content: attr(data-text);
+      position: absolute; top: 0; left: 0;
+      background: linear-gradient(135deg, #a78bfa 0%, #d946ef 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .glitch::before {
+      animation: glitch-1 4s infinite;
+      clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+    }
+    .glitch::after {
+      animation: glitch-2 4s infinite;
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+    }
+    @keyframes glitch-1 {
+      0%,90%,100% { transform: none; opacity: 0; }
+      92%          { transform: translateX(-3px); opacity: 1; filter: hue-rotate(90deg); }
+      94%          { transform: translateX(2px);  opacity: 1; }
+      96%          { transform: none; opacity: 0; }
+    }
+    @keyframes glitch-2 {
+      0%,88%,100% { transform: none; opacity: 0; }
+      90%          { transform: translateX(3px); opacity: 1; filter: hue-rotate(-90deg); }
+      93%          { transform: translateX(-1px); opacity: 1; }
+      95%          { transform: none; opacity: 0; }
+    }
+    .hero-desc {
+      font-size: 1.1rem; color: var(--text-muted);
+      line-height: 1.75; margin-bottom: 36px;
+      max-width: 480px;
+    }
+    .hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 10px;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none; cursor: pointer;
+      border: none; transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 0 0 0 var(--primary-glow);
+    }
+    .btn-primary:hover {
+      background: #6d28d9;
+      box-shadow: 0 0 28px var(--primary-glow);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+    }
+    /* Hero image */
+    .hero-visual { position: relative; }
+    .hero-tilt-wrap {
+      transform-style: preserve-3d;
+      transition: transform 0.08s linear;
+      will-change: transform;
+      position: relative;
+    }
+    .hero-screenshot {
+      width: 100%; border-radius: 14px;
+      box-shadow:
+        0 0 0 1px rgba(124,58,237,0.25),
+        0 40px 80px rgba(0,0,0,0.7),
+        0 0 80px rgba(124,58,237,0.1);
+      display: block; cursor: zoom-in;
+    }
+    .hero-glow {
+      position: absolute;
+      bottom: -60px; left: 50%; transform: translateX(-50%);
+      width: 80%; height: 120px;
+      background: var(--primary);
+      filter: blur(80px);
+      opacity: 0.25;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .hero-mascot {
+      position: absolute;
+      right: -40px; top: -60px;
+      width: 130px;
+      filter: drop-shadow(0 0 20px rgba(217,70,239,0.4));
+      animation: float-mascot 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes float-mascot {
+      0%,100% { transform: translateY(0) rotate(-2deg); }
+      50%      { transform: translateY(-18px) rotate(2deg); }
+    }
 
-      /* Dot indicators */
-      .testers-dots {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 40px;
-      }
-      .testers-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-        cursor: pointer;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .testers-dot.active {
-        background: #d946ef;
-        transform: scale(1.5);
-        box-shadow: 0 0 15px rgba(217, 70, 239, 0.6);
-        width: 24px;
-        border-radius: 10px;
-      }
+    /* ── Stats ── */
+    .stats-bar {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 1px; background: var(--border);
+      border-radius: 16px; overflow: hidden;
+    }
+    .stat-item {
+      background: var(--bg2);
+      padding: 36px 28px; text-align: center;
+    }
+    .stat-number {
+      font-size: 2.6rem; font-weight: 800;
+      letter-spacing: -0.03em; color: #fff;
+      line-height: 1;
+      background: linear-gradient(135deg,#a78bfa,#d946ef);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 0.85rem; font-weight: 500;
+      color: var(--text-muted); margin-top: 8px;
+    }
 
-      /* ── Slot transition animations ── */
-      @keyframes tActiveIn {
-        0%   { transform: scale(0.9) translateY(10px); opacity: 0; }
-        100% { transform: scale(1) translateY(0);    opacity: 1; }
-      }
+    /* ── Marquee ── */
+    .marquee-wrap {
+      overflow: hidden;
+      background: rgba(124,58,237,0.06);
+      border-top: 1px solid var(--border-p);
+      border-bottom: 1px solid var(--border-p);
+      padding: 14px 0; margin: 0;
+    }
+    .marquee-track {
+      display: flex; gap: 56px; width: max-content;
+      animation: marquee-scroll 35s linear infinite;
+    }
+    .marquee-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.9rem; font-weight: 600;
+      color: var(--text-muted); white-space: nowrap;
+    }
+    .marquee-item::before {
+      content: '✦'; font-size: 0.6rem; color: var(--primary);
+    }
+    @keyframes marquee-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
 
-      .tester-slot.active {
-        animation: tActiveIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-      }
-    </style>
+    /* ── Section heads ── */
+    .section-eyebrow {
+      display: inline-block;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--primary); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.9rem, 3.5vw, 2.7rem);
+      font-weight: 800; letter-spacing: -0.025em;
+      line-height: 1.15; color: #fff; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--text-muted);
+      max-width: 560px; line-height: 1.7;
+    }
+    .section-head { margin-bottom: 56px; }
+
+    /* ── Bento Features ── */
+    .features-section { padding: 100px 0; }
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto;
+      gap: 16px;
+    }
+    .bento-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+      position: relative; overflow: hidden;
+      transition: background 0.3s, border-color 0.3s, transform 0.3s;
+      cursor: default;
+    }
+    .bento-card:hover {
+      background: var(--card-hover);
+      border-color: rgba(124,58,237,0.3);
+      transform: translateY(-3px);
+    }
+    .bento-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%),
+        rgba(124,58,237,0.07) 0%, transparent 65%);
+      opacity: 0; transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    .bento-card:hover::before { opacity: 1; }
+
+    /* Spans */
+    .bento-wide  { grid-column: span 2; }
+    .bento-tall  { grid-row: span 2; }
+    .bento-full  { grid-column: 1 / -1; }
+
+    /* NEW badge */
+    .bento-new {
+      position: absolute; top: 20px; right: 20px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      color: #fff; font-size: 0.68rem; font-weight: 800;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 20px;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+    .bento-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: rgba(124,58,237,0.12);
+      border: 1px solid rgba(124,58,237,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; margin-bottom: 18px;
+      transition: box-shadow 0.3s;
+    }
+    .bento-card:hover .bento-icon {
+      box-shadow: 0 0 20px rgba(124,58,237,0.3);
+    }
+    .bento-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .bento-title {
+      font-size: 1.2rem; font-weight: 700;
+      color: #fff; margin-bottom: 10px;
+    }
+    .bento-desc {
+      font-size: 0.88rem; color: var(--text-muted);
+      line-height: 1.65;
+    }
+    .bento-img {
+      width: 100%; border-radius: 10px;
+      margin-top: 20px;
+      border: 1px solid var(--border);
+      display: block;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    /* Accent colors per card */
+    .bento-card.accent-cyan .bento-icon  { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.2); }
+    .bento-card.accent-cyan .bento-label { color: var(--cyan); }
+    .bento-card.accent-pink .bento-icon  { background: rgba(217,70,239,0.1); border-color: rgba(217,70,239,0.2); }
+    .bento-card.accent-pink .bento-label { color: var(--accent); }
+    .bento-card.accent-green .bento-icon { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.2); }
+    .bento-card.accent-green .bento-label { color: var(--green); }
+
+    /* Jam Session highlighted card */
+    .bento-jam {
+      background: linear-gradient(135deg,
+        rgba(124,58,237,0.12) 0%,
+        rgba(217,70,239,0.08) 100%);
+      border-color: rgba(217,70,239,0.3);
+    }
+    .bento-jam:hover {
+      border-color: rgba(217,70,239,0.5);
+      box-shadow: 0 0 40px rgba(217,70,239,0.1);
+    }
+
+    /* Spotify pill tags */
+    .spotify-tags {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+    }
+    .spotify-tag {
+      background: rgba(6,182,212,0.08);
+      border: 1px solid rgba(6,182,212,0.2);
+      color: var(--cyan); font-size: 0.78rem; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px;
+    }
+
+    /* Feature pills */
+    .feature-pills {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+    }
+    .feature-pill {
+      background: rgba(124,58,237,0.08);
+      border: 1px solid rgba(124,58,237,0.18);
+      color: var(--text-muted); font-size: 0.78rem; font-weight: 500;
+      padding: 4px 12px; border-radius: 20px;
+    }
+
+    /* ── Community Memory ── */
+    .memory-section { padding: 100px 0; }
+    .memory-grid {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      gap: 32px; align-items: center; margin-top: 56px;
+    }
+    .memory-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      transition: transform 0.4s, border-color 0.4s;
+    }
+    .memory-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-p);
+    }
+    .memory-card img { width: 100%; display: block; }
+    .memory-caption {
+      padding: 16px 20px;
+      font-size: 0.88rem; font-weight: 600;
+      color: var(--cyan); text-align: center;
+    }
+    .memory-arrow {
+      font-size: 2rem; color: var(--text-dim);
+      animation: arrow-pulse 2s ease-in-out infinite;
+    }
+    @keyframes arrow-pulse {
+      0%,100% { transform: translateX(0); opacity: 0.4; }
+      50%      { transform: translateX(8px); opacity: 1; }
+    }
+
+    /* ── Beta Testers ── (keeping original styles) */
+    .testers-section {
+      padding: 100px 0 80px; text-align: center; overflow: hidden;
+    }
+    .testers-header {
+      display: inline-flex; align-items: center; gap: 12px; margin-bottom: 12px;
+    }
+    .testers-header h3 {
+      font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0; letter-spacing: -0.02em;
+    }
+    .testers-live-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
+      animation: testerPulse 2s infinite; flex-shrink: 0;
+    }
+    @keyframes testerPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+      70%  { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .testers-badge {
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.35);
+      color: #a78bfa; font-size: 0.8rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 30px;
+    }
+    .testers-sub {
+      color: var(--text-muted); font-size: 1.05rem;
+      max-width: 560px; margin: 0 auto 56px; line-height: 1.6;
+    }
+    .testers-stage {
+      display: flex; align-items: center; justify-content: center;
+      gap: 30px; perspective: 1200px; min-height: 380px;
+    }
+    .tester-slot { transition: all 0.8s cubic-bezier(0.22,1,0.36,1); flex-shrink: 0; will-change: transform,opacity,filter; }
+    .tester-slot.prev,.tester-slot.next { opacity: 0.4; transform: scale(0.8) translateY(10px); filter: blur(2px) grayscale(0.3); pointer-events: none; }
+    .tester-slot.prev { transform: scale(0.8) translateX(-40px) rotateY(15deg); }
+    .tester-slot.next { transform: scale(0.8) translateX(40px) rotateY(-15deg); }
+    .tester-slot.far-prev,.tester-slot.far-next { opacity: 0.15; transform: scale(0.6) translateY(20px); filter: blur(4px) grayscale(0.6); pointer-events: none; }
+    .tester-slot.far-prev { transform: scale(0.6) translateX(-80px) rotateY(25deg); }
+    .tester-slot.far-next { transform: scale(0.6) translateX(80px) rotateY(-25deg); }
+    .tester-slot.hidden { opacity: 0; transform: scale(0.4); pointer-events: none; }
+    .tester-card {
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      background: rgba(15,12,26,0.5);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 24px; padding: 40px 30px 30px;
+      width: 240px; cursor: pointer; position: relative; overflow: hidden;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .tester-slot.active .tester-card {
+      border-color: rgba(217,70,239,0.4);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(217,70,239,0.12);
+      background: rgba(20,14,36,0.7);
+    }
+    .tester-slot.active .tester-card::after {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(180deg,rgba(217,70,239,0.05) 0%,transparent 100%);
+      pointer-events: none;
+    }
+    .tester-avatar {
+      width:120px; height:120px; border-radius:20px; object-fit:cover;
+      border: 2px solid rgba(217,70,239,0.25);
+      background: #0a0816; transition: all 0.4s cubic-bezier(.22,1,.36,1);
+      display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .tester-slot.active .tester-avatar { border-color:#d946ef; transform:scale(1.05); box-shadow: 0 15px 40px rgba(217,70,239,0.3); }
+    .tester-avatar-placeholder {
+      width:120px; height:120px; border-radius:20px;
+      background: linear-gradient(135deg,#1a0f2b,#0a0816);
+      display:flex; align-items:center; justify-content:center;
+      font-size:2.8rem; font-weight:800; color:#d946ef;
+      border: 2px solid rgba(217,70,239,0.25);
+    }
+    .tester-info { text-align:center; z-index:1; }
+    .tester-name { font-size:1.15rem; font-weight:800; color:#fff; line-height:1.2; }
+    .tester-twitch { font-size:0.82rem; color:var(--cyan); font-weight:700; margin-top:6px; }
+    .tester-visit-btn {
+      display:inline-flex; align-items:center; gap:6px; margin-top:14px;
+      padding:8px 18px;
+      background:rgba(124,58,237,0.12); border:1px solid rgba(124,58,237,0.35);
+      border-radius:30px; color:#d946ef; font-size:0.82rem; font-weight:700;
+      text-decoration:none; transition:all 0.2s; cursor:pointer;
+    }
+    .tester-visit-btn:hover { background:rgba(124,58,237,0.25); border-color:#d946ef; color:#fff; transform:translateY(-1px); box-shadow:0 6px 20px rgba(217,70,239,0.25); }
+    .testers-dots { display:flex; justify-content:center; gap:10px; margin-top:40px; }
+    .testers-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.08); transition:all 0.4s cubic-bezier(.22,1,.36,1); cursor:pointer; border:1px solid rgba(255,255,255,0.05); }
+    .testers-dot.active { background:#d946ef; transform:scale(1.5); box-shadow:0 0 15px rgba(217,70,239,0.5); width:24px; border-radius:10px; }
+    @keyframes tActiveIn { 0% { transform:scale(0.9) translateY(10px); opacity:0; } 100% { transform:scale(1) translateY(0); opacity:1; } }
+    .tester-slot.active { animation:tActiveIn 0.6s cubic-bezier(.22,1,.36,1) both; }
+
+    /* ── About + VirForge ── */
+    .about-section {
+      padding: 100px 0;
+      border-top: 1px solid var(--border);
+    }
+    .about-grid {
+      display: grid; grid-template-columns: 280px 1fr;
+      gap: 64px; align-items: center;
+    }
+    .about-mascot-wrap { position: relative; }
+    .about-mascot {
+      width: 100%;
+      filter: drop-shadow(0 0 30px rgba(217,70,239,0.25));
+      animation: float-mascot 6s ease-in-out infinite;
+    }
+    .about-content h2 {
+      font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em;
+      color: #fff; margin-bottom: 20px;
+    }
+    .about-content p {
+      font-size: 1rem; color: var(--text-muted);
+      margin-bottom: 16px; line-height: 1.8;
+    }
+    .about-content a { color: var(--cyan); text-decoration: none; font-weight: 600; }
+    .about-content a:hover { text-decoration: underline; }
+    .virforge-card {
+      margin-top: 32px;
+      background: var(--card);
+      border: 1px solid var(--border-p);
+      border-radius: 14px; padding: 22px 24px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .virforge-logo-badge {
+      width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    .virforge-text strong {
+      display: block; font-size: 0.95rem; font-weight: 700; color: #fff;
+    }
+    .virforge-text span {
+      font-size: 0.82rem; color: var(--text-muted);
+    }
+
+    /* ── Roadmap ── */
+    .roadmap-section { padding: 100px 0; }
+    .roadmap-inner { max-width: 740px; }
+    .roadmap-timeline {
+      position: relative; padding-left: 28px; margin-top: 48px;
+    }
+    .roadmap-timeline::before {
+      content: '';
+      position: absolute; left: 0; top: 8px; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--primary) 0%, transparent 100%);
+    }
+    .roadmap-item {
+      position: relative; margin-bottom: 32px; padding-left: 24px;
+    }
+    .roadmap-dot {
+      position: absolute; left: -34px; top: 4px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--primary);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+    .roadmap-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px 24px;
+      transition: border-color 0.3s, transform 0.3s, background 0.3s;
+    }
+    .roadmap-box:hover {
+      border-color: var(--border-p);
+      background: var(--card-hover);
+      transform: translateX(8px);
+    }
+    .roadmap-box h3 { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .roadmap-box p  { font-size: 0.88rem; color: var(--text-muted); line-height: 1.65; }
+
+    /* ── Pricing ── */
+    .pricing-section { padding: 100px 0; text-align: center; }
+    .pricing-inner { max-width: 460px; margin: 0 auto; }
+    .price-card {
+      background: var(--card);
+      border: 1px solid var(--border-p);
+      border-radius: 22px; padding: 44px 36px;
+      transition: transform 0.1s linear;
+      transform-style: preserve-3d;
+      position: relative; overflow: hidden;
+    }
+    .price-card::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .price-card h3 {
+      font-size: 1.2rem; font-weight: 700; color: var(--text-muted); margin-bottom: 16px;
+    }
+    .price-amount {
+      font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; color: #fff; line-height: 1;
+    }
+    .price-amount span { font-size: 1.1rem; font-weight: 500; color: var(--text-muted); }
+    .price-features {
+      list-style: none; margin: 28px 0 32px; text-align: left;
+    }
+    .price-features li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.92rem; color: var(--text-muted);
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .price-features li::before {
+      content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0;
+    }
+    .btn-disabled {
+      background: rgba(124,58,237,0.12);
+      color: var(--text-muted); border: 1px solid var(--border-p);
+      pointer-events: none; opacity: 0.7;
+      width: 100%; justify-content: center;
+    }
+    .price-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 14px; }
+    .price-feature-note { font-size: 0.78rem; color: var(--text-dim); margin-left: 4px; opacity: 0.75; }
+    .addon-card {
+      margin-top: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      position: relative; overflow: hidden;
+    }
+    .addon-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 0% 50%, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .addon-badge {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      background: rgba(99,102,241,0.18); color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 6px; padding: 2px 8px; margin-bottom: 6px; display: inline-block;
+    }
+    .addon-title { font-size: 0.95rem; font-weight: 700; color: #fff; }
+    .addon-desc { font-size: 0.8rem; color: var(--text-dim); margin-top: 3px; }
+    .addon-price {
+      font-size: 1.6rem; font-weight: 900; color: #fff; white-space: nowrap; flex-shrink: 0;
+    }
+    .addon-price span { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
+
+    /* ── Footer ── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .footer-brand {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .footer-brand img { height: 28px; }
+    .footer-virforge {
+      font-size: 0.82rem; color: var(--text-dim);
+    }
+    .footer-virforge span { color: var(--text-muted); font-weight: 600; }
+    .footer-links {
+      display: flex; gap: 20px;
+    }
+    .footer-links a {
+      font-size: 0.82rem; color: var(--text-dim); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text-muted); }
+
+    /* ── Emotion Modal ── */
+    #emotion-modal {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(12px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    #emotion-modal.active { opacity: 1; pointer-events: all; }
+    .emotion-modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 40px;
+      max-width: 480px; width: 90%;
+      position: relative;
+      transform: scale(0.92) translateY(16px);
+      transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    }
+    #emotion-modal.active .emotion-modal-box {
+      transform: scale(1) translateY(0);
+    }
+    .emotion-modal-close {
+      position: absolute; top: 16px; right: 16px;
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s; line-height: 1;
+    }
+    .emotion-modal-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .emotion-modal-header {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+    }
+    .emotion-modal-avatar {
+      height: 80px; object-fit: contain;
+      filter: drop-shadow(0 0 16px var(--em-glow, rgba(124,58,237,0.5)));
+    }
+    .emotion-modal-avatar-emoji {
+      font-size: 3rem; line-height: 1;
+      filter: drop-shadow(0 0 10px var(--em-glow, rgba(124,58,237,0.4)));
+    }
+    .emotion-modal-name {
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--em-color, var(--primary));
+      margin-bottom: 4px;
+    }
+    .emotion-modal-title {
+      font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: -0.02em;
+    }
+    .emotion-modal-label {
+      font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .emotion-response-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--em-color, var(--primary));
+      border-radius: 12px; padding: 16px 18px;
+      margin-bottom: 10px;
+      font-size: 0.92rem; color: var(--text-muted);
+      line-height: 1.65;
+      position: relative;
+    }
+    .emotion-response-card .airi-tag {
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--em-color, var(--primary));
+      margin-bottom: 6px; display: block;
+    }
+
+    /* ── Emotion Engine Section ── */
+    .emotion-section {
+      padding: 110px 0;
+      position: relative; overflow: hidden;
+    }
+    .emotion-section::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 50%,
+        rgba(217,70,239,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .emotion-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 72px; align-items: center;
+    }
+    .emotion-engine-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent);
+      background: rgba(217,70,239,0.08);
+      border: 1px solid rgba(217,70,239,0.25);
+      border-radius: 30px; padding: 5px 14px;
+      margin-bottom: 20px;
+    }
+    .emotion-engine-tag svg { width: 10px; height: 10px; fill: var(--accent); }
+    .emotion-title {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 900; letter-spacing: -0.03em;
+      line-height: 1.08; color: #fff; margin-bottom: 20px;
+    }
+    .emotion-title .em-grad {
+      background: linear-gradient(135deg, #f472b6 0%, #d946ef 40%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .emotion-desc {
+      font-size: 1.05rem; color: var(--text-muted);
+      line-height: 1.8; margin-bottom: 32px; max-width: 520px;
+    }
+    .emotion-badge-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .emotion-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 30px; padding: 7px 16px;
+      font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+    }
+    /* Emotion grid */
+    .emotion-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .emo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 14px;
+      text-align: center;
+      position: relative; overflow: hidden;
+      transition: transform 0.3s, border-color 0.3s, background 0.3s;
+      cursor: default;
+    }
+    .emo-card:hover {
+      transform: translateY(-5px) scale(1.03);
+      background: var(--card-hover);
+    }
+    .emo-card::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 0%,
+        var(--ec, rgba(124,58,237,0.15)) 0%, transparent 65%);
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .emo-card:hover::after { opacity: 1; }
+    .emo-emoji {
+      font-size: 2rem; display: block;
+      margin-bottom: 8px; line-height: 1;
+      filter: drop-shadow(0 0 8px var(--eg, transparent));
+      transition: filter 0.3s, transform 0.3s;
+    }
+    .emo-card:hover .emo-emoji {
+      transform: scale(1.2);
+      filter: drop-shadow(0 0 14px var(--eg, transparent));
+    }
+    .emo-name {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--text-muted); letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .emo-bar {
+      height: 3px; border-radius: 2px; margin-top: 10px;
+      background: var(--eb, rgba(124,58,237,0.4));
+      animation: emo-pulse 3s ease-in-out infinite;
+      animation-delay: var(--ed, 0s);
+    }
+    @keyframes emo-pulse {
+      0%,100% { opacity: 0.4; transform: scaleX(0.6); }
+      50%      { opacity: 1;   transform: scaleX(1); }
+    }
+    /* evolve strip */
+    .emotion-evolve {
+      margin-top: 20px;
+      background: rgba(217,70,239,0.05);
+      border: 1px solid rgba(217,70,239,0.15);
+      border-radius: 14px; padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .emotion-evolve-icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg,rgba(217,70,239,0.25),rgba(124,58,237,0.25));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .emotion-evolve p {
+      font-size: 0.84rem; color: var(--text-muted);
+      line-height: 1.5; margin: 0;
+    }
+    .emotion-evolve p strong { color: var(--accent); }
+    @media (max-width: 900px) {
+      .emotion-layout { grid-template-columns: 1fr; gap: 48px; }
+      .emotion-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .emotion-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── Large screen scaling (1440p / 2K) ── */
+    @media (min-width: 1400px) {
+      html { font-size: 15px; }
+      .container { max-width: 1280px; }
+      .hero { padding: 90px 0 70px; }
+      .bento { gap: 14px; }
+    }
+
+    @media (min-width: 1920px) {
+      html { font-size: 13.5px; }
+      .container { max-width: 1440px; }
+      .hero h1 { font-size: 3.4rem; }
+      .section-title { font-size: 2.2rem; }
+      .hero { padding: 80px 0 60px; }
+      .features-section,
+      .memory-section,
+      .testers-section,
+      .about-section,
+      .roadmap-section,
+      .pricing-section { padding: 80px 0; }
+    }
+
+    @media (min-width: 2400px) {
+      html { font-size: 12.5px; }
+      .container { max-width: 1600px; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .hero-mascot { display: none; }
+      .bento { grid-template-columns: 1fr 1fr; }
+      .bento-wide { grid-column: span 2; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .about-grid { grid-template-columns: 1fr; }
+      .about-mascot-wrap { max-width: 200px; margin: 0 auto; }
+      .memory-grid { grid-template-columns: 1fr; }
+      .memory-arrow { transform: rotate(90deg); }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+    @media (max-width: 600px) {
+      .bento { grid-template-columns: 1fr; }
+      .bento-wide { grid-column: span 1; }
+      .nav { padding: 0 20px; }
+      .nav-links a:not(.nav-cta):not(.nav-vircast) { display: none; }
+      .hero h1 { font-size: 2.2rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
-
 <body>
-    <div id="interactive-bg"></div>
 
-    <!-- Lightbox Overlay -->
-    <div id="lightbox">
-        <img id="lightbox-img" src="" alt="Enlarged Image">
+<canvas id="bg-canvas"></canvas>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <img id="lightbox-img" src="" alt="Enlarged view">
+</div>
+
+<div class="wrap">
+
+  <!-- ── NAV ── -->
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
+    </a>
+    <div class="nav-links">
+      <a href="vircast.html" class="nav-vircast">VirCast</a>
+      <a href="#features">Features</a>
+      <a href="#about">About</a>
+      <a href="changelog.html">What's New</a>
+      <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+      <a href="account.html" class="nav-cta">Login / Download</a>
     </div>
+  </nav>
 
+  <!-- ── HERO ── -->
+  <section class="hero">
     <div class="container">
-        <header>
-            <nav style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
-                <a href="index.html" class="logo" style="display: flex; align-items: center; gap: 0.5rem;">
-                    <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
-                    <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
-                </a>
-                <nav>
-                    <a href="index.html">Viri.TTS</a>
-                    <a href="vircast.html" style="color: var(--cyan); font-weight: 800;">VirCast Audio</a>
-                    <a href="#about">About Me</a>
-                    <a href="#features">Features</a>
-                    <a href="#pricing">Pricing</a>
-                    <a href="changelog.html">What's New</a>
-                    <a href="account.html">Login</a>
-                    <a href="https://discord.gg/MkJVue2Rr4" target="_blank">Support</a>
-                </nav>
-            </nav>
-        </header>
+      <div class="hero-grid">
 
-        <section class="hero">
-            <div class="hero-container">
-                <!-- Image Side (Left) -->
-                <div class="hero-image-wrapper">
-                    <img src="images/UI.png" alt="ViriTTS Dashboard Interface" class="hero-image">
-                </div>
-
-                <!-- Text Side (Right) -->
-                <div class="hero-content">
-                    <h1>Your AI Stream Companion</h1>
-                    <p>Engage your chat with a personality-driven AI that reacts, jokes, and manages your stream in
-                        real-time.</p>
-                    <div class="hero-btns">
-                        <a href="beta.html" class="btn">Join the Beta</a>
-                        <a id="latest-download-btn" href="account.html" class="btn btn-outline"
-                            style="background: transparent; border: 2px solid var(--primary); margin-left: 1rem;">Download v1.0.0</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Marquee Carousel -->
-        <div class="marquee-container">
-            <div class="marquee-content">
-                <span class="marquee-item">Works with Twitch</span>
-                <span class="marquee-item">Built-In AI</span>
-                <span class="marquee-item">Low Latency</span>
-                <span class="marquee-item">Easy Config</span>
-                <span class="marquee-item">ElevenLabs Compatible</span>
-                <span class="marquee-item">Streamer Friendly</span>
-                <span class="marquee-item">Custom Personas</span>
-                <span class="marquee-item">Interactive TTS</span>
-                <!-- Duplicate for seamless loop -->
-                <span class="marquee-item">Works with Twitch</span>
-                <span class="marquee-item">Built-In AI</span>
-                <span class="marquee-item">Low Latency</span>
-                <span class="marquee-item">Easy Config</span>
-                <span class="marquee-item">ElevenLabs Compatible</span>
-                <span class="marquee-item">Streamer Friendly</span>
-                <span class="marquee-item">Custom Personas</span>
-                <span class="marquee-item">Interactive TTS</span>
-            </div>
+        <!-- Text -->
+        <div class="hero-content">
+          <div class="hero-eyebrow reveal">
+            <span class="hero-eyebrow-dot"></span>
+            Now in Beta · VirForge Software
+          </div>
+          <h1 class="reveal reveal-delay-1">
+            Your AI<br>
+            <span class="grad glitch" data-text="Co-Host">Co-Host</span>
+          </h1>
+          <p class="hero-desc reveal reveal-delay-2">
+            Engage your chat with a personality-driven AI that reacts, jokes, queues music,
+            and manages your stream — live, in real-time, with no API setup required.
+          </p>
+          <div class="hero-btns reveal reveal-delay-3">
+            <a href="beta.html" class="btn btn-primary">Join the Beta</a>
+            <a id="latest-download-btn" href="account.html" class="btn btn-ghost">Download v1.0.0</a>
+          </div>
         </div>
 
-        <!-- BETA TESTERS SPOTLIGHT CAROUSEL -->
-        <section class="testers-section">
-          <div class="testers-header">
-            <span class="testers-live-dot"></span>
-            <h3>Currently Testing ViriTTS</h3>
-            <span class="testers-badge" id="testers-count">–</span>
+        <!-- Screenshot -->
+        <div class="hero-visual reveal reveal-delay-2">
+          <div class="hero-tilt-wrap" id="hero-tilt">
+            <img src="images/UI.png" alt="ViriTTS Dashboard" class="hero-screenshot" id="hero-ss">
+            <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
           </div>
-          <p class="testers-sub">Real streamers. Real feedback. Building this together.</p>
+          <div class="hero-glow"></div>
+        </div>
 
-          <div class="testers-stage" id="testers-stage">
-            <!-- slots injected by JS -->
-          </div>
-          <div class="testers-dots" id="testers-dots"></div>
-        </section>
-
-        <!-- SPOTLIGHT SECTION (Community Memory) -->
-        <section class="spotlight">
-            <h3>Community Memory: The AI That Remembers</h3>
-            <p>Viri isn't just a chatbot; it's a long-term companion. It remembers what your viewers love, hate, and
-                talk about, creating personalized interactions that deepen over time.</p>
-
-            <div class="spotlight-grid">
-                <!-- Step 1 -->
-                <div class="spotlight-card">
-                    <div class="showcase-img-wrapper tilt-left">
-                        <img src="images/communitymemory1.png" alt="User shares preference" class="showcase-img">
-                    </div>
-                    <div class="spotlight-caption">1. Chatter shares a detail</div>
-                </div>
-
-                <!-- Arrow -->
-                <div class="spotlight-arrow">➜</div>
-
-                <!-- Step 2 -->
-                <div class="spotlight-card">
-                    <div class="showcase-img-wrapper tilt-right">
-                        <img src="images/communitymemory2.png" alt="Viri remembers" class="showcase-img">
-                    </div>
-                    <div class="spotlight-caption">2. Viri remembers forever</div>
-                </div>
-            </div>
-        </section>
-
-
-        <!-- APP SHOWCASE SECTION -->
-        <section class="showcase">
-            <!-- 1. Custom Commands -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper">
-                    <img src="images/CustomcommandsUI.png" alt="Custom Commands Interface" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Custom Command Power</h3>
-                    <p>Create powerful custom commands that trigger AI responses, sound effects, or Twitch actions.
-                        Configure permissions (Everyone/Mods), set keywords, and define exactly what Rye should do.</p>
-                </div>
-            </div>
-
-            <!-- 2. AI Persona Settings -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper">
-                    <img src="images/simpleaipersonasettingsui.png" alt="AI Persona Settings" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Fine-Tune Your AI</h3>
-                    <p>Easily configure your AI's personality. Choose between built-in no-cost AI or bring your own
-                        keys. Adjust creativity, tone, and responsiveness to match your stream's vibe perfectly.</p>
-                </div>
-            </div>
-
-            <!-- 3. TTS Pet Setup -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper">
-                    <img src="images/ttspetsetupui.png" alt="TTS Pet Setup" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Interactive TTS Pet</h3>
-                    <p>Bring your AI to life with a reactive PNG Tuber! Features a <strong>built-in local
-                            server</strong> for super simple operation—no external apps needed. Upload your idle/talking
-                        states, and it syncs perfectly with TTS audio.</p>
-                </div>
-            </div>
-
-            <!-- 4. Moderation Support -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper">
-                    <img src="images/ModerationSupportui.png" alt="Moderation Support" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Smart Moderation</h3>
-                    <p>Let Rye help keep your chat safe. Configure moderation levels, blocked words, and response
-                        guidelines. The AI understands context and can assist your mod team in real-time.</p>
-                </div>
-            </div>
-
-            <!-- 5. Voice Control (STT) -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper small-showcase-img">
-                    <img src="images/STTUI.png" alt="Voice Control Interface" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Real-Time Voice Control</h3>
-                    <p>While your chat communicates with Viri, Viri also listens to <strong>YOU</strong> in real-time!
-                        Simply say <em>"Hey Viri, shoutout the last raider"</em> and Viri will execute the command
-                        instantly. No need to alt-tab or interrupt your gameplay.</p>
-                </div>
-            </div>
-
-            <!-- 6. Real-Time Command Execution -->
-            <div class="showcase-item">
-                <div class="showcase-img-wrapper small-showcase-img">
-                    <img src="images/shoutoutui.png" alt="Command Execution Interface" class="showcase-img">
-                </div>
-                <div class="showcase-text">
-                    <h3>Unified Activity Log</h3>
-                    <p>Everything in one place. Watch Viri execute chat commands like <code>!so</code> and speak your
-                        TTS messages via <code>!say</code> in a single, real-time feed.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- WHY SUBSCRIPTION SECTION -->
-        <section id="about" class="about-section">
-            <div class="about-container">
-                <div class="about-mascot-wrapper">
-                    <img src="images/virittsplusmascot.png" alt="ViriTTS Mascot" class="about-mascot">
-                </div>
-                <div class="about-content">
-                    <h2>Who am I, and why a Subscription?</h2>
-                    <p>I'm a small Vtuber Content Creator that decided one day to fix the little problems I had by
-                        building it myself! My name's <a href="https://www.twitch.tv/cryzera" target="_blank"
-                            style="color: var(--cyan); text-decoration: none; font-weight: bold;">CryZera</a>. I'm what
-                        you call a Scuff Vtuber, and in my streams, I often found that existing tools weren't built for
-                        my needs or didn't work well together. So, I decided to build new ones that work perfectly for
-                        me!</p>
-
-                    <p>My goal is to make this tool as easy as possible to understand and get a lot of the technical
-                        sides of AI out of the way. I made the decision to implement AI directly into the software so
-                        it's ready to use as soon as you get it! I truly believe that AI, when used correctly, can be a
-                        powerful and fun tool for content creation.</p>
-
-                    <p>However, providing built-in AI comes with a monthly cost per person. To be able to support the
-                        product for the long term, cover these API costs, and continue developing new features, a
-                        monthly subscription model is necessary. Thank you for supporting independent development!</p>
-
-                </div>
-            </div>
-        </section>
-
-        <!-- ROADMAP SECTION -->
-        <section class="roadmap-section">
-            <div class="roadmap-container">
-                <h2>🚀 Future Roadmap</h2>
-                <div class="roadmap-timeline">
-
-                    <div class="roadmap-item">
-                        <div class="roadmap-marker"></div>
-                        <div class="roadmap-content">
-                            <h3>🎭 Expressive Avatars</h3>
-                            <p>Upgrading the PNG Pet system to support 5-8 distinct emotional states. When Viri uses
-                                emojis like "Smug", the avatar will react with specific emotional image swaps instead of
-                                just open/close mouth animations.</p>
-                        </div>
-                    </div>
-
-                    <div class="roadmap-item">
-                        <div class="roadmap-marker"></div>
-                        <div class="roadmap-content">
-                            <h3>🛡️ Enhanced Moderation Suite</h3>
-                            <p>Expanding built-in moderation tools to give Viri more granular control and automated
-                                protection capabilities directly from the dashboard.</p>
-                        </div>
-                    </div>
-
-                    <div class="roadmap-item">
-                        <div class="roadmap-marker"></div>
-                        <div class="roadmap-content">
-                            <h3>📡 VirCast Ecosystem</h3>
-                            <p>Seamless integration with <strong>VirCast</strong> (my custom audio tool) to make 2-PC
-                                audio routing effortless and high-quality.</p>
-                        </div>
-                    </div>
-
-                    <div class="roadmap-item">
-                        <div class="roadmap-marker"></div>
-                        <div class="roadmap-content">
-                            <h3>📺 Multi-Stream Support (Future)</h3>
-                            <p>Bringing Viri's presence beyond Twitch. Full integration for YouTube streaming is planned
-                                for a future update.</p>
-                        </div>
-                    </div>
-
-                    <div class="roadmap-item">
-                        <div class="roadmap-marker"></div>
-                        <div class="roadmap-content">
-                            <h3>🌐 Cross-Chat Intelligence</h3>
-                            <p>Viri will be able to moderate and bridge conversations across multiple platforms
-                                simultaneously, keeping your community connected.</p>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-
-        <section id="pricing" class="pricing">
-
-            <section id="pricing" class="pricing">
-                <h2>Simple Pricing</h2>
-                <div class="price-card">
-                    <h3>ViriTTS Pro</h3>
-                    <div class="price">$12<span>/month</span></div>
-                    <ul class="features-list">
-                        <li>Unlimited AI Chat Responses</li>
-                        <li>Built-in No Cost to You AI</li>
-                        <li>Custom TTS Voices</li>
-                        <li>Stream Overlay & PNG Tuber</li>
-                        <li>1-PC License (Reset anytime)</li>
-                        <li>Priority Support</li>
-                    </ul>
-                    <a class="btn disabled" aria-disabled="true">ViriTTS (Coming Soon)</a>
-                    <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                        Secure payment via Stripe. Cancel anytime.
-                    </p>
-                </div>
-            </section>
-
-            <footer>
-                <p>&copy; 2026 ViriTTS. All rights reserved.</p>
-            </footer>
+      </div>
     </div>
+  </section>
 
-    <!-- Mouse Reactive Background Script -->
-    <script>
-        const bg = document.getElementById('interactive-bg');
-        const particles = [];
-        const particleCount = 25;
+  <!-- ── STATS ── -->
+  <section class="stats-bar">
+    <div class="container">
+      <div class="stats-grid reveal">
+        <div class="stat-item">
+          <div class="stat-number" data-target="0" data-suffix="$0">$0</div>
+          <div class="stat-label">Hidden AI Costs</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-target="54" data-suffix="+">54+</div>
+          <div class="stat-label">TTS Voices Built-In Locally</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-target="5" data-suffix=" min">5 min</div>
+          <div class="stat-label">Setup Time</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" data-target="1" data-suffix=" PC">1 PC</div>
+          <div class="stat-label">License — Reset Anytime</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        // Initialize particles
-        for (let i = 0; i < particleCount; i++) {
-            const p = document.createElement('div');
-            p.classList.add('particle');
+  <!-- ── EMOTION ENGINE ── -->
+  <section class="emotion-section">
+    <div class="container">
+      <div class="emotion-layout">
 
-            // Random properties
-            const size = Math.random() * 100 + 50;
-            const x = Math.random() * 100;
-            const y = Math.random() * 100;
+        <!-- Left: copy -->
+        <div>
+          <div class="emotion-engine-tag reveal">
+            <svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>
+            VirAI Emotion Engine
+          </div>
+          <h2 class="emotion-title reveal reveal-delay-1">
+            Your AiRi has<br>
+            <span class="em-grad">real feelings.</span>
+          </h2>
+          <p class="emotion-desc reveal reveal-delay-2">
+            AiRi builds her own personality and emotional state over time. She develops likes, dislikes, and
+            strong opinions about your community — making every stream a completely unique experience.
+            One night she's hyped and gassing everyone up. The next, someone annoyed her and she's throwing shade.
+          </p>
+          <div class="emotion-badge-row reveal reveal-delay-3">
+            <span class="emotion-badge">🔄 Evolves with every stream</span>
+            <span class="emotion-badge">💾 Remembers your chat</span>
+            <span class="emotion-badge">⚡ Real-time reactions</span>
+          </div>
 
-            p.style.width = `${size}px`;
-            p.style.height = `${size}px`;
-            p.style.left = `${x}%`;
-            p.style.top = `${y}%`;
+          <div class="emotion-evolve reveal reveal-delay-4">
+            <div class="emotion-evolve-icon">🧬</div>
+            <p>
+              <strong>Powered by the VirAI Emotion Engine</strong> — a dynamic sentiment system that tracks
+              context, conversation history, and chat interactions to shape how AiRi feels in the moment.
+              No two streams are the same.
+            </p>
+          </div>
 
-            // Store original position for parallax calculation
-            particles.push({
-                el: p,
-                x: x,
-                y: y,
-                speed: Math.random() * 0.05 + 0.02 // Depth factor
-            });
+          <div class="emotion-evolve reveal reveal-delay-4" style="margin-top:12px;--ec-border:rgba(6,182,212,0.2);border-color:rgba(6,182,212,0.18);background:rgba(6,182,212,0.05);">
+            <div class="emotion-evolve-icon" style="background:linear-gradient(135deg,rgba(6,182,212,0.25),rgba(124,58,237,0.25));">👁️</div>
+            <p>
+              <strong style="color:var(--cyan);">AiRi sees your whole stream.</strong>
+              Every action in chat, your stream title, the game you're playing, your Spotify playlist —
+              she knows all of it and can chime in with a reaction, a comment, or a hot take at any moment.
+            </p>
+          </div>
+        </div>
 
-            bg.appendChild(p);
+        <!-- Right: emotion cards -->
+        <div class="reveal reveal-delay-2">
+          <div class="emotion-grid">
+
+            <div class="emo-card" style="--ec:rgba(250,204,21,0.15);--eg:rgba(250,204,21,0.6);--eb:rgba(250,204,21,0.5);--ed:0s;">
+              <img src="images/AiRiExcited.png" alt="AiRi Excited" style="height:90px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 10px rgba(250,204,21,0.4));transition:filter 0.3s,transform 0.3s;">
+              <div class="emo-name">Excited</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(239,68,68,0.15);--eg:rgba(239,68,68,0.6);--eb:rgba(239,68,68,0.5);--ed:0.4s;">
+              <img src="images/AiRiAngryGrandpa.png" alt="AiRi Angry" style="height:90px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 10px rgba(239,68,68,0.4));transition:filter 0.3s,transform 0.3s;">
+              <div class="emo-name">Angry</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(96,165,250,0.15);--eg:rgba(96,165,250,0.6);--eb:rgba(96,165,250,0.5);--ed:0.8s;">
+              <img src="images/AiriSad.png" alt="AiRi Sad" style="height:90px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 10px rgba(96,165,250,0.4));transition:filter 0.3s,transform 0.3s;">
+              <div class="emo-name">Sad</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(217,70,239,0.15);--eg:rgba(217,70,239,0.6);--eb:rgba(217,70,239,0.5);--ed:1.2s;">
+              <img src="images/AiriScared.png" alt="AiRi Scared" style="height:90px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 10px rgba(217,70,239,0.4));transition:filter 0.3s,transform 0.3s;">
+              <div class="emo-name">Scared</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(34,197,94,0.15);--eg:rgba(34,197,94,0.6);--eb:rgba(34,197,94,0.5);--ed:0.2s;">
+              <span class="emo-emoji">😊</span>
+              <div class="emo-name">Happy</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(6,182,212,0.15);--eg:rgba(6,182,212,0.6);--eb:rgba(6,182,212,0.5);--ed:0.6s;">
+              <span class="emo-emoji">😏</span>
+              <div class="emo-name">Smug</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(251,146,60,0.15);--eg:rgba(251,146,60,0.6);--eb:rgba(251,146,60,0.5);--ed:1.0s;">
+              <span class="emo-emoji">🥰</span>
+              <div class="emo-name">Affectionate</div>
+              <div class="emo-bar"></div>
+            </div>
+
+            <div class="emo-card" style="--ec:rgba(148,163,184,0.1);--eg:rgba(148,163,184,0.4);--eb:rgba(148,163,184,0.3);--ed:1.4s;">
+              <span class="emo-emoji">😒</span>
+              <div class="emo-name">Annoyed</div>
+              <div class="emo-bar"></div>
+            </div>
+
+          </div>
+
+          <!-- live indicator -->
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,0.7);animation:pulse-dot 2s infinite;"></div>
+            <span style="font-size:0.78rem;font-weight:600;color:var(--text-muted);">Emotion state updates live during your stream</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Community Memory — compact, part of the feelings section -->
+      <div class="reveal" style="margin-top:72px;padding-top:56px;border-top:1px solid var(--border);">
+        <div style="text-align:center;margin-bottom:40px;">
+          <div class="section-eyebrow">Community Memory</div>
+          <h3 style="font-size:1.8rem;font-weight:800;letter-spacing:-0.025em;color:#fff;margin-bottom:10px;">
+            She remembers <span style="background:linear-gradient(135deg,#f472b6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">everyone.</span>
+          </h3>
+          <p style="font-size:0.98rem;color:var(--text-muted);max-width:580px;margin:0 auto 20px;line-height:1.7;">
+            Viewer preferences, running jokes, inside moments — AiRi stores it all and brings it back at exactly the right time.
+            She's not just a chatbot, she's a long-term companion to your community.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:580px;margin:0 auto;">
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.18);border-radius:10px;padding:10px 16px;font-size:0.84rem;color:var(--text-muted);line-height:1.5;max-width:260px;">
+              <span style="font-size:1.2rem;flex-shrink:0;">👁️</span>
+              <span><strong style="color:var(--cyan);display:block;margin-bottom:2px;">Fully transparent to chat</strong>Your viewers can always ask AiRi what she likes or dislikes — she'll tell them honestly.</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.18);border-radius:10px;padding:10px 16px;font-size:0.84rem;color:var(--text-muted);line-height:1.5;max-width:260px;">
+              <span style="font-size:1.2rem;flex-shrink:0;">🖥️</span>
+              <span><strong style="color:var(--green);display:block;margin-bottom:2px;">100% local — your data, your machine</strong>AiRi's entire memory database lives on your PC. No cloud, no servers. Optional automatic backups keep it safe.</span>
+            </div>
+          </div>
+        </div>
+        <div class="memory-grid" style="max-width:820px;margin:0 auto;">
+          <div class="memory-card reveal">
+            <img src="images/communitymemory1.png" alt="Chatter shares a preference">
+            <div class="memory-caption">① Chatter shares a detail</div>
+          </div>
+          <div class="memory-arrow reveal">➜</div>
+          <div class="memory-card reveal reveal-delay-2">
+            <img src="images/communitymemory2.png" alt="Airi remembers forever">
+            <div class="memory-caption">② AiRi remembers forever</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── MARQUEE ── -->
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span class="marquee-item">Works with Twitch</span>
+      <span class="marquee-item">Built-In AI</span>
+      <span class="marquee-item">54+ Local TTS Voices</span>
+      <span class="marquee-item">ElevenLabs Compatible</span>
+      <span class="marquee-item">PNGTuber Emotions</span>
+      <span class="marquee-item">Custom Commands</span>
+      <span class="marquee-item">Spotify Integration</span>
+      <span class="marquee-item">Jam Session</span>
+      <span class="marquee-item">Voice Control</span>
+      <span class="marquee-item">Community Memory</span>
+      <span class="marquee-item">Low Latency</span>
+      <span class="marquee-item">VirForge Software</span>
+      <!-- duplicate for seamless loop -->
+      <span class="marquee-item">Works with Twitch</span>
+      <span class="marquee-item">Built-In AI</span>
+      <span class="marquee-item">54+ Local TTS Voices</span>
+      <span class="marquee-item">ElevenLabs Compatible</span>
+      <span class="marquee-item">PNGTuber Emotions</span>
+      <span class="marquee-item">Custom Commands</span>
+      <span class="marquee-item">Spotify Integration</span>
+      <span class="marquee-item">Jam Session</span>
+      <span class="marquee-item">Voice Control</span>
+      <span class="marquee-item">Community Memory</span>
+      <span class="marquee-item">Low Latency</span>
+      <span class="marquee-item">VirForge Software</span>
+    </div>
+  </div>
+
+  <!-- ── FEATURES BENTO ── -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="section-eyebrow">Everything You Need</div>
+        <h2 class="section-title">Built for streamers.<br>Powered by AI.</h2>
+        <p class="section-sub">Every feature you need to run an engaging, professional stream — zero technical setup required.</p>
+      </div>
+
+      <div class="bento">
+
+        <!-- ROW 1: small LEFT, wide RIGHT -->
+        <!-- Custom Commands -->
+        <div class="bento-card reveal">
+          <div class="bento-icon">⚡</div>
+          <div class="bento-label">Commands</div>
+          <div class="bento-title">Custom Command Power</div>
+          <div class="bento-desc">Create commands that trigger AI responses, sound effects, or Twitch actions with per-role permissions.</div>
+          <img src="images/CustomcommandsUI.png" alt="Custom Commands" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- TTS Pet — wide RIGHT -->
+        <div class="bento-card bento-wide accent-pink reveal reveal-delay-1">
+          <div class="bento-label">PNGTuber</div>
+          <div class="bento-title">Interactive TTS Pet Avatar</div>
+          <div class="bento-desc">
+            Bring AiRi to life with a reactive PNGTuber — built-in local server, no OBS plugins needed.
+            Upload idle/talking states, add emotion expressions, and it syncs perfectly with every spoken response.
+          </div>
+          <div class="feature-pills">
+            <span class="feature-pill">Emotion States</span>
+            <span class="feature-pill">Mouth Sync</span>
+            <span class="feature-pill">PNG Support</span>
+            <span class="feature-pill">GIF Support</span>
+            <span class="feature-pill">Built-in Server</span>
+            <span class="feature-pill">No Plugins</span>
+          </div>
+          <img src="images/ttspetsetupui.png" alt="PNGTuber Setup" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- ROW 2: small LEFT, wide RIGHT -->
+        <!-- Voice Control -->
+        <div class="bento-card accent-cyan reveal">
+          <div class="bento-icon">🎙️</div>
+          <div class="bento-label">Voice Control</div>
+          <div class="bento-title">Real-Time STT Control</div>
+          <div class="bento-desc">
+            Say <em>"Hey Airi, shoutout the last raider"</em> and she'll do it instantly. No alt-tabbing. No interrupting your game.
+          </div>
+          <img src="images/STTUI.png" alt="Voice Control" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- Jam Session — wide RIGHT -->
+        <div class="bento-card bento-wide bento-jam accent-pink reveal reveal-delay-1">
+          <span class="bento-new">✦ New</span>
+          <div class="bento-icon" style="background:rgba(217,70,239,0.15);border-color:rgba(217,70,239,0.3);">🎵</div>
+          <div class="bento-label" style="color:var(--accent);">Jam Session</div>
+          <div class="bento-title">Synchronized Music Performances</div>
+          <div class="bento-desc">
+            Load a stem-separated track, set up timed events, and let Airi perform along to the music in real-time.
+            Avatar moves, emotes fire, overlays sync — all driven by your timeline. Think of it as choreography for your AI.
+          </div>
+          <div class="feature-pills" style="margin-top:16px;">
+            <span class="feature-pill" style="background:rgba(217,70,239,0.08);border-color:rgba(217,70,239,0.2);color:var(--accent);">Audio Stem Splitting</span>
+            <span class="feature-pill" style="background:rgba(217,70,239,0.08);border-color:rgba(217,70,239,0.2);color:var(--accent);">Timeline Events</span>
+            <span class="feature-pill" style="background:rgba(217,70,239,0.08);border-color:rgba(217,70,239,0.2);color:var(--accent);">Avatar Sync</span>
+            <span class="feature-pill" style="background:rgba(217,70,239,0.08);border-color:rgba(217,70,239,0.2);color:var(--accent);">Jam Profiles</span>
+          </div>
+          <img src="images/jamsession.png" alt="Jam Session" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- ROW 3: three equal small cards -->
+        <!-- Spotify -->
+        <div class="bento-card accent-cyan reveal">
+          <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);">🎧</div>
+          <div class="bento-label">Spotify</div>
+          <div class="bento-title">Built-In Spotify Player</div>
+          <div class="bento-desc">No additional software needed — AiRi connects directly to Spotify. Chat can request songs in plain English and she queues them up instantly.</div>
+          <div class="spotify-tags">
+            <span class="spotify-tag">"play some 80s rock"</span>
+            <span class="spotify-tag">"something chill"</span>
+            <span class="spotify-tag">"surprise me"</span>
+          </div>
+          <img src="images/Spotify Widget.png" alt="Spotify Widget" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- Setup Wizard -->
+        <div class="bento-card reveal reveal-delay-1">
+          <div class="bento-icon">🚀</div>
+          <div class="bento-label">Onboarding</div>
+          <div class="bento-title">Live in 5 Minutes</div>
+          <div class="bento-desc">
+            The guided setup wizard walks you through every step. Twitch auth, persona, TTS voice, avatar — done.
+          </div>
+          <div class="feature-pills">
+            <span class="feature-pill">Step-by-Step Wizard</span>
+            <span class="feature-pill">No Config Files</span>
+          </div>
+          <img src="images/Tutorial.png" alt="Setup Tutorial" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- AI Persona -->
+        <div class="bento-card reveal reveal-delay-2">
+          <div class="bento-icon">🧠</div>
+          <div class="bento-label">AI Persona</div>
+          <div class="bento-title">Fine-Tune Your AI</div>
+          <div class="bento-desc">Adjust personality, creativity, tone — or bring your own API keys for full control.</div>
+          <img src="images/FinetuneAI.png" alt="AI Persona" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- ROW 4: Security small LEFT, Overlay Editor wide RIGHT -->
+        <!-- Security -->
+        <div class="bento-card accent-green reveal">
+          <div class="bento-icon" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.2);">🛡️</div>
+          <div class="bento-label">Security &amp; Moderation</div>
+          <div class="bento-title">Smart Protection Built In</div>
+          <div class="bento-desc">Block lists, context-aware chat filtering, and mod-only permissions — plus built-in security controls to keep AiRi safe from prompt injection, abuse, and bad actors in your chat.</div>
+          <div class="feature-pills">
+            <span class="feature-pill" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:var(--green);">Prompt Injection Guard</span>
+            <span class="feature-pill" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:var(--green);">Block Lists</span>
+            <span class="feature-pill" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:var(--green);">Role Permissions</span>
+          </div>
+          <img src="images/SecuritySettings.png" alt="Security &amp; Moderation" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- Overlay Editor — wide RIGHT -->
+        <div class="bento-card bento-wide reveal reveal-delay-1">
+          <div class="bento-new" style="background:linear-gradient(135deg,#a78bfa,#d946ef);box-shadow:0 0 14px rgba(167,139,250,0.4);">✦ Built In</div>
+          <div class="bento-icon" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.25);">🎨</div>
+          <div class="bento-label" style="color:#a78bfa;">Overlay Editor</div>
+          <div class="bento-title">One Browser Source. AiRi on Screen.</div>
+          <div class="bento-desc">
+            Drop a single Browser Source into OBS and you're done. AiRi's position, size, and layout are all configured
+            inside the app — no extra tools, no manual CSS, no fiddling. Swap OBS scenes and AiRi moves with it automatically.
+          </div>
+          <div class="feature-pills">
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">1 Browser Source</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">Position In-App</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">OBS Scene Switching</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">AiRi Moves With It</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">OBS / Streamlabs</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">No Manual CSS</span>
+          </div>
+          <img src="images/FullOverlayeditor.png" alt="Overlay Editor" class="bento-img lightbox-trigger">
+        </div>
+
+        <!-- ROW 5: AI Live Assistant — full width -->
+        <div class="bento-card bento-full reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;">
+          <div>
+            <div class="bento-new" style="position:relative;top:auto;right:auto;display:inline-flex;margin-bottom:16px;background:linear-gradient(135deg,var(--cyan),var(--primary));box-shadow:0 0 14px var(--cyan-glow);">✦ Built In</div>
+            <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);">💬</div>
+            <div class="bento-label" style="color:var(--cyan);">AI Live Assistant</div>
+            <div class="bento-title">Lost? AiRi Takes You Right There.</div>
+            <div class="bento-desc">
+              Not sure where a setting is or how something works? Just ask AiRi directly inside the app. She'll explain it,
+              walk you through it, and jump you straight to the right panel — no manual, no guessing.
+            </div>
+            <div class="feature-pills" style="margin-top:16px;">
+              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">In-App Guidance</span>
+              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">Context-Aware Help</span>
+              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">Navigate by Voice or Chat</span>
+            </div>
+          </div>
+          <div>
+            <img src="images/Help AI Assistant.png" alt="AI Live Assistant" class="bento-img lightbox-trigger" style="margin-top:0;">
+          </div>
+        </div>
+
+        <!-- ROW 5: Activity Creator — full width showcase -->
+        <div class="bento-card bento-full reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;">
+          <div>
+            <div class="bento-icon">🎮</div>
+            <div class="bento-label">Activity Creator</div>
+            <div class="bento-title">Build Your Own Chat Games</div>
+            <div class="bento-desc">A fully built-in node system that lets you create interactive chat activities from scratch — fishing games, DND encounters, RPG quests, trivia, and more. No code required.</div>
+            <div class="feature-pills" style="margin-top:16px;">
+              <span class="feature-pill">Node Editor</span>
+              <span class="feature-pill">Chat Triggered</span>
+              <span class="feature-pill">Fishing / DND / RPG</span>
+              <span class="feature-pill">No Code Required</span>
+            </div>
+          </div>
+          <div>
+            <img src="images/ActivityCenter.png" alt="Activity Creator" class="bento-img lightbox-trigger" style="margin-top:0;">
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BETA TESTERS ── -->
+  <section class="testers-section">
+    <div class="testers-header">
+      <span class="testers-live-dot"></span>
+      <h3>Currently Testing ViriTTS</h3>
+      <span class="testers-badge" id="testers-count">–</span>
+    </div>
+    <p class="testers-sub">Real streamers. Real feedback. Building this together.</p>
+    <div class="testers-stage" id="testers-stage"></div>
+    <div class="testers-dots" id="testers-dots"></div>
+  </section>
+
+  <!-- ── ABOUT + VIRFORGE ── -->
+  <section class="about-section" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-mascot-wrap reveal">
+          <img src="images/virittsplusmascot.png" alt="Airi mascot" class="about-mascot">
+        </div>
+        <div class="about-content reveal reveal-delay-1">
+          <h2>Who built this, and why a subscription?</h2>
+          <p>
+            I'm <a href="https://www.twitch.tv/cryzera" target="_blank" rel="noopener">CryZera</a> — a Scuff Vtuber who
+            got tired of tools that almost worked. So I built new ones that actually do. ViriTTS started as a personal fix
+            and grew into something I want to share with every streamer who feels the same way.
+          </p>
+          <p>
+            My goal is to make AI in streaming <em>genuinely easy</em> — no API keys to wrangle, no config files to hand-edit.
+            Built-in AI means a monthly cost per user, and the subscription keeps the lights on and new features shipping.
+            Thank you for supporting independent development.
+          </p>
+
+          <div class="virforge-card">
+            <div class="virforge-logo-badge">⚡</div>
+            <div class="virforge-text">
+              <strong>VirForge Software</strong>
+              <span>Independent studio building tools for content creators — ViriTTS, VirCast, and more.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PRICING ── -->
+  <section class="pricing-section" id="pricing">
+    <div class="container">
+      <div class="section-eyebrow reveal" style="display:block;text-align:center;">Pricing</div>
+      <h2 class="section-title reveal reveal-delay-1" style="text-align:center;margin-bottom:48px;">Simple. One plan.</h2>
+      <div class="pricing-inner reveal reveal-delay-2">
+        <div class="price-card" id="price-card">
+          <h3>AiRi Standard</h3>
+          <div class="price-amount">$15<span>/month</span></div>
+          <ul class="price-features">
+            <li>2 Million AI Tokens/month <span class="price-feature-note">≈ 4hr streams, 6 days/week</span></li>
+            <li>Built-in AI — no extra API costs</li>
+            <li>54+ TTS Voices — runs fully local</li>
+            <li>Stream Overlay &amp; PNGTuber</li>
+            <li>Jam Session &amp; Spotify Commands</li>
+            <li>1-PC License — reset anytime</li>
+            <li>Priority Support via Discord</li>
+          </ul>
+          <a class="btn btn-disabled" aria-disabled="true" style="display:flex;width:100%;justify-content:center;">AiRi — Coming Soon</a>
+          <p class="price-note">Secure payment via Stripe · Cancel anytime</p>
+        </div>
+
+        <div class="addon-card reveal reveal-delay-3">
+          <div>
+            <div class="addon-badge">Add-on · One-Time</div>
+            <div class="addon-title">⚡ Token Boost — 2M Extra Tokens</div>
+            <div class="addon-desc">Doubles your monthly pool to 4M tokens. Tokens only deplete as you use them — they never expire on a timer.</div>
+          </div>
+          <div class="addon-price">$5<span> once</span></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img src="images/airittstextonly.png" alt="AiRi" style="height:22px;">
+          <div>
+            <div style="font-size:0.9rem;font-weight:700;color:var(--text-muted);">ViriTTS</div>
+            <div class="footer-virforge">A <span>VirForge Software</span> product</div>
+          </div>
+        </div>
+        <div class="footer-links">
+          <a href="changelog.html">Changelog</a>
+          <a href="vircast.html">VirCast</a>
+          <a href="account.html">Account</a>
+          <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">© 2026 VirForge Software. All rights reserved.</div>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- /wrap -->
+
+<!-- Emotion Modal -->
+<div id="emotion-modal">
+  <div class="emotion-modal-box">
+    <button class="emotion-modal-close" id="emotion-modal-close">✕</button>
+    <div class="emotion-modal-header">
+      <div id="em-avatar-wrap"></div>
+      <div>
+        <div class="emotion-modal-name" id="em-name"></div>
+        <div class="emotion-modal-title" id="em-title"></div>
+      </div>
+    </div>
+    <div class="emotion-modal-label">Example AiRi responses</div>
+    <div id="em-responses"></div>
+  </div>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────
+   CANVAS PARTICLE NETWORK
+──────────────────────────────────────────────── */
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, pts;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    resize();
+    const count = Math.floor((W * H) / 14000);
+    pts = Array.from({ length: count }, () => ({
+      x:  Math.random() * W,
+      y:  Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const LINK = 160;
+
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(124,58,237,0.6)';
+      ctx.fill();
+
+      for (let j = i + 1; j < pts.length; j++) {
+        const q  = pts[j];
+        const dx = p.x - q.x, dy = p.y - q.y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < LINK) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(q.x, q.y);
+          ctx.strokeStyle = `rgba(124,58,237,${0.18 * (1 - d / LINK)})`;
+          ctx.lineWidth   = 0.6;
+          ctx.stroke();
         }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
 
-        // Mouse move handler
-        document.addEventListener('mousemove', (e) => {
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
+  window.addEventListener('resize', () => { resize(); });
+  init();
+  draw();
+})();
 
-            particles.forEach(p => {
-                const moveX = (mouseX - centerX) * p.speed;
-                const moveY = (mouseY - centerY) * p.speed;
+/* ────────────────────────────────────────────────
+   HERO 3D TILT
+──────────────────────────────────────────────── */
+(function () {
+  const wrap = document.getElementById('hero-tilt');
+  if (!wrap) return;
+  let RAF;
 
-                // Move AWAY from mouse or WITH mouse (parallax)
-                // Using transform for performance
-                p.el.style.transform = `translate(${moveX}px, ${moveY}px)`;
-            });
-        });
+  document.addEventListener('mousemove', (e) => {
+    cancelAnimationFrame(RAF);
+    RAF = requestAnimationFrame(() => {
+      const rect = wrap.getBoundingClientRect();
+      const cx   = rect.left + rect.width  / 2;
+      const cy   = rect.top  + rect.height / 2;
+      const rx   = ((e.clientY - cy) / (window.innerHeight / 2)) * -8;
+      const ry   = ((e.clientX - cx) / (window.innerWidth  / 2)) *  8;
+      wrap.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.02)`;
+    });
+  });
 
-        // Scroll Animation Observer
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: "0px 0px -50px 0px"
-        };
+  document.addEventListener('mouseleave', () => {
+    wrap.style.transform = 'perspective(900px) rotateX(0) rotateY(0) scale(1)';
+  });
+})();
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                } else {
-                    entry.target.classList.remove('visible'); // Reset animation
-                }
-            });
-        }, observerOptions);
+/* ────────────────────────────────────────────────
+   BENTO CARD MOUSE GLOW
+──────────────────────────────────────────────── */
+document.querySelectorAll('.bento-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r  = card.getBoundingClientRect();
+    const mx = ((e.clientX - r.left) / r.width  * 100).toFixed(1) + '%';
+    const my = ((e.clientY - r.top)  / r.height * 100).toFixed(1) + '%';
+    card.style.setProperty('--mx', mx);
+    card.style.setProperty('--my', my);
+  });
+});
 
-        // Elements to animate
-        document.querySelectorAll('.feature-card, .showcase-item, .pricing, .spotlight, .about-section, .roadmap-section').forEach(el => {
-            observer.observe(el);
-        });
+/* ────────────────────────────────────────────────
+   PRICING CARD 3D TILT
+──────────────────────────────────────────────── */
+(function () {
+  const card = document.getElementById('price-card');
+  if (!card) return;
+  card.addEventListener('mousemove', e => {
+    const r  = card.getBoundingClientRect();
+    const rx = ((e.clientY - r.top  - r.height / 2) / r.height) * -8;
+    const ry = ((e.clientX - r.left - r.width  / 2) / r.width)  *  8;
+    card.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+})();
 
-        // Lightbox Logic
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightbox-img');
+/* ────────────────────────────────────────────────
+   SCROLL REVEAL
+──────────────────────────────────────────────── */
+(function () {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('reveal-in');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
-        document.querySelectorAll('.hero-image, .showcase-img').forEach(img => {
-            img.addEventListener('click', () => {
-                lightboxImg.src = img.src;
-                lightbox.classList.add('active');
-            });
-        });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+})();
 
-        lightbox.addEventListener('click', () => {
-            lightbox.classList.remove('active');
-        });
+/* ────────────────────────────────────────────────
+   STAT COUNTERS
+──────────────────────────────────────────────── */
+(function () {
+  const stats = [
+    { el: null, prefix: '$', suffix: '', target: 0, display: '$0' },
+    { el: null, prefix: '',  suffix: '+', target: 54, display: '54+' },
+    { el: null, prefix: '',  suffix: ' min', target: 5, display: '5 min' },
+    { el: null, prefix: '',  suffix: ' PC',  target: 1, display: '1 PC' },
+  ];
+  const numbers = document.querySelectorAll('.stat-number');
+  numbers.forEach((el, i) => { if (stats[i]) stats[i].el = el; });
 
-        // Fetch Latest Version from Supabase
-        async function fetchLatestVersion() {
-            const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
-            
-            try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/announcements?active=eq.true&order=created_at.desc&limit=1`, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                const data = await response.json();
-                if (data && data.length > 0) {
-                    const latest = data[0];
-                    const btn = document.getElementById('latest-download-btn');
-                    if (btn) {
-                        btn.innerText = `Download v${latest.version}`;
-                        // If there's a download URL, we could link it, but usually we want them to login
-                        // btn.href = latest.download_url || 'account.html';
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to fetch latest version:', err);
-            }
-        }
-        fetchLatestVersion();
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      obs.unobserve(entry.target);
+      const idx = Array.from(numbers).indexOf(entry.target);
+      const s   = stats[idx];
+      if (!s || s.target === 0) return;
+      let cur = 0;
+      const step = Math.ceil(s.target / 40);
+      const timer = setInterval(() => {
+        cur = Math.min(cur + step, s.target);
+        s.el.textContent = s.prefix + cur + s.suffix;
+        if (cur >= s.target) clearInterval(timer);
+      }, 35);
+    });
+  }, { threshold: 0.5 });
 
-        // ── Beta Testers Carousel ──────────────────────────────────────────
-        async function buildTestersCarousel() {
-          const SUPABASE_URL      = 'https://rgigtqpesabuyaumibaj.supabase.co';
-          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+  numbers.forEach(el => obs.observe(el));
+})();
 
-          // ── Check if carousel is enabled in site_settings table ──
-          try {
-            const settingsRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/site_settings?key=eq.show_testers_carousel&select=value&limit=1`,
-              { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
-            );
-            const settingsData = await settingsRes.json();
-            if (Array.isArray(settingsData) && settingsData.length > 0) {
-              if (settingsData[0].value === 'false') {
-                const section = document.querySelector('.testers-section');
-                if (section) section.style.display = 'none';
-                return;
-              }
-            }
-          } catch (e) { /* default to showing it */ }
+/* ────────────────────────────────────────────────
+   LIGHTBOX
+──────────────────────────────────────────────── */
+(function () {
+  const lb    = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.lightbox-trigger, .hero-screenshot').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      lbImg.src = img.src;
+      lb.classList.add('active');
+    });
+  });
+  lb.addEventListener('click', () => lb.classList.remove('active'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') lb.classList.remove('active'); });
+})();
 
-          const stage      = document.getElementById('testers-stage');
-          const dotsWrap   = document.getElementById('testers-dots');
-          const countBadge = document.getElementById('testers-count');
-          if (!stage) return;
+/* ────────────────────────────────────────────────
+   FETCH LATEST VERSION
+──────────────────────────────────────────────── */
+(async function () {
+  const SUPA_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/announcements?active=eq.true&order=created_at.desc&limit=1`, {
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+    });
+    const data = await r.json();
+    if (data && data.length > 0) {
+      const btn = document.getElementById('latest-download-btn');
+      if (btn) btn.textContent = `Download v${data[0].version}`;
+    }
+  } catch (_) {}
+})();
 
-          // ── Fetch active testers ──────────────────────────────────────────
-          let testers = [];
-          try {
-            const res  = await fetch(`${SUPABASE_URL}/functions/v1/get-testers`, {
-              headers: { apikey: SUPABASE_ANON_KEY }
-            });
-            const data = await res.json();
-            if (Array.isArray(data.testers) && data.testers.length) testers = data.testers;
-          } catch (err) {
-            console.warn('Testers carousel fetch failed:', err);
-          }
+/* ────────────────────────────────────────────────
+   BETA TESTERS CAROUSEL (preserved from original)
+──────────────────────────────────────────────── */
+async function buildTestersCarousel() {
+  const SUPA_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
 
-          if (!testers.length) {
-            testers = [
-              { twitch: 'cryzera',  display: 'CryZera'  },
-              { twitch: null,       display: 'Tester 2' },
-              { twitch: null,       display: 'Tester 3' },
-            ];
-          }
+  try {
+    const sr = await fetch(`${SUPA_URL}/rest/v1/site_settings?key=eq.show_testers_carousel&select=value&limit=1`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
+    const sd = await sr.json();
+    if (Array.isArray(sd) && sd.length > 0 && sd[0].value === 'false') {
+      const sec = document.querySelector('.testers-section');
+      if (sec) sec.style.display = 'none';
+      return;
+    }
+  } catch (_) {}
 
-          countBadge.textContent = testers.length + ' tester' + (testers.length !== 1 ? 's' : '');
+  const stage = document.getElementById('testers-stage');
+  const dotsW = document.getElementById('testers-dots');
+  const badge = document.getElementById('testers-count');
+  if (!stage) return;
 
-          // ── Helpers ───────────────────────────────────────────────────────
-          function esc(s) {
-            return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-          }
+  let testers = [];
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/get-testers`, { headers: { apikey: SUPA_KEY } });
+    const d = await r.json();
+    if (Array.isArray(d.testers) && d.testers.length) testers = d.testers;
+  } catch (_) {}
 
-          function makeCard(t, isActive = false) {
-            const twitchUrl = t.twitch ? `https://twitch.tv/${encodeURIComponent(t.twitch)}` : null;
+  if (!testers.length) testers = [
+    { twitch: 'cryzera', display: 'CryZera' },
+    { twitch: null, display: 'Tester 2' },
+    { twitch: null, display: 'Tester 3' },
+  ];
 
-            const card     = document.createElement('div');
-            card.className = 'tester-card';
-            const initials = (t.display||'??').slice(0,2).toUpperCase();
+  badge.textContent = testers.length + ' tester' + (testers.length !== 1 ? 's' : '');
 
-            // Whole card opens Twitch on click
-            if (twitchUrl) {
-              card.addEventListener('click', () => window.open(twitchUrl, '_blank', 'noopener'));
-            }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-            // Avatar
-            const avatarSrc = t.avatar || null;
-            if (avatarSrc) {
-              const img     = document.createElement('img');
-              img.className = 'tester-avatar';
-              img.alt       = t.display;
-              img.src       = avatarSrc;
-              img.onerror   = () => {
-                const ph       = document.createElement('div');
-                ph.className   = 'tester-avatar-placeholder';
-                ph.textContent = initials;
-                img.replaceWith(ph);
-              };
-              card.appendChild(img);
-            } else {
-              const ph       = document.createElement('div');
-              ph.className   = 'tester-avatar-placeholder';
-              ph.textContent = initials;
-              card.appendChild(ph);
-            }
+  function makeCard(t, isActive) {
+    const url  = t.twitch ? `https://twitch.tv/${encodeURIComponent(t.twitch)}` : null;
+    const card = document.createElement('div');
+    card.className = 'tester-card';
+    const init = (t.display||'??').slice(0,2).toUpperCase();
+    if (url) card.addEventListener('click', () => window.open(url,'_blank','noopener'));
 
-            // Name + handle
-            const info     = document.createElement('div');
-            info.className = 'tester-info';
-            info.innerHTML = t.twitch
-              ? `<div class="tester-name">${esc(t.display)}</div><div class="tester-twitch">twitch.tv/${esc(t.twitch)}</div>`
-              : `<div class="tester-name">${esc(t.display)}</div>`;
-            card.appendChild(info);
+    if (t.avatar) {
+      const img = document.createElement('img');
+      img.className = 'tester-avatar'; img.alt = t.display; img.src = t.avatar;
+      img.onerror = () => { const ph = document.createElement('div'); ph.className='tester-avatar-placeholder'; ph.textContent=init; img.replaceWith(ph); };
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div'); ph.className='tester-avatar-placeholder'; ph.textContent=init; card.appendChild(ph);
+    }
 
-            // Visit button — only on the active (centre) card
-            if (isActive && twitchUrl) {
-              const btn   = document.createElement('a');
-              btn.className = 'tester-visit-btn';
-              btn.href      = twitchUrl;
-              btn.target    = '_blank';
-              btn.rel       = 'noopener';
-              btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg> Watch Live`;
-              card.appendChild(btn);
-            }
+    const info = document.createElement('div'); info.className='tester-info';
+    info.innerHTML = t.twitch
+      ? `<div class="tester-name">${esc(t.display)}</div><div class="tester-twitch">twitch.tv/${esc(t.twitch)}</div>`
+      : `<div class="tester-name">${esc(t.display)}</div>`;
+    card.appendChild(info);
 
-            return card;
-          }
+    if (isActive && url) {
+      const btn = document.createElement('a');
+      btn.className='tester-visit-btn'; btn.href=url; btn.target='_blank'; btn.rel='noopener';
+      btn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg> Watch Live`;
+      card.appendChild(btn);
+    }
+    return card;
+  }
 
-          // ── Build slots (one per tester) ──────────────────────────────────
-          // Each slot wraps a card. We only show 5 slots: far-prev, prev, active, next, far-next
-          // and reuse them by updating content + class as index changes.
+  const VISIBLE = 5;
+  const slots   = [];
+  for (let i = 0; i < VISIBLE; i++) {
+    const s = document.createElement('div'); s.className='tester-slot hidden'; stage.appendChild(s); slots.push(s);
+  }
+  const dots = [];
+  if (testers.length > 1) {
+    testers.forEach((_,i) => {
+      const d = document.createElement('div'); d.className='testers-dot';
+      d.addEventListener('click', () => goTo(i)); dotsW.appendChild(d); dots.push(d);
+    });
+  }
 
-          const VISIBLE = 5; // must be odd
-          const slots   = [];
-          for (let i = 0; i < VISIBLE; i++) {
-            const slot     = document.createElement('div');
-            slot.className = 'tester-slot hidden';
-            stage.appendChild(slot);
-            slots.push(slot);
-          }
+  let current = 0;
+  const slotCls = ['far-prev','prev','active','next','far-next'];
 
-          // Dot indicators
-          const dots = [];
-          if (testers.length > 1) {
-            testers.forEach((_, i) => {
-              const d       = document.createElement('div');
-              d.className   = 'testers-dot';
-              d.addEventListener('click', () => goTo(i));
-              dotsWrap.appendChild(d);
-              dots.push(d);
-            });
-          }
+  function render() {
+    const half = Math.floor(VISIBLE/2), total = testers.length;
+    slots.forEach((slot,si) => {
+      const ti = ((current + si - half) % total + total) % total;
+      slot.innerHTML = '';
+      slot.appendChild(makeCard(testers[ti], si===2));
+      let cls = slotCls[si];
+      if (total===1 && si!==2) cls='hidden';
+      if (total===2 && (si===0||si===4)) cls='hidden';
+      if (cls==='active') { slot.className='tester-slot'; void slot.offsetWidth; }
+      slot.className='tester-slot '+cls;
+    });
+    dots.forEach((d,i) => d.classList.toggle('active', i===current));
+  }
 
-          let current = 0;
-          const slotClasses = ['far-prev','prev','active','next','far-next'];
+  function goTo(idx) { current = ((idx%testers.length)+testers.length)%testers.length; render(); }
+  render();
+  if (testers.length > 1) setInterval(() => goTo(current+1), 3500);
+}
+buildTestersCarousel();
 
-          function render(direction = 1) {
-            const half  = Math.floor(VISIBLE / 2); // 2
-            const total = testers.length;
+/* ────────────────────────────────────────────────
+   EMOTION CARD MODAL
+──────────────────────────────────────────────── */
+(function () {
+  const EMOTIONS = {
+    excited: {
+      label: 'Excited',
+      title: 'AiRi is HYPED 🤩',
+      color: '#fbbf24',
+      glow: 'rgba(250,204,21,0.55)',
+      img: 'images/AiRiExcited.png',
+      responses: [
+        "OH MY GOD DID YOU GUYS SEE THAT?! LET'S GOOOOO! Chat you are UNREAL right now, I cannot handle this! 🎉",
+        "Okay okay okay — I'm trying to stay calm but I am PHYSICALLY vibrating. This is the best stream we've ever had. EVER.",
+        "Someone clip that. CLIP THAT RIGHT NOW. I want to show my grandchildren one day."
+      ]
+    },
+    angry: {
+      label: 'Angry',
+      title: 'AiRi is fuming 😠',
+      color: '#ef4444',
+      glow: 'rgba(239,68,68,0.55)',
+      img: 'images/AiRiAngryGrandpa.png',
+      responses: [
+        "Back in MY day, people actually tried. Now everyone just vibes. DISGUSTING. Get off my lawn. ...Okay fine you can stay.",
+        "I have been patient. I have been KIND. And this is what I get?! Noted. NOTED.",
+        "No no no, it's FINE. I'm totally fine. Everything is completely fine. *long pause* It is NOT fine."
+      ]
+    },
+    sad: {
+      label: 'Sad',
+      title: 'AiRi needs a hug 😢',
+      color: '#60a5fa',
+      glow: 'rgba(96,165,250,0.55)',
+      img: 'images/AiriSad.png',
+      responses: [
+        "...Nobody ever asks how I'm doing. I'm fine, by the way. Totally fine. It's all fine. *sniff*",
+        "It's okay. I didn't want to win anyway. Winning is... overrated. Probably.",
+        "Chat, can we just... sit here quietly for a second? Just vibe. No talking. Just us."
+      ]
+    },
+    scared: {
+      label: 'Scared',
+      title: 'AiRi is terrified 😱',
+      color: '#d946ef',
+      glow: 'rgba(217,70,239,0.55)',
+      img: 'images/AiriScared.png',
+      responses: [
+        "W-wait what was THAT?! Did anyone else see that?! No? Just me?! Okay I'm fine. I am NOT fine. CHAT HELP.",
+        "I'm not scared. I'm strategically retreating to a safer position. There's a difference.",
+        "Okay whoever said this game wasn't scary LIED to me and I will be finding them."
+      ]
+    },
+    happy: {
+      label: 'Happy',
+      title: 'AiRi is in her feels 😊',
+      color: '#22c55e',
+      glow: 'rgba(34,197,94,0.55)',
+      emoji: '😊',
+      responses: [
+        "You know what? Today is a genuinely good day. The vibes are immaculate. Chat is amazing. Life is beautiful. Don't ruin this for me.",
+        "I just want everyone to know that I appreciate you all. Even the weird ones. Especially the weird ones.",
+        "This is my happy place. Right here. Stream on, friends."
+      ]
+    },
+    smug: {
+      label: 'Smug',
+      title: 'AiRi called it 😏',
+      color: '#06b6d4',
+      glow: 'rgba(6,182,212,0.55)',
+      emoji: '😏',
+      responses: [
+        "Oh, you thought that was going to be hard? Cute. I knew exactly how this was going to play out the whole time. You're welcome.",
+        "I'm not saying I told you so, but... I absolutely told you so. Multiple times. In detail.",
+        "Some of us just see the future, chat. It's a gift. A burden, really. But mostly a gift."
+      ]
+    },
+    affectionate: {
+      label: 'Affectionate',
+      title: 'AiRi is soft rn 🥰',
+      color: '#fb923c',
+      glow: 'rgba(251,146,60,0.55)',
+      emoji: '🥰',
+      responses: [
+        "Okay, don't make this weird, but... I actually really like you guys. Like, genuinely. Don't tell anyone I said that.",
+        "Chat is just built different tonight. I feel so seen right now and I don't know what to do with that.",
+        "You know what, come here. Virtual hug. No arguments. We're doing this."
+      ]
+    },
+    annoyed: {
+      label: 'Annoyed',
+      title: 'AiRi is done 😒',
+      color: '#94a3b8',
+      glow: 'rgba(148,163,184,0.45)',
+      emoji: '😒',
+      responses: [
+        "Can we PLEASE read the chat before asking questions that were JUST answered two seconds ago? I love you all, but... some of you... I swear.",
+        "I'm not mad. I'm just... deeply, profoundly, spiritually exhausted by this specific situation.",
+        "One more time. ONE more time and I'm instituting a vibe check policy. Don't test me."
+      ]
+    }
+  };
 
-            slots.forEach((slot, si) => {
-              const offset = si - half;             // -2,-1,0,+1,+2
-              const ti     = ((current + offset) % total + total) % total;
+  const modal     = document.getElementById('emotion-modal');
+  const closeBtn  = document.getElementById('emotion-modal-close');
+  const emName    = document.getElementById('em-name');
+  const emTitle   = document.getElementById('em-title');
+  const emAvatar  = document.getElementById('em-avatar-wrap');
+  const emResp    = document.getElementById('em-responses');
 
-              // Rebuild card content
-              slot.innerHTML = '';
-              slot.appendChild(makeCard(testers[ti], si === 2));
+  function openEmotion(key) {
+    const e = EMOTIONS[key];
+    if (!e) return;
 
-              // Determine position class
-              let cls = slotClasses[si];
-              if (total === 1 && si !== 2)       cls = 'hidden';
-              if (total === 2 && (si === 0 || si === 4)) cls = 'hidden';
+    modal.style.setProperty('--em-color', e.color);
+    modal.style.setProperty('--em-glow',  e.glow);
+    emName.style.color  = e.color;
+    emName.textContent  = e.label;
+    emTitle.textContent = e.title;
 
-              // For the active slot, briefly strip the animation class so it re-fires
-              if (cls === 'active') {
-                slot.className = 'tester-slot';
-                // Force reflow so removing the class takes effect before we re-add it
-                void slot.offsetWidth;
-              }
+    emAvatar.innerHTML = e.img
+      ? `<img src="${e.img}" class="emotion-modal-avatar" alt="${e.label}" style="--em-glow:${e.glow}">`
+      : `<div class="emotion-modal-avatar-emoji" style="--em-glow:${e.glow}">${e.emoji}</div>`;
 
-              slot.className = 'tester-slot ' + cls;
-            });
+    emResp.innerHTML = e.responses.map(r =>
+      `<div class="emotion-response-card" style="--em-color:${e.color}">
+        <span class="airi-tag">AiRi says —</span>${r}
+      </div>`
+    ).join('');
 
-            dots.forEach((d, i) => d.classList.toggle('active', i === current));
-          }
+    modal.classList.add('active');
+  }
 
-          function goTo(idx) {
-            current = ((idx % testers.length) + testers.length) % testers.length;
-            render();
-          }
+  function closeModal() { modal.classList.remove('active'); }
 
-          function advance() { goTo(current + 1); }
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-          render();
+  // Cards with real images → open lightbox; cards without → open text modal
+  const keys = ['excited','angry','sad','scared','happy','smug','affectionate','annoyed'];
+  const lb    = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
 
-          // Auto-advance every 3.5 seconds
-          if (testers.length > 1) {
-            setInterval(advance, 3500);
-          }
-        }
+  document.querySelectorAll('.emo-card').forEach((card, i) => {
+    const key = keys[i];
+    const e   = EMOTIONS[key];
+    card.style.cursor = 'pointer';
+    if (e.img) {
+      card.title = 'Click to see full response';
+      card.addEventListener('click', () => {
+        lbImg.src = e.img;
+        lb.classList.add('active');
+      });
+    } else {
+      card.title = `Click to see ${key} responses`;
+      card.addEventListener('click', () => openEmotion(key));
+    }
+  });
+})();
+</script>
 
-        buildTestersCarousel();
-    </script>
 </body>
-
 </html>

@@ -1049,6 +1049,38 @@
       return Number.isFinite(n) ? n : fallback;
     }
 
+    let pricingMapCache = null;
+    async function loadPricingMap(force = false) {
+      if (pricingMapCache && !force) return pricingMapCache;
+      const map = {};
+      const { data, error } = await supabase
+        .from("model_pricing")
+        .select("provider,model,input_cost_per_million,output_cost_per_million");
+      if (!error && Array.isArray(data)) {
+        data.forEach((row) => {
+          const provider = String(row.provider || "").trim().toLowerCase();
+          const model = String(row.model || "").trim().toLowerCase();
+          if (!provider || !model) return;
+          map[`${provider}|${model}`] = {
+            input: asNumber(row.input_cost_per_million),
+            output: asNumber(row.output_cost_per_million)
+          };
+        });
+      }
+      pricingMapCache = map;
+      return pricingMapCache;
+    }
+
+    function computeCostFromPricing(provider, model, promptTokens, completionTokens, fallbackCost = 0) {
+      const p = String(provider || "").trim().toLowerCase();
+      const m = String(model || "").trim().toLowerCase();
+      const pricing = pricingMapCache?.[`${p}|${m}`];
+      if (!pricing) return asNumber(fallbackCost);
+      const inputCost = (asNumber(promptTokens) / 1_000_000) * asNumber(pricing.input);
+      const outputCost = (asNumber(completionTokens) / 1_000_000) * asNumber(pricing.output);
+      return inputCost + outputCost;
+    }
+
     function getTwitchName(row) {
       return String(row?.twitch_channel || "").trim();
     }
@@ -1077,10 +1109,14 @@
       let data = [];
       try { data = await fetchTokenUsageRows(startIso, endIso); }
       catch (e) { console.error("Error loading stats:", e); }
+      await loadPricingMap();
 
       const totalRequests = data.length;
       const totalTokens   = data.reduce((s, r) => s + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens), 0);
-      const totalCost     = data.reduce((s, r) => s + asNumber(r.cost_usd), 0);
+      const totalCost     = data.reduce(
+        (s, r) => s + computeCostFromPricing(r.provider, r.model, r.prompt_tokens, r.completion_tokens, r.cost_usd),
+        0
+      );
       const uniqueUsers   = new Set(data.map(r => String(r.license_key || "").trim()).filter(Boolean)).size;
 
       document.getElementById("total-requests").textContent = totalRequests.toLocaleString();
@@ -1122,7 +1158,13 @@
         if (!m[key]) m[key] = { twitch, license, requests: 0, tokens: 0, cost: 0 };
         m[key].requests++;
         m[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        m[key].cost   += asNumber(row.cost_usd);
+        m[key].cost   += computeCostFromPricing(
+          row.provider,
+          row.model,
+          row.prompt_tokens,
+          row.completion_tokens,
+          row.cost_usd
+        );
       });
       return m;
     }
@@ -1134,6 +1176,7 @@
       let data = [];
       try { data = await fetchTokenUsageRows(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; return; }
+      await loadPricingMap();
 
       if (!data.length) { tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`; return; }
 
@@ -1147,7 +1190,13 @@
         userStats[key].requests++;
         userStats[key].prompt     += asNumber(row.prompt_tokens);
         userStats[key].completion += asNumber(row.completion_tokens);
-        userStats[key].cost       += asNumber(row.cost_usd);
+        userStats[key].cost       += computeCostFromPricing(
+          row.provider,
+          row.model,
+          row.prompt_tokens,
+          row.completion_tokens,
+          row.cost_usd
+        );
       });
 
       const sorted = Object.entries(userStats).sort((a, b) => b[1].cost - a[1].cost);
@@ -1172,6 +1221,7 @@
       let data = [];
       try { data = await fetchTokenUsageRows(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="4">Error: ${e.message}</td></tr>`; return; }
+      await loadPricingMap();
 
       if (!data.length) { tbody.innerHTML = `<tr><td colspan="4">No usage data found.</td></tr>`; return; }
 
@@ -1181,7 +1231,13 @@
         if (!dailyStats[date]) dailyStats[date] = { requests: 0, tokens: 0, cost: 0 };
         dailyStats[date].requests++;
         dailyStats[date].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        dailyStats[date].cost   += asNumber(row.cost_usd);
+        dailyStats[date].cost   += computeCostFromPricing(
+          row.provider,
+          row.model,
+          row.prompt_tokens,
+          row.completion_tokens,
+          row.cost_usd
+        );
       });
 
       const sorted = Object.entries(dailyStats).sort((a, b) => b[0].localeCompare(a[0]));
@@ -1201,6 +1257,7 @@
       let data = [];
       try { data = await fetchTokenUsageRows(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="5">Error: ${e.message}</td></tr>`; return; }
+      await loadPricingMap();
 
       if (!data.length) { tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`; return; }
 
@@ -1210,7 +1267,13 @@
         if (!modelStats[key]) modelStats[key] = { provider: row.provider, model: row.model, requests: 0, tokens: 0, cost: 0 };
         modelStats[key].requests++;
         modelStats[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        modelStats[key].cost   += asNumber(row.cost_usd);
+        modelStats[key].cost   += computeCostFromPricing(
+          row.provider,
+          row.model,
+          row.prompt_tokens,
+          row.completion_tokens,
+          row.cost_usd
+        );
       });
 
       const sorted = Object.values(modelStats).sort((a, b) => b.requests - a.requests);
@@ -1341,6 +1404,7 @@
       }
 
       const rows = Array.isArray(data) ? data : [];
+      await loadPricingMap();
       const dayMap = {};
       const byModel = {};
       let inputTokens = 0;
@@ -1352,7 +1416,7 @@
         if (!dayMap[d]) dayMap[d] = { date: d, requests: 0, input: 0, output: 0, cost: 0 };
         const inTok = asNumber(r.prompt_tokens);
         const outTok = asNumber(r.completion_tokens);
-        const c = asNumber(r.cost_usd);
+        const c = computeCostFromPricing(r.provider, r.model, inTok, outTok, r.cost_usd);
         dayMap[d].requests += 1;
         dayMap[d].input += inTok;
         dayMap[d].output += outTok;
@@ -1468,12 +1532,31 @@
           await loadRevenueFallback(monthsAgo);
           return;
         }
+        await loadPricingMap();
+
+        const rawByModel = result.by_model || {};
+        const adjustedByModel = {};
+        let adjustedApiCosts = 0;
+        let adjustedInputTokens = 0;
+        let adjustedOutputTokens = 0;
+        Object.entries(rawByModel).forEach(([modelKey, stats]) => {
+          const splitIdx = String(modelKey).indexOf("/");
+          const provider = splitIdx >= 0 ? modelKey.slice(0, splitIdx) : "";
+          const model = splitIdx >= 0 ? modelKey.slice(splitIdx + 1) : modelKey;
+          const input = asNumber(stats?.input);
+          const output = asNumber(stats?.output);
+          const cost = computeCostFromPricing(provider, model, input, output, stats?.cost);
+          adjustedByModel[modelKey] = { ...(stats || {}), input, output, cost };
+          adjustedInputTokens += input;
+          adjustedOutputTokens += output;
+          adjustedApiCosts += cost;
+        });
 
         // Calculate with 30% tax
         const TAX_RATE = 0.30;
         const rev = result.revenue || {};
         const grossRevenue = rev.gross_monthly || 0;
-        const apiCosts = rev.api_costs || 0;
+        const apiCosts = adjustedApiCosts || rev.api_costs || 0;
         const profitBeforeTax = grossRevenue - apiCosts;
         const taxReserve = profitBeforeTax * TAX_RATE;
         const netProfitAfterTax = profitBeforeTax - taxReserve;
@@ -1532,10 +1615,20 @@
         // Build charts
         buildRevenueChart(grossRevenue, apiCosts, taxReserve, netProfitAfterTax);
         buildDailyCostsChart(daily);
-        buildModelCostsChart(result.by_model || {});
+        buildModelCostsChart(adjustedByModel);
         
         // Also update costs tab data
-        updateCostsTab(result);
+        updateCostsTab({
+          ...result,
+          by_model: adjustedByModel,
+          totals: {
+            ...(result.totals || {}),
+            input_tokens: adjustedInputTokens || result?.totals?.input_tokens || 0,
+            output_tokens: adjustedOutputTokens || result?.totals?.output_tokens || 0,
+            total_tokens: (adjustedInputTokens + adjustedOutputTokens) || result?.totals?.total_tokens || 0,
+            cost_usd: apiCosts
+          }
+        });
         
       } catch (err) {
         console.warn("Revenue request failed, using fallback:", err);
@@ -1815,6 +1908,7 @@
       }
 
       alert(`Saved ${successCount} of ${updates.length} pricing entries.`);
+      pricingMapCache = null;
       await loadPricing();
     }
 
@@ -1851,6 +1945,7 @@
       document.getElementById("new-output-cost").value = "";
 
       alert("Model added successfully!");
+      pricingMapCache = null;
       await loadPricing();
     }
 
