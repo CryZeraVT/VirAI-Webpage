@@ -1,385 +1,483 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ViriTTS - Join the Beta</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        .beta-section {
-            padding: 4rem 0 6rem;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Beta — AiRi by VirForge Software</title>
+  <meta name="description" content="Apply for early access to AiRi — the AI co-host for streamers. Limited beta spots available.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-        .beta-card {
-            max-width: 640px;
-            margin: 0 auto;
-            background: var(--surface);
-            border: 1px solid var(--primary-dark);
-            border-radius: 20px;
-            padding: 3rem;
-            box-shadow: 0 0 30px rgba(157, 78, 221, 0.2);
-        }
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
 
-        .beta-card h2 {
-            margin-top: 0;
-            font-size: 2.2rem;
-            background: linear-gradient(45deg, white, var(--primary-light));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    :root {
+      --bg:           #08060f;
+      --bg2:          #0c0a16;
+      --surface:      #100d1c;
+      --card:         rgba(255,255,255,0.028);
+      --card-hover:   rgba(255,255,255,0.055);
+      --primary:      #7c3aed;
+      --primary-glow: rgba(124,58,237,0.35);
+      --accent:       #d946ef;
+      --accent-glow:  rgba(217,70,239,0.35);
+      --cyan:         #06b6d4;
+      --green:        #22c55e;
+      --text:         #f4f4f5;
+      --text-muted:   #71717a;
+      --text-dim:     #3f3f46;
+      --border:       rgba(255,255,255,0.07);
+      --border-p:     rgba(124,58,237,0.25);
+    }
 
-        .beta-subtitle {
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            font-size: 1.05rem;
-            line-height: 1.7;
-        }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
 
-        .beta-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; opacity: 0.45;
+    }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.75);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-text { height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-links a.nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 7px 16px; border-radius: 8px;
+    }
+    .nav-links a.nav-cta:hover { background: #6d28d9; }
+    .nav-links a.nav-vircast { color: var(--cyan); }
 
-        .form-group label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--primary-light);
-        }
+    /* ── Layout ── */
+    .wrap { position: relative; z-index: 1; padding-top: 64px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            padding: 0.9rem 1rem;
-            border-radius: 12px;
-            border: 1px solid var(--primary-dark);
-            background: #1a0f2b;
-            color: var(--text);
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            transition: border-color 0.2s;
-        }
+    /* ── Shared Typography ── */
+    .section-eyebrow {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem); font-weight: 900;
+      letter-spacing: -0.03em; line-height: 1.1; color: #fff;
+      margin-bottom: 20px;
+    }
 
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px rgba(157, 78, 221, 0.15);
-        }
+    /* ── Reveal ── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-in { opacity: 1; transform: none; }
 
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
+    /* ── Btn ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 700; text-decoration: none;
+      cursor: pointer; border: none; transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(124,58,237,0.5);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6; cursor: not-allowed; transform: none;
+    }
 
-        .form-group select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239d4edd' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-        }
+    /* ── Beta Page Layout ── */
+    .beta-section {
+      padding: 80px 0 100px;
+    }
+    .beta-inner {
+      max-width: 660px; margin: 0 auto; text-align: center;
+    }
+    .beta-sub {
+      font-size: 1.05rem; color: var(--text-muted);
+      line-height: 1.7; margin-bottom: 48px;
+    }
 
-        .form-group select option {
-            background: #1a0f2b;
-            color: var(--text);
-        }
+    /* ── Perks ── */
+    .beta-perks {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 40px; text-align: left;
+    }
+    .perk-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 0.9rem; color: var(--text-muted);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .perk-item:hover { border-color: var(--border-p); background: var(--card-hover); }
+    .perk-icon { font-size: 1.1rem; flex-shrink: 0; }
 
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem;
-        }
+    /* ── Form Card ── */
+    .beta-card {
+      background: var(--card);
+      border: 1px solid var(--border-p);
+      border-radius: 22px; padding: 44px 40px;
+      text-align: left;
+      position: relative; overflow: hidden;
+    }
+    .beta-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(124,58,237,0.1) 0%, transparent 60%);
+      pointer-events: none;
+    }
 
-        .beta-submit {
-            margin-top: 0.5rem;
-            width: 100%;
-            text-align: center;
-        }
+    /* ── Form ── */
+    .beta-form { display: flex; flex-direction: column; gap: 20px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--text-muted); letter-spacing: 0.02em;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: var(--text-dim); }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+      background: rgba(124,58,237,0.05);
+    }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    .form-group select {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237c3aed' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-color: rgba(255,255,255,0.04);
+    }
+    .form-group select option { background: #100d1c; color: var(--text); }
 
-        .beta-note {
-            text-align: center;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-top: 1rem;
-        }
+    .beta-submit { margin-top: 4px; width: 100%; justify-content: center; }
+    .beta-note {
+      text-align: center; font-size: 0.82rem;
+      color: var(--text-dim); margin-top: 8px;
+    }
 
-        #beta-status {
-            display: none;
-            margin-top: 1rem;
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            text-align: center;
-        }
+    /* ── Status ── */
+    #beta-status {
+      display: none; margin-top: 4px;
+      padding: 14px 18px; border-radius: 12px;
+      font-size: 0.92rem; text-align: center; line-height: 1.5;
+    }
+    #beta-status.success {
+      display: block;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+    }
+    #beta-status.error {
+      display: block;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+    #beta-status.loading {
+      display: block;
+      background: rgba(124,58,237,0.08);
+      border: 1px solid var(--border-p);
+      color: #a78bfa;
+    }
 
-        #beta-status.success {
-            display: block;
-            background: rgba(0, 255, 157, 0.08);
-            border: 1px solid rgba(0, 255, 157, 0.3);
-            color: var(--success);
-        }
+    /* ── Footer ── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .footer-brand { display: flex; align-items: center; gap: 10px; }
+    .footer-virforge { font-size: 0.82rem; color: var(--text-dim); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 0.82rem; color: var(--text-dim); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text-muted); }
 
-        #beta-status.error {
-            display: block;
-            background: rgba(255, 0, 85, 0.08);
-            border: 1px solid rgba(255, 0, 85, 0.3);
-            color: var(--error);
-        }
-
-        #beta-status.loading {
-            display: block;
-            background: rgba(157, 78, 221, 0.08);
-            border: 1px solid rgba(157, 78, 221, 0.3);
-            color: var(--primary-light);
-        }
-
-        .beta-perks {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .perk-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.6rem;
-            font-size: 0.95rem;
-            color: var(--text);
-        }
-
-        .perk-icon {
-            color: var(--cyan);
-            font-size: 1.1rem;
-            flex-shrink: 0;
-            margin-top: 0.1rem;
-        }
-
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .beta-perks {
-                grid-template-columns: 1fr;
-            }
-
-            .beta-card {
-                padding: 2rem 1.5rem;
-            }
-        }
-    </style>
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav { padding: 0 20px; }
+      .nav-links a:not(.nav-cta):not(.nav-vircast) { display: none; }
+      .beta-card { padding: 28px 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .beta-perks { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+  </style>
 </head>
 
 <body>
-    <div id="interactive-bg"></div>
+  <canvas id="bg-canvas"></canvas>
 
-    <div class="container">
-        <header>
-            <nav style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
-                <a href="index.html" class="logo" style="display: flex; align-items: center; gap: 0.5rem;">
-                    <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height: 50px;">
-                    <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height: 40px;">
-                </a>
-                <nav>
-                    <a href="index.html">Viri.TTS</a>
-                    <a href="vircast.html" style="color: var(--cyan); font-weight: 800;">VirCast Audio</a>
-                    <a href="index.html#about">About Me</a>
-                    <a href="index.html#features">Features</a>
-                    <a href="index.html#pricing">Pricing</a>
-                    <a href="changelog.html">What's New</a>
-                    <a href="account.html">Login</a>
-                    <a href="https://discord.gg/MkJVue2Rr4" target="_blank">Support</a>
-                </nav>
-            </nav>
-        </header>
+  <div class="wrap">
 
-        <section class="beta-section">
-            <div class="beta-card">
-                <h2>Join the ViriTTS Beta</h2>
-                <p class="beta-subtitle">
-                    We're looking for streamers to help shape ViriTTS before public launch.
-                    Sign up below and we'll be in touch when your spot is ready.
-                </p>
+    <nav class="nav">
+      <a href="index.html" class="nav-logo">
+        <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
+      </a>
+      <div class="nav-links">
+        <a href="vircast.html" class="nav-vircast">VirCast</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#about">About</a>
+        <a href="changelog.html">What's New</a>
+        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+        <a href="account.html" class="nav-cta">Login / Download</a>
+      </div>
+    </nav>
 
-                <div class="beta-perks">
-                    <div class="perk-item">
-                        <span class="perk-icon">&#9889;</span>
-                        <span>Early access to all features</span>
-                    </div>
-                    <div class="perk-item">
-                        <span class="perk-icon">&#128172;</span>
-                        <span>Direct line to the dev team</span>
-                    </div>
-                    <div class="perk-item">
-                        <span class="perk-icon">&#127873;</span>
-                        <span>Free during the beta period</span>
-                    </div>
-                    <div class="perk-item">
-                        <span class="perk-icon">&#11088;</span>
-                        <span>Influence the roadmap</span>
-                    </div>
-                </div>
+    <section class="beta-section">
+      <div class="container">
+        <div class="beta-inner">
+          <div class="section-eyebrow reveal">Early Access</div>
+          <h1 class="section-title reveal reveal-delay-1">Join the AiRi Beta</h1>
+          <p class="beta-sub reveal reveal-delay-2">
+            We're looking for streamers to help shape AiRi before public launch.<br>
+            Sign up below and we'll be in touch when your spot is ready.
+          </p>
 
-                <form id="beta-form" class="beta-form" novalidate>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="beta-name">Name *</label>
-                            <input type="text" id="beta-name" name="name" required placeholder="Your name">
-                        </div>
-                        <div class="form-group">
-                            <label for="beta-email">Email *</label>
-                            <input type="email" id="beta-email" name="email" required placeholder="you@example.com">
-                        </div>
-                    </div>
+          <div class="beta-perks reveal reveal-delay-2">
+            <div class="perk-item"><span class="perk-icon">⚡</span><span>Early access to all features</span></div>
+            <div class="perk-item"><span class="perk-icon">💬</span><span>Direct line to the dev team</span></div>
+            <div class="perk-item"><span class="perk-icon">🎁</span><span>Free during the beta period</span></div>
+            <div class="perk-item"><span class="perk-icon">⭐</span><span>Influence the roadmap</span></div>
+          </div>
+        </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="beta-twitch">Twitch Username *</label>
-                            <input type="text" id="beta-twitch" name="twitch_username" required
-                                placeholder="your_channel">
-                        </div>
-                        <div class="form-group">
-                            <label for="beta-content">What do you stream?</label>
-                            <select id="beta-content" name="content_type">
-                                <option value="">Select a category</option>
-                                <option value="gaming">Gaming</option>
-                                <option value="just_chatting">Just Chatting</option>
-                                <option value="creative">Art / Creative</option>
-                                <option value="music">Music</option>
-                                <option value="irl">IRL</option>
-                                <option value="vtuber">VTuber</option>
-                                <option value="variety">Variety</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="beta-message">Why do you want to try ViriTTS? (optional)</label>
-                        <textarea id="beta-message" name="message"
-                            placeholder="Tell us about your stream and what you're looking for..."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn beta-submit">Apply for Beta Access</button>
-                    <div id="beta-status"></div>
-                    <p class="beta-note">We'll never share your email. You can unsubscribe anytime.</p>
-                </form>
+        <div class="beta-card reveal reveal-delay-3" style="max-width:660px;margin:0 auto;">
+          <form id="beta-form" class="beta-form" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="beta-name">Name *</label>
+                <input type="text" id="beta-name" name="name" required placeholder="Your name">
+              </div>
+              <div class="form-group">
+                <label for="beta-email">Email *</label>
+                <input type="email" id="beta-email" name="email" required placeholder="you@example.com">
+              </div>
             </div>
-        </section>
 
-        <footer>
-            <p>&copy; 2026 ViriTTS. All rights reserved.</p>
-        </footer>
-    </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="beta-twitch">Twitch Username *</label>
+                <input type="text" id="beta-twitch" name="twitch_username" required placeholder="your_channel">
+              </div>
+              <div class="form-group">
+                <label for="beta-content">What do you stream?</label>
+                <select id="beta-content" name="content_type">
+                  <option value="">Select a category</option>
+                  <option value="gaming">Gaming</option>
+                  <option value="just_chatting">Just Chatting</option>
+                  <option value="creative">Art / Creative</option>
+                  <option value="music">Music</option>
+                  <option value="irl">IRL</option>
+                  <option value="vtuber">VTuber</option>
+                  <option value="variety">Variety</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
 
-    <script>
-        const bg = document.getElementById('interactive-bg');
-        const particles = [];
-        const particleCount = 25;
+            <div class="form-group">
+              <label for="beta-message">Why do you want to try AiRi? (optional)</label>
+              <textarea id="beta-message" name="message" placeholder="Tell us about your stream and what you're looking for..."></textarea>
+            </div>
 
-        for (let i = 0; i < particleCount; i++) {
-            const p = document.createElement('div');
-            p.classList.add('particle');
-            const size = Math.random() * 100 + 50;
-            const x = Math.random() * 100;
-            const y = Math.random() * 100;
-            p.style.width = `${size}px`;
-            p.style.height = `${size}px`;
-            p.style.left = `${x}%`;
-            p.style.top = `${y}%`;
-            particles.push({ el: p, x, y, speed: Math.random() * 0.05 + 0.02 });
-            bg.appendChild(p);
+            <button type="submit" class="btn btn-primary beta-submit">Apply for Beta Access</button>
+            <div id="beta-status"></div>
+            <p class="beta-note">We'll never share your email. You can unsubscribe anytime.</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-brand">
+            <img src="images/airittstextonly.png" alt="AiRi" style="height:22px;">
+            <div>
+              <div style="font-size:0.9rem;font-weight:700;color:var(--text-muted);">ViriTTS</div>
+              <div class="footer-virforge">A <img src="images/VirForge-transpar.png" alt="VirForge" style="height:13px;vertical-align:middle;opacity:0.75;margin:0 3px;"> product</div>
+            </div>
+          </div>
+          <div class="footer-links">
+            <a href="changelog.html">Changelog</a>
+            <a href="vircast.html">VirCast</a>
+            <a href="account.html">Account</a>
+            <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+          </div>
+          <div style="font-size:0.8rem;color:var(--text-dim);">© 2026 VirForge Software. All rights reserved.</div>
+        </div>
+      </div>
+    </footer>
+
+  </div><!-- /wrap -->
+
+  <script>
+  /* Canvas Particle Network */
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, pts;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    function init() {
+      resize();
+      const count = Math.floor((W * H) / 14000);
+      pts = Array.from({ length: count }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+      }));
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const LINK = 160;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(124,58,237,0.6)'; ctx.fill();
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j], dx = p.x - q.x, dy = p.y - q.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < LINK) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(124,58,237,${0.18 * (1 - d / LINK)})`; ctx.lineWidth = 0.6; ctx.stroke();
+          }
         }
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    init(); draw();
+  })();
 
-        document.addEventListener('mousemove', (e) => {
-            const cx = window.innerWidth / 2;
-            const cy = window.innerHeight / 2;
-            particles.forEach(p => {
-                p.el.style.transform = `translate(${(e.clientX - cx) * p.speed}px, ${(e.clientY - cy) * p.speed}px)`;
-            });
+  /* Scroll Reveal */
+  (function () {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('reveal-in'); obs.unobserve(e.target); } });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+  })();
+  </script>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+
+    const form = document.getElementById('beta-form');
+    const statusEl = document.getElementById('beta-status');
+
+    function showStatus(msg, type) {
+      statusEl.className = type;
+      statusEl.textContent = msg;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name    = document.getElementById('beta-name').value.trim();
+      const email   = document.getElementById('beta-email').value.trim();
+      const twitch  = document.getElementById('beta-twitch').value.trim();
+      const content = document.getElementById('beta-content').value;
+      const message = document.getElementById('beta-message').value.trim();
+
+      if (!name || !email || !twitch) {
+        showStatus('Please fill in all required fields.', 'error'); return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showStatus('Please enter a valid email address.', 'error'); return;
+      }
+
+      showStatus('Submitting your application...', 'loading');
+      form.querySelector('button').disabled = true;
+
+      try {
+        const res  = await fetch(`${SUPABASE_URL}/functions/v1/beta-signup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+          body: JSON.stringify({ name, email, twitch_username: twitch, content_type: content, message }),
         });
-    </script>
+        const data = await res.json();
 
-    <script type="module">
-        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-        const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
-
-        const form = document.getElementById('beta-form');
-        const statusEl = document.getElementById('beta-status');
-
-        function showStatus(msg, type) {
-            statusEl.className = type;
-            statusEl.textContent = msg;
+        if (res.ok && data.success) {
+          if (data.account_created) {
+            showStatus("You're on the list! Check your email for an account setup link to create your password.", 'success');
+          } else if (data.account_exists) {
+            showStatus("You're on the list! We found your account already — you can sign in now from the Account page.", 'success');
+          } else {
+            showStatus("You're on the list! We'll be in touch soon. If needed, create/sign in from the Account page.", 'success');
+          }
+          form.reset();
+        } else {
+          showStatus(data.error || 'Something went wrong. Please try again.', 'error');
         }
+      } catch (err) {
+        console.error('Beta signup error:', err);
+        showStatus('Network error. Please check your connection and try again.', 'error');
+      } finally {
+        form.querySelector('button').disabled = false;
+      }
+    });
+  </script>
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('beta-name').value.trim();
-            const email = document.getElementById('beta-email').value.trim();
-            const twitch = document.getElementById('beta-twitch').value.trim();
-            const content = document.getElementById('beta-content').value;
-            const message = document.getElementById('beta-message').value.trim();
-
-            if (!name || !email || !twitch) {
-                showStatus('Please fill in all required fields.', 'error');
-                return;
-            }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                showStatus('Please enter a valid email address.', 'error');
-                return;
-            }
-
-            showStatus('Submitting your application...', 'loading');
-            form.querySelector('button').disabled = true;
-
-            try {
-                const res = await fetch(`${SUPABASE_URL}/functions/v1/beta-signup`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    },
-                    body: JSON.stringify({ name, email, twitch_username: twitch, content_type: content, message }),
-                });
-
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    if (data.account_created) {
-                        showStatus("You're on the list! Check your email for an account setup link to create your password.", 'success');
-                    } else if (data.account_exists) {
-                        showStatus("You're on the list! We found your account already — you can sign in now from the Account page.", 'success');
-                    } else {
-                        showStatus("You're on the list! We'll be in touch soon. If needed, create/sign in from the Account page.", 'success');
-                    }
-                    form.reset();
-                } else {
-                    showStatus(data.error || 'Something went wrong. Please try again.', 'error');
-                }
-            } catch (err) {
-                console.error('Beta signup error:', err);
-                showStatus('Network error. Please check your connection and try again.', 'error');
-            } finally {
-                form.querySelector('button').disabled = false;
-            }
-        });
-    </script>
 </body>
-
 </html>

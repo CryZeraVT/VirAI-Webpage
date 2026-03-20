@@ -3,10 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ViriTTS - Account</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <title>Account — AiRi by VirForge Software</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    :root {
+      --bg:           #08060f;
+      --bg2:          #0c0a16;
+      --surface:      #100d1c;
+      --card:         rgba(255,255,255,0.028);
+      --card-hover:   rgba(255,255,255,0.055);
+      --primary:      #7c3aed;
+      --primary-glow: rgba(124,58,237,0.35);
+      --accent:       #d946ef;
+      --cyan:         #06b6d4;
+      --green:        #22c55e;
+      --text:         #f4f4f5;
+      --text-muted:   #71717a;
+      --text-dim:     #3f3f46;
+      --border:       rgba(255,255,255,0.07);
+      --border-p:     rgba(124,58,237,0.25);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; opacity: 0.45;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.75);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-text { height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-links a.nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 7px 16px; border-radius: 8px;
+    }
+    .nav-links a.nav-cta:hover { background: #6d28d9; }
+    .nav-links a.nav-vircast { color: var(--cyan); }
+
+    /* ── Layout ── */
+    .wrap { position: relative; z-index: 1; padding-top: 64px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Btn base ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 20px; border-radius: 9px;
+      font-size: 0.9rem; font-weight: 700; text-decoration: none; cursor: pointer;
+      font-family: 'Inter', sans-serif; border: 1px solid var(--border-p);
+      background: rgba(124,58,237,0.1); color: #a78bfa;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease,
+                  background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px); background: rgba(124,58,237,0.2);
+      box-shadow: 0 4px 16px rgba(124,58,237,0.25);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; }
+    .btn-danger { border-color: #ef4444 !important; color: #ef4444 !important; }
+    .btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.1) !important; }
+
+    /* ── Footer ── */
+    .footer { border-top: 1px solid var(--border); padding: 40px 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .footer-brand { display: flex; align-items: center; gap: 10px; }
+    .footer-virforge { font-size: 0.82rem; color: var(--text-dim); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 0.82rem; color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text-muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav { padding: 0 20px; }
+      .nav-links a:not(.nav-cta):not(.nav-vircast) { display: none; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+
     /* ── Account page overrides ─────────────────────────────── */
     .account-wrap {
       max-width: 520px;
@@ -314,17 +414,7 @@
                  licensePulse 3s ease-in-out 0.8s infinite;
     }
 
-    /* Button hover lift */
-    .btn {
-      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease !important;
-    }
-    .btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(124,58,237,0.25);
-    }
-    .btn:active:not(:disabled) {
-      transform: translateY(0);
-    }
+    /* Button hover lift handled by global .btn rules above */
 
     /* Input focus glow */
     .field-group input {
@@ -345,23 +435,24 @@
   </style>
 </head>
 <body>
-  <div id="interactive-bg"></div>
+  <canvas id="bg-canvas"></canvas>
 
-  <div class="container">
-    <header>
-      <a href="index.html" class="logo">
-        <img src="images/Viritts1.png" alt="ViriTTS Logo Icon" style="height:50px;">
-        <img src="images/virittstextonly.png" alt="ViriTTS Text Logo" style="height:40px;">
+  <div class="wrap">
+    <nav class="nav">
+      <a href="index.html" class="nav-logo">
+        <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
       </a>
-      <nav>
+      <div class="nav-links">
+        <a href="vircast.html" class="nav-vircast">VirCast</a>
         <a href="index.html#features">Features</a>
-        <a href="index.html#pricing">Pricing</a>
-        <a href="index.html#about">About Me</a>
-        <a href="account.html">Account</a>
+        <a href="index.html#about">About</a>
         <a href="changelog.html">What's New</a>
-      </nav>
-    </header>
+        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+        <a href="account.html" class="nav-cta">Account</a>
+      </div>
+    </nav>
 
+    <div class="container">
     <div class="account-wrap">
       <div class="account-card">
 
@@ -471,32 +562,73 @@
 
       </div>
 
-      <p style="text-align:center;font-size:0.8rem;color:#4b5563;margin-top:20px;">
-        Need help? Visit <a href="https://www.viritts.com" style="color:#7c3aed;">www.viritts.com</a>
+      <p style="text-align:center;font-size:0.8rem;color:var(--text-dim);margin-top:20px;">
+        Need help? Join us on <a href="https://discord.gg/MkJVue2Rr4" style="color:var(--primary);" target="_blank" rel="noopener">Discord</a>
       </p>
     </div>
-  </div>
+    </div><!-- /container -->
 
-  <!-- Parallax background -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-brand">
+            <img src="images/airittstextonly.png" alt="AiRi" style="height:22px;">
+            <div>
+              <div style="font-size:0.9rem;font-weight:700;color:var(--text-muted);">ViriTTS</div>
+              <div class="footer-virforge">A <img src="images/VirForge-transpar.png" alt="VirForge" style="height:13px;vertical-align:middle;opacity:0.75;margin:0 3px;"> product</div>
+            </div>
+          </div>
+          <div class="footer-links">
+            <a href="changelog.html">Changelog</a>
+            <a href="vircast.html">VirCast</a>
+            <a href="account.html">Account</a>
+            <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+          </div>
+          <div style="font-size:0.8rem;color:var(--text-dim);">© 2026 VirForge Software. All rights reserved.</div>
+        </div>
+      </div>
+    </footer>
+
+  </div><!-- /wrap -->
+
   <script>
-    const bg = document.getElementById('interactive-bg');
-    const particles = [];
-    for (let i = 0; i < 25; i++) {
-      const p = document.createElement('div');
-      p.classList.add('particle');
-      const size = Math.random() * 100 + 50;
-      const x = Math.random() * 100;
-      const y = Math.random() * 100;
-      p.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;`;
-      particles.push({ el: p, x, y, speed: Math.random() * 0.05 + 0.02 });
-      bg.appendChild(p);
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, pts;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    function init() {
+      resize();
+      const count = Math.floor((W * H) / 14000);
+      pts = Array.from({ length: count }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+      }));
     }
-    document.addEventListener('mousemove', (e) => {
-      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
-      particles.forEach(p => {
-        p.el.style.transform = `translate(${(e.clientX - cx) * p.speed}px, ${(e.clientY - cy) * p.speed}px)`;
-      });
-    });
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const LINK = 160;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(124,58,237,0.6)'; ctx.fill();
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j], dx = p.x - q.x, dy = p.y - q.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < LINK) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(124,58,237,${0.18 * (1 - d / LINK)})`; ctx.lineWidth = 0.6; ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    init(); draw();
+  })();
   </script>
 
   <script type="module">
