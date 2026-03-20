@@ -284,6 +284,36 @@
       50%      { transform: translateY(-18px) rotate(2deg); }
     }
 
+    /* ── Chat bubbles (hero mascot area) ── */
+    .cb-wrap {
+      position: absolute;
+      z-index: 5;
+      pointer-events: none;
+      will-change: transform;
+      transition: transform 0.14s ease-out;
+    }
+    .chat-bubble {
+      background: rgba(10,6,22,0.88);
+      border: 1px solid rgba(124,58,237,0.32);
+      border-radius: 14px;
+      padding: 7px 14px;
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      opacity: 0;
+      display: inline-block;
+    }
+    .chat-bubble .cb-name { color: #a78bfa; font-weight: 700; margin-right: 5px; }
+    @keyframes bubble-float {
+      0%   { opacity: 0; transform: translateY(8px) scale(0.95); }
+      14%  { opacity: 1; transform: translateY(0) scale(1); }
+      72%  { opacity: 1; transform: translateY(-8px) scale(1); }
+      90%  { opacity: 0; transform: translateY(-16px) scale(0.97); }
+      100% { opacity: 0; }
+    }
+
     /* ── Stats ── */
     .stats-bar {
       padding: 60px 0;
@@ -1088,6 +1118,10 @@
             <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
           </div>
           <div class="hero-glow"></div>
+          <!-- Chat bubbles near AiRi mascot -->
+          <div class="cb-wrap" style="top:-30px;right:80px"><div class="chat-bubble"></div></div>
+          <div class="cb-wrap" style="top:30px;right:-10px"><div class="chat-bubble"></div></div>
+          <div class="cb-wrap" style="top:90px;right:60px"><div class="chat-bubble"></div></div>
         </div>
 
       </div>
@@ -2056,6 +2090,58 @@ buildTestersCarousel();
   closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ── AiRi chat bubbles ──
+  (function() {
+    const messages = [
+      { name: 'StreamerFM',   msg: 'she literally called me out 💀' },
+      { name: 'mooncat_',     msg: 'wait she REMEMBERED my name??' },
+      { name: 'viewer42',     msg: 'AiRi is 100% real I\'m convinced' },
+      { name: 'DerpyGoose',   msg: 'throwing shade lmaooo' },
+      { name: 'TwitchLurker', msg: 'the vibes rn 🔥' },
+      { name: 'xXshadow_x',   msg: 'she\'s actually funny??' },
+      { name: 'GG_Kira',      msg: 'never solo streaming again 😭' },
+      { name: 'YeezzyFan',    msg: 'just roasted the whole chat LMAO' },
+      { name: 'PurplePanda_', msg: 'bro she winked at me 💜' },
+      { name: 'cozy_otaku',   msg: 'AiRi stays goated fr' },
+      { name: 'n0va_byte',    msg: 'she remembered my clip from last week??' },
+      { name: 'StreamSnack',  msg: 'this AI is unhinged (in the best way)' },
+    ];
+
+    // Each wrapper gets its own parallax depth + tilt personality
+    const cbWraps  = document.querySelectorAll('.cb-wrap');
+    const depths   = [14, -20, 11];   // px travel at mouse edge (neg = opposite direction)
+    const tilts    = [5,  -4,   6];   // max rotation degrees
+    const bubbles  = Array.from(cbWraps).map(w => w.querySelector('.chat-bubble'));
+    let msgIdx = 0, RAF;
+
+    // Mouse parallax
+    document.addEventListener('mousemove', (e) => {
+      cancelAnimationFrame(RAF);
+      RAF = requestAnimationFrame(() => {
+        const nx = (e.clientX / window.innerWidth)  - 0.5;  // -0.5 → 0.5
+        const ny = (e.clientY / window.innerHeight) - 0.5;
+        cbWraps.forEach((w, i) => {
+          const dx  = nx * depths[i] * 2;
+          const dy  = ny * Math.abs(depths[i]);
+          const rot = nx * tilts[i];
+          w.style.transform = `translate(${dx}px,${dy}px) rotate(${rot}deg)`;
+        });
+      });
+    });
+
+    function spawnBubble(b) {
+      if (!b) return;
+      const m = messages[msgIdx++ % messages.length];
+      b.innerHTML = `<span class="cb-name">${m.name}:</span>${m.msg}`;
+      b.style.animation = 'none';
+      void b.offsetWidth;
+      b.style.animation = 'bubble-float 6.5s ease-in-out forwards';
+    }
+
+    bubbles.forEach((b, i) => setTimeout(() => spawnBubble(b), 1200 + i * 1800));
+    setInterval(() => spawnBubble(bubbles[Math.floor(Math.random() * bubbles.length)]), 2600);
+  })();
 
   // Cards with real images → open lightbox; cards without → open text modal
   const keys = ['excited','angry','sad','scared','happy','smug','affectionate','annoyed'];
