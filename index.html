@@ -1607,10 +1607,10 @@
   <section style="padding: 80px 0; border-top: 1px solid var(--border); text-align: center;">
     <div class="container">
       <div style="max-width: 540px; margin: 0 auto;">
-        <div class="section-eyebrow reveal" style="margin-bottom: 16px;">Launch Notifications</div>
-        <h2 class="section-title reveal reveal-delay-1">Stay in the Loop</h2>
+        <div class="section-eyebrow reveal" style="margin-bottom: 16px;">Update Notifications</div>
+        <h2 class="section-title reveal reveal-delay-1">Stay in the Know</h2>
         <p class="section-sub reveal reveal-delay-2" style="margin: 0 auto 36px;">
-          Not ready for beta? Sign up and we'll email you the moment AiRi launches publicly — no spam, just the big news.
+          Not ready for beta? Sign up and we'll email you with updates and launch details on AiRi — no spam, just the good stuff.
         </p>
         <div id="ml-form-wrap" class="reveal reveal-delay-3" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
           <input id="ml-name" type="text" placeholder="Your name (optional)"
@@ -1626,7 +1626,7 @@
             onfocus="this.style.borderColor='rgba(124,58,237,0.6)'"
             onblur="this.style.borderColor='var(--border)'">
           <button id="ml-submit" class="btn btn-primary" style="white-space:nowrap; padding:12px 22px;">
-            Notify Me at Launch
+            Keep Me Informed!
           </button>
         </div>
         <div id="ml-status" style="display:none; margin-top:16px; font-size:0.9rem; padding:10px 16px; border-radius:10px;"></div>
@@ -2162,7 +2162,7 @@ buildTestersCarousel();
         });
         const data = await res.json();
         if (data?.success) {
-          showMlStatus("You're on the list! We'll email you when AiRi launches.", 'success');
+          showMlStatus("You're on the list! We'll keep you updated on AiRi.", 'success');
           document.getElementById('ml-email').value = '';
           document.getElementById('ml-name').value  = '';
         } else {
@@ -2172,7 +2172,7 @@ buildTestersCarousel();
         showMlStatus('Network error. Please try again.', 'error');
       } finally {
         mlSubmit.disabled = false;
-        mlSubmit.textContent = 'Notify Me at Launch';
+        mlSubmit.textContent = 'Keep Me Informed!';
       }
     }
 
