@@ -112,7 +112,7 @@
     .nav-links a.nav-cta:hover { background: #6d28d9; }
     .nav-links a.nav-vircast { color: var(--cyan); }
     /* ── VirForge Products dropdown ── */
-    .nav-dropdown { position: relative; }
+    .nav-dropdown { position: relative; padding-bottom: 10px; }
     .nav-dropdown-trigger {
       display: flex; align-items: center; gap: 5px; cursor: pointer;
       padding: 6px 12px; border-radius: 8px;
@@ -125,7 +125,7 @@
     .nav-dropdown-trigger svg { width: 10px; height: 10px; transition: transform 0.2s; flex-shrink: 0; }
     .nav-dropdown:hover .nav-dropdown-trigger svg { transform: rotate(180deg); }
     .nav-dropdown-menu {
-      position: absolute; top: calc(100% + 8px); left: 50%;
+      position: absolute; top: 100%; left: 50%;
       transform: translateX(-50%);
       min-width: 200px;
       background: rgba(15,9,32,0.97);
@@ -1135,7 +1135,7 @@
         </button>
         <div class="nav-dropdown-menu">
           <a href="vircast.html">
-            <div class="dditem-icon" style="background:rgba(6,182,212,0.12);color:#06b6d4;">📡</div>
+            <div class="dditem-icon" style="background:rgba(6,182,212,0.08);overflow:hidden;padding:0;"><img src="images/VirCast.png" alt="VirCast" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"></div>
             <div>
               <div class="dditem-label">VirCast</div>
               <div class="dditem-sub">Stream info overlay</div>
