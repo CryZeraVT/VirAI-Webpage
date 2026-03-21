@@ -413,7 +413,7 @@
       <aside class="admin-sidebar">
         <div class="sidebar-brand">
           <h2>Admin Dashboard</h2>
-          <p>ViriTTS Control Panel</p>
+          <p>AiRi Control Panel</p>
         </div>
 
         <span class="sidebar-section-label">Content</span>
@@ -473,7 +473,7 @@
             <div class="check-row" style="justify-content:space-between; align-items:center; padding:14px 0;">
               <div>
                 <div style="font-weight:600; color:#e2e8f0; font-size:0.95rem;">Show Testers Carousel</div>
-                <div style="font-size:0.8rem; color:#4b5563; margin-top:3px;">Display the "Currently Testing ViriTTS" spotlight on the front page.</div>
+                <div style="font-size:0.8rem; color:#4b5563; margin-top:3px;">Display the "Currently Testing AiRi" spotlight on the front page.</div>
               </div>
               <label class="toggle-switch" id="carousel-toggle-wrap">
                 <input type="checkbox" id="carousel-enabled" checked>
@@ -512,7 +512,7 @@
             </div>
             <div class="form-group">
               <label>Download URL <span style="font-weight:400;text-transform:none;color:#4b5563;">(optional)</span></label>
-              <input id="manual-url" type="text" placeholder="https://download.viritts.com/..." class="form-input">
+              <input id="manual-url" type="text" placeholder="https://download.AiRi.com/..." class="form-input">
             </div>
             <div class="check-row">
               <label><input id="manual-critical" type="checkbox"> Critical</label>
@@ -673,7 +673,7 @@
 
           <div class="admin-section" style="margin-top:24px;border-color:rgba(6,182,212,0.2);">
             <div class="admin-section-title" style="color:#06b6d4;">Proxy Endpoint</div>
-            <p style="font-size:0.85rem;color:#9ca3af;margin:0 0 10px;">ViriTTS app calls this edge function instead of OpenAI/Grok directly:</p>
+            <p style="font-size:0.85rem;color:#9ca3af;margin:0 0 10px;">AiRi app calls this edge function instead of OpenAI/Grok directly:</p>
             <code id="proxy-url-display" style="display:block;background:rgba(0,0,0,0.3);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#a78bfa;word-break:break-all;"></code>
             <button id="copy-proxy-url" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;margin-top:10px;font-size:0.82rem;">📋 Copy URL</button>
           </div>
@@ -780,7 +780,7 @@
               </div>
               <div class="form-group">
                 <label>Bucket Name</label>
-                <input id="r2-bucket-name" type="text" placeholder="viritts-updates" class="form-input">
+                <input id="r2-bucket-name" type="text" placeholder="AiRi-updates" class="form-input">
               </div>
             </div>
             <div class="form-row">
@@ -1792,16 +1792,16 @@
             );
             if (invokeErr) throw invokeErr;
             if (!emailData?.success) {
-              alert(`⚠️ License created but email failed: ${emailData?.error || "Unknown error"}\n\nManually share:\nKey: ${key}\nAccount page: https://viritts.com/account.html`);
+              alert(`⚠️ License created but email failed: ${emailData?.error || "Unknown error"}\n\nManually share:\nKey: ${key}\nAccount page: https://AiRi.com/account.html`);
             } else if (emailData.already_exists) {
               // User already has an account — show magic link for them to sign in
-              const link = emailData.action_link || "https://viritts.com/account.html";
+              const link = emailData.action_link || "https://AiRi.com/account.html";
               alert(`✅ Approved! User already has an account.\n\nLicense: ${key}\nEmail: ${email}\n\nShare this sign-in link with them:\n${link}`);
             } else {
               alert(`✅ Approved & invite sent!\n\nLicense: ${key}\nInvite emailed to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}\n\nThey'll get a Supabase invite email with a link to create their account. Their key will be waiting for them when they log in.`);
             }
           } catch (emailErr) {
-            alert(`⚠️ License created but invite failed to send.\n\nManually share:\nKey: ${key}\nCreate account: https://viritts.com/account.html`);
+            alert(`⚠️ License created but invite failed to send.\n\nManually share:\nKey: ${key}\nCreate account: https://AiRi.com/account.html`);
           }
 
           loadBetaSignups();

@@ -465,7 +465,7 @@
           <!-- Sign In mode (default) -->
           <div id="mode-signin">
             <h2>Welcome Back</h2>
-            <p class="subtitle">Sign in to view your ViriTTS license.</p>
+            <p class="subtitle">Sign in to view your AiRi license.</p>
 
             <div class="field-group">
               <label>Email</label>
@@ -491,7 +491,7 @@
           <!-- Create Account mode -->
           <div id="mode-signup" class="hidden">
             <h2>Create Account</h2>
-            <p class="subtitle">Set up your ViriTTS account to access your license.</p>
+            <p class="subtitle">Set up your AiRi account to access your license.</p>
 
             <div class="field-group">
               <label>Email</label>
@@ -539,7 +539,7 @@
               <div class="avatar-circle" id="avatar-initials">?</div>
               <div>
                 <div class="email-label" id="signed-in-email">—</div>
-                <div style="font-size:0.78rem;color:#6b7280;margin-top:1px;" id="signed-in-sub">ViriTTS Beta</div>
+                <div style="font-size:0.78rem;color:#6b7280;margin-top:1px;" id="signed-in-sub">AiRi Beta</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -574,7 +574,7 @@
           <div class="footer-brand">
             <img src="images/airittstextonly.png" alt="AiRi" style="height:22px;">
             <div>
-              <div style="font-size:0.9rem;font-weight:700;color:var(--text-muted);">ViriTTS</div>
+              <div style="font-size:0.9rem;font-weight:700;color:var(--text-muted);">AiRi</div>
               <div class="footer-virforge">A <img src="images/VirForge-transpar.png" alt="VirForge" style="height:13px;vertical-align:middle;opacity:0.75;margin:0 3px;"> product</div>
             </div>
           </div>
@@ -636,7 +636,7 @@
 
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
-    const PASSWORD_RESET_REDIRECT = "https://www.viritts.com/account.html";
+    const PASSWORD_RESET_REDIRECT = "https://www.AiRi.com/account.html";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -776,7 +776,7 @@
 
         // Reset UI to clean state before populating
         $("admin-link").classList.add("hidden");
-        $("signed-in-sub").textContent = "ViriTTS Beta";
+        $("signed-in-sub").textContent = "AiRi Beta";
         $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
 
         showView("view-signed-in");
@@ -810,7 +810,7 @@
 
         if (profile?.is_admin) {
           $("admin-link").classList.remove("hidden");
-          $("signed-in-sub").textContent = "Admin · ViriTTS Beta";
+          $("signed-in-sub").textContent = "Admin · AiRi Beta";
         }
         if (profile?.twitch_username) {
           $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
@@ -1031,7 +1031,7 @@
         _enteringSignedIn = false;
         // Reset signed-in view to clean state for next login
         $("admin-link").classList.add("hidden");
-        $("signed-in-sub").textContent = "ViriTTS Beta";
+        $("signed-in-sub").textContent = "AiRi Beta";
         $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
         showView("view-signed-out");
         clearStatus();
