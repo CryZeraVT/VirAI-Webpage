@@ -116,14 +116,27 @@
     .nav-dropdown-trigger {
       display: flex; align-items: center; gap: 5px; cursor: pointer;
       padding: 6px 12px; border-radius: 8px;
-      font-size: 0.88rem; font-weight: 500; color: var(--text-muted);
+      font-size: 0.875rem; font-weight: 500; color: var(--text-muted);
       background: none; border: none; font-family: inherit;
       transition: color 0.15s, background 0.15s;
-      white-space: nowrap;
+      white-space: nowrap; line-height: inherit;
     }
     .nav-dropdown-trigger:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-    .nav-dropdown-trigger svg { width: 10px; height: 10px; transition: transform 0.2s; flex-shrink: 0; }
+    .nav-dropdown-trigger svg { width: 10px; height: 10px; transition: transform 0.2s; flex-shrink: 0; opacity: 0.6; }
     .nav-dropdown:hover .nav-dropdown-trigger svg { transform: rotate(180deg); }
+    /* VirForge shimmer */
+    .nav-vf-shimmer {
+      background: linear-gradient(90deg, #a78bfa 0%, #d946ef 40%, #06b6d4 70%, #a78bfa 100%);
+      background-size: 250% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: vf-shimmer 3.5s linear infinite;
+    }
+    @keyframes vf-shimmer {
+      0%   { background-position: 0% center; }
+      100% { background-position: 250% center; }
+    }
     .nav-dropdown-menu {
       position: absolute; top: 100%; left: 50%;
       transform: translateX(-50%);
@@ -1128,7 +1141,7 @@
       <!-- VirForge Products dropdown -->
       <div class="nav-dropdown">
         <button class="nav-dropdown-trigger">
-          VirForge Products
+          <span class="nav-vf-shimmer">VirForge</span>&nbsp;Products
           <svg viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
