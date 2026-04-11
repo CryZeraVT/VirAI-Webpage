@@ -47,6 +47,36 @@ serve(async (req) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
+    // ── Token boost purchase ────────────────────────────────────────────────
+    if (session.metadata?.purchase_type === "token_boost") {
+      const licenseKey = session.metadata.license_key ?? "";
+      const tokensAdded = parseInt(session.metadata.tokens_added ?? "2000000", 10);
+
+      if (licenseKey) {
+        const { error: rpcErr } = await supabase.rpc("add_boost_tokens", {
+          p_license_key: licenseKey,
+          p_amount:      tokensAdded,
+        });
+        if (rpcErr) {
+          console.error("add_boost_tokens RPC error:", rpcErr);
+        }
+
+        const { error: auditErr } = await supabase.from("boost_purchases").insert({
+          license_key:       licenseKey,
+          stripe_session_id: session.id,
+          tokens_added:      tokensAdded,
+        });
+        if (auditErr) {
+          console.error("boost_purchases insert error:", auditErr);
+        }
+      } else {
+        console.error("token_boost webhook: missing license_key in metadata", session.id);
+      }
+
+      return jsonResponse({ received: true });
+    }
+
+    // ── New license purchase (subscription / one-time) ──────────────────────
     const email = session.customer_details?.email || session.customer_email || "";
     const sessionId = session.id;
     const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;

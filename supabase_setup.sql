@@ -115,3 +115,48 @@ ON public.beta_signups
 FOR ALL
 USING (auth.role() = 'service_role')
 WITH CHECK (auth.role() = 'service_role');
+
+-- ── Token Boost (applied 2026-04-11) ─────────────────────────────────────────
+
+-- Audit log for $5 token boost purchases
+CREATE TABLE IF NOT EXISTS public.boost_purchases (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  license_key       TEXT NOT NULL,
+  stripe_session_id TEXT UNIQUE NOT NULL,
+  tokens_added      BIGINT NOT NULL DEFAULT 2000000,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.boost_purchases ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access on boost_purchases"
+ON public.boost_purchases FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
+CREATE INDEX IF NOT EXISTS idx_boost_purchases_license_key
+  ON public.boost_purchases (license_key);
+
+-- Additive RPC — safely adds tokens to boost pool, never resets it
+CREATE OR REPLACE FUNCTION public.add_boost_tokens(
+  p_license_key TEXT,
+  p_amount      BIGINT DEFAULT 2000000
+) RETURNS void
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+BEGIN
+  UPDATE token_quotas
+  SET boost_tokens_remaining = boost_tokens_remaining + p_amount,
+      updated_at             = now()
+  WHERE license_key = p_license_key;
+
+  IF NOT FOUND THEN
+    INSERT INTO token_quotas (license_key, boost_tokens_remaining)
+    VALUES (p_license_key, p_amount)
+    ON CONFLICT (license_key)
+    DO UPDATE SET
+      boost_tokens_remaining = token_quotas.boost_tokens_remaining + EXCLUDED.boost_tokens_remaining,
+      updated_at             = now();
+  END IF;
+END;
+$$;

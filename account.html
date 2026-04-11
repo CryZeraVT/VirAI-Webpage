@@ -432,6 +432,133 @@
 
     /* Sections visibility ─────────────────────────────────── */
     .hidden { display: none !important; }
+
+    /* ── Token Quota Card ────────────────────────────────── */
+    .quota-section {
+      margin-top: 24px;
+    }
+    .quota-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .quota-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+    }
+    .quota-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .quota-license-key {
+      font-family: "Courier New", monospace;
+      font-size: 0.82rem;
+      color: #7c3aed;
+      letter-spacing: 1px;
+    }
+    .quota-tier-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .tier-standard { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+    .tier-beta     { background: rgba(6,182,212,0.12);  color: #06b6d4; border: 1px solid rgba(6,182,212,0.3); }
+    .tier-test     { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+
+    .quota-bar-wrap {
+      margin-bottom: 8px;
+    }
+    .quota-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      margin-bottom: 5px;
+    }
+    .quota-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .quota-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #7c3aed, #d946ef);
+      transition: width 0.4s ease;
+    }
+    .quota-bar-fill.near-limit { background: linear-gradient(90deg, #d946ef, #ef4444); }
+    .quota-bar-fill.exhausted  { background: #ef4444; }
+
+    .quota-boost-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+    .quota-boost-row .boost-val { color: #06b6d4; font-weight: 700; }
+
+    .quota-unlimited {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: #06b6d4;
+      font-weight: 600;
+    }
+
+    .quota-days {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+
+    /* ── Buy Boost Panel ─────────────────────────────────── */
+    .boost-panel {
+      background: rgba(124,58,237,0.06);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-top: 4px;
+    }
+    .boost-panel h4 {
+      margin: 0 0 4px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .boost-panel p {
+      font-size: 0.83rem;
+      color: #9ca3af;
+      margin: 0 0 14px;
+    }
+    .btn-boost {
+      background: linear-gradient(135deg, #7c3aed, #d946ef) !important;
+      color: #fff !important;
+      border-color: transparent !important;
+      font-size: 0.88rem !important;
+    }
+    .btn-boost:hover:not(:disabled) {
+      opacity: 0.88;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
+    }
+    .btn-boost:disabled { opacity: 0.55; }
   </style>
 </head>
 <body>
@@ -558,6 +685,14 @@
             </div>
           </div>
 
+          <!-- Token Quota section -->
+          <div class="quota-section" id="quota-section">
+            <h3>⚡ Token Usage</h3>
+            <div id="quota-list">
+              <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -636,6 +771,24 @@
 
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
+
+    // Feature flags — fetched from site_settings table, never hardcoded here
+    let _boostPaymentsEnabled = false;
+
+    async function loadSiteSettings() {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/site_settings?key=eq.boost_payments_enabled&select=value`,
+          { headers: { "apikey": SUPABASE_ANON_KEY } }
+        );
+        if (res.ok) {
+          const rows = await res.json();
+          _boostPaymentsEnabled = (rows?.[0]?.value === "true");
+        }
+      } catch {
+        _boostPaymentsEnabled = false;
+      }
+    }
     const PASSWORD_RESET_REDIRECT = "https://www.AiRi.com/account.html";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -906,6 +1059,9 @@
           return;
         }
 
+      // Load quota data for active licenses (non-blocking)
+      loadQuota(data).catch(console.warn);
+
       keysList.innerHTML = data.map((row) => {
         const isActive = row.status === "active";
         const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
@@ -1004,6 +1160,9 @@
     // INITIAL_SESSION fires on every page load (including back-navigation)
     // with the current session from localStorage — no need for a separate
     // getSession() call that races with the auth listener.
+
+    // Load feature flags before rendering anything
+    loadSiteSettings();
 
     // Pre-lock reset/invite mode before auth callbacks run to prevent
     // initial-session routing from flashing the wrong view.
@@ -1179,6 +1338,162 @@
     });
 
     $("load-keys").addEventListener("click", () => loadKeys());
+
+    // ── Token Quota ───────────────────────────────────────────────
+    function fmtTokens(n) {
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+      if (n >= 1_000)     return (n / 1_000).toFixed(0) + "k";
+      return String(n);
+    }
+
+    function buildQuotaCard(licenseKey, quota) {
+      const tier = quota.tier ?? "standard";
+
+      const tierLabel = tier === "beta"     ? "Beta"
+                      : tier === "test"     ? "Test"
+                      : "Standard";
+      const tierClass = tier === "beta"     ? "tier-beta"
+                      : tier === "test"     ? "tier-test"
+                      : "tier-standard";
+
+      const keyShort = licenseKey.length > 18
+        ? licenseKey.slice(0, 9) + "…" + licenseKey.slice(-5)
+        : licenseKey;
+
+      // Beta = unlimited
+      if (tier === "beta" || quota.unlimited) {
+        return `
+          <div class="quota-card">
+            <div class="quota-card-header">
+              <span class="quota-license-key">${keyShort}</span>
+              <span class="quota-tier-badge ${tierClass}">${tierLabel}</span>
+            </div>
+            <div class="quota-unlimited">
+              <span>∞</span><span>Unlimited — Beta Access</span>
+            </div>
+          </div>`;
+      }
+
+      const used      = quota.tokens_used    ?? 0;
+      const limit     = quota.base_limit     ?? 2_000_000;
+      const boost     = quota.boost_remaining ?? 0;
+      const days      = quota.days_remaining  ?? 0;
+      const pct       = Math.min(100, Math.round((used / limit) * 100));
+
+      const fillClass = pct >= 100 ? "exhausted" : pct >= 80 ? "near-limit" : "";
+
+      const boostRow = boost > 0
+        ? `<div class="quota-boost-row">⚡ Boost pool: <span class="boost-val">${fmtTokens(boost)}</span> remaining</div>`
+        : "";
+
+      const boostPanel = _boostPaymentsEnabled ? `
+        <div class="boost-panel" id="boost-panel-${licenseKey.replace(/[^A-Z0-9]/g, '')}">
+          <h4>Need more tokens?</h4>
+          <p>2,000,000 token boost — one-time add-on, never expires.</p>
+          <button class="btn btn-boost buy-boost-btn" data-key="${licenseKey}">
+            Buy Token Boost — $5
+          </button>
+        </div>` : "";
+
+      return `
+        <div class="quota-card">
+          <div class="quota-card-header">
+            <span class="quota-license-key">${keyShort}</span>
+            <span class="quota-tier-badge ${tierClass}">${tierLabel}</span>
+          </div>
+          <div class="quota-bar-wrap">
+            <div class="quota-bar-labels">
+              <span>${fmtTokens(used)} used</span>
+              <span>${fmtTokens(limit)} limit</span>
+            </div>
+            <div class="quota-bar-track">
+              <div class="quota-bar-fill ${fillClass}" style="width:${pct}%"></div>
+            </div>
+          </div>
+          ${boostRow}
+          <div class="quota-days">Resets in ${days} day${days !== 1 ? "s" : ""}</div>
+        </div>
+        ${boostPanel}`;
+    }
+
+    async function loadQuota(licenses) {
+      const quotaList = $("quota-list");
+      if (!licenses || licenses.length === 0) {
+        quotaList.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">No active licenses found.</div>`;
+        return;
+      }
+
+      // Only fetch quota for active licenses
+      const active = licenses.filter(l => l.status === "active" && (!l.expires_at || new Date(l.expires_at) >= new Date()));
+      if (active.length === 0) {
+        quotaList.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">No active licenses.</div>`;
+        return;
+      }
+
+      quotaList.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>`;
+
+      const cards = await Promise.all(active.map(async (lic) => {
+        try {
+          const res = await withTimeout(
+            fetch(`${SUPABASE_URL}/functions/v1/get-quota`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+              body: JSON.stringify({ license_key: lic.license_key }),
+            }),
+            8000,
+            "Quota fetch timed out"
+          );
+          if (!res.ok) return null;
+          const quota = await res.json();
+          return buildQuotaCard(lic.license_key, quota);
+        } catch {
+          return null;
+        }
+      }));
+
+      const rendered = cards.filter(Boolean).join("");
+      quotaList.innerHTML = rendered || `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Could not load usage data.</div>`;
+
+      // Wire up buy boost buttons
+      document.querySelectorAll(".buy-boost-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-key") || "";
+          btn.disabled = true;
+          btn.textContent = "Redirecting to Stripe…";
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/create-boost-checkout`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+              body: JSON.stringify({ license_key: key }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.url) {
+              setStatus(data.error || "Could not create checkout session. Try again.", "error");
+              btn.disabled = false;
+              btn.textContent = "Buy Token Boost — $5";
+              return;
+            }
+            window.location.href = data.url;
+          } catch (err) {
+            console.error("Boost checkout error:", err);
+            setStatus("Network error. Please try again.", "error");
+            btn.disabled = false;
+            btn.textContent = "Buy Token Boost — $5";
+          }
+        });
+      });
+    }
+
+    // Show success banner if returning from Stripe boost purchase
+    (function checkBoostReturn() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("boost") === "success") {
+        setStatus("✅ Boost purchased! 2,000,000 tokens have been added to your license.", "success");
+        // Clean the URL without a reload
+        const clean = window.location.pathname + window.location.hash;
+        window.history.replaceState(null, "", clean);
+      }
+    })();
   </script>
 </body>
 </html>
