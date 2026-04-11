@@ -872,15 +872,11 @@
       const search = String(window.location.search || "").toLowerCase();
       const combined = `${search}&${hash}`;
 
-      // Supabase recovery links may surface type in either query or hash.
+      // Supabase surfaces the link type explicitly — always check type= first.
       if (combined.includes("type=recovery")) return "recovery";
       if (combined.includes("type=invite")) return "invite";
-
-      // Fallback: some providers preserve tokens but lose explicit type.
-      // If recovery tokens are present, treat as password recovery flow.
-      if (combined.includes("access_token=") && combined.includes("refresh_token=")) {
-        return "recovery";
-      }
+      // type=signup is a normal email confirmation — do NOT treat as recovery.
+      if (combined.includes("type=signup")) return "signup";
 
       return "";
     }
