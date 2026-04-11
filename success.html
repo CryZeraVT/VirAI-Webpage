@@ -1,106 +1,367 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="images/logo.png"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful! - AiRi</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful! — AiRi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+
+    :root {
+      --bg:           #08060f;
+      --bg2:          #0c0a16;
+      --surface:      #100d1c;
+      --primary:      #7c3aed;
+      --primary-glow: rgba(124,58,237,0.35);
+      --accent:       #d946ef;
+      --cyan:         #06b6d4;
+      --green:        #22c55e;
+      --text:         #f4f4f5;
+      --text-muted:   #71717a;
+      --border:       rgba(255,255,255,0.07);
+      --border-p:     rgba(124,58,237,0.25);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.75);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-text { height: 28px; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-links a.nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 7px 16px;
+    }
+    .nav-links a.nav-cta:hover { background: #6d28d9; }
+
+    /* ── Page body ── */
+    .page-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 88px 24px 60px;
+    }
+
+    /* ── Card ── */
+    .success-card {
+      background: rgba(15, 5, 30, 0.85);
+      border: 1px solid var(--border-p);
+      border-radius: 20px;
+      padding: 44px 40px;
+      max-width: 480px;
+      width: 100%;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 60px rgba(124,58,237,0.06);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .success-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,0.6), transparent);
+    }
+
+    /* ── States ── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(124,58,237,0.2);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title {
+      font-size: 1.15rem; font-weight: 700; color: var(--text);
+      margin-bottom: 8px;
+    }
+    .loading-sub {
+      font-size: 0.88rem; color: var(--text-muted);
+    }
+
+    /* Success */
+    .success-icon {
+      font-size: 3rem; line-height: 1;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 20px rgba(34,197,94,0.4));
+    }
+    .success-title {
+      font-size: 1.8rem; font-weight: 900;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .success-sub {
+      font-size: 0.92rem; color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* License box */
+    .license-box {
+      background: rgba(124,58,237,0.06);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .license-label {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+    .license-key {
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem; font-weight: 700;
+      letter-spacing: 2px;
+      color: #a78bfa;
+      margin-bottom: 14px;
+      word-break: break-all;
+    }
+    .btn-copy {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 0.82rem; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      background: rgba(124,58,237,0.1);
+      border: 1px solid rgba(124,58,237,0.3);
+      color: #a78bfa; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-copy:hover { background: rgba(124,58,237,0.2); border-color: rgba(167,139,250,0.5); }
+    .btn-copy.copied { color: #4ade80; border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
+
+    /* Download button */
+    .btn-download {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 14px 24px; border-radius: 12px;
+      font-size: 1rem; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      text-decoration: none;
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: #fff; border: none; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(124,58,237,0.35);
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      margin-bottom: 14px;
+    }
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(124,58,237,0.5);
+    }
+    .download-note {
+      font-size: 0.78rem; color: var(--text-muted);
+    }
+    .download-note span { color: #4ade80; }
+
+    /* Account link */
+    .account-link-row {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem; color: var(--text-muted);
+    }
+    .account-link-row a {
+      color: #a78bfa; text-decoration: none; font-weight: 600;
+    }
+    .account-link-row a:hover { text-decoration: underline; }
+
+    /* Error */
+    .error-icon { font-size: 2.5rem; margin-bottom: 14px; }
+    .error-title {
+      font-size: 1.3rem; font-weight: 800; color: #f87171;
+      margin-bottom: 8px;
+    }
+    .error-sub {
+      font-size: 0.9rem; color: var(--text-muted);
+      line-height: 1.65; margin-bottom: 20px;
+    }
+    .btn-retry {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 22px; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171; cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    .btn-retry:hover { background: rgba(239,68,68,0.18); }
+
+    @media (max-width: 540px) {
+      .success-card { padding: 32px 24px; }
+      .nav { padding: 0 20px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="logo">AiRi</a>
-        </header>
 
-        <div class="status-box">
-            <div class="status-icon">🎉</div>
-            <h2>Payment Successful!</h2>
-            <p>Thank you for subscribing to AiRi Pro.</p>
-            
-            <div id="loading">
-                <div class="spinner"></div>
-                <p>Verifying purchase and preparing download...</p>
-            </div>
-
-            <div id="success-content" style="display: none;">
-                <p>We've sent a receipt to your email.</p>
-                <div id="license-area" style="margin: 1.5rem 0;"></div>
-                <div id="download-area" style="margin: 2rem 0;">
-                    <!-- Download button injected here -->
-                </div>
-                <p style="font-size: 0.9rem; color: #00ff9d;">
-                    This download link is valid for 24 hours.
-                </p>
-            </div>
-
-            <div id="error-content" style="display: none;">
-                <p style="color: var(--error);">We couldn't verify your purchase automatically.</p>
-                <p>Please check your email for the download link.</p>
-            </div>
-        </div>
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
+    </a>
+    <div class="nav-links">
+      <a href="account.html" class="nav-cta">My Account</a>
     </div>
+  </nav>
 
-    <script>
-        // Supabase configuration
-        const SUPABASE_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+  <div class="page-wrap">
+    <div class="success-card">
 
-        async function checkPurchase() {
-            const params = new URLSearchParams(window.location.search);
-            const sessionId = params.get('session_id');
+      <!-- Loading state -->
+      <div id="state-loading" class="state active">
+        <div class="spinner"></div>
+        <div class="loading-title">Verifying your purchase...</div>
+        <div class="loading-sub">Hang tight, this only takes a moment.</div>
+      </div>
 
-            if (!sessionId) {
-                // If no session ID, maybe they just navigated here?
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error-content').style.display = 'block';
-                return;
-            }
+      <!-- Success state -->
+      <div id="state-success" class="state">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">You're in!</div>
+        <div class="success-sub">
+          Welcome to AiRi. Your license key is below — keep it safe.<br>
+          A receipt has been sent to your email.
+        </div>
 
-            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        <div id="license-box" class="license-box" style="display:none;">
+          <div class="license-label">Your License Key</div>
+          <div class="license-key" id="license-key-text">—</div>
+          <button class="btn-copy" id="copy-btn" onclick="copyKey()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Key
+          </button>
+        </div>
 
-            // Poll for the purchase record (webhook might take a few seconds)
-            let attempts = 0;
-            const maxAttempts = 10;
+        <a id="download-btn" href="#" class="btn-download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download AiRi Installer
+        </a>
+        <div class="download-note">
+          <span>Download link valid for 24 hours</span> · re-download anytime from your account
+        </div>
 
-            const poll = setInterval(async () => {
-                attempts++;
-                const { data, error } = await supabaseClient
-                    .rpc('get_purchase_by_session', { p_session_id: sessionId });
+        <div class="account-link-row">
+          Want to manage your license? <a href="account.html">Go to your account →</a>
+        </div>
+      </div>
 
-                const row = data && data[0];
-                if (row) {
-                    clearInterval(poll);
-                    showDownload(row.download_token, row.license_key);
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(poll);
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('error-content').style.display = 'block';
-                }
-            }, 2000); // Check every 2 seconds
+      <!-- Error state -->
+      <div id="state-error" class="state">
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">Couldn't verify purchase</div>
+        <div class="error-sub">
+          Your payment went through — your license key was sent to your email.<br>
+          If you don't see it within a few minutes, check your spam folder or contact support.
+        </div>
+        <a href="account.html" class="btn-retry">Go to Account</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL  = 'https://rgigtqpesabuyaumibaj.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    let _licenseKey = '';
+
+    function showState(id) {
+      ['state-loading', 'state-success', 'state-error'].forEach(s => {
+        document.getElementById(s).classList.toggle('active', s === id);
+      });
+    }
+
+    function copyKey() {
+      if (!_licenseKey) return;
+      navigator.clipboard.writeText(_licenseKey).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.classList.add('copied');
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Key`;
+        }, 2500);
+      });
+    }
+
+    function showSuccess(downloadToken, licenseKey) {
+      if (licenseKey) {
+        _licenseKey = licenseKey;
+        document.getElementById('license-key-text').textContent = licenseKey;
+        document.getElementById('license-box').style.display = 'block';
+      }
+      document.getElementById('download-btn').href = `download.html?token=${downloadToken}`;
+      showState('state-success');
+    }
+
+    async function checkPurchase() {
+      const params    = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+
+      if (!sessionId) { showState('state-error'); return; }
+
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      const poll = setInterval(async () => {
+        attempts++;
+        const { data } = await client.rpc('get_purchase_by_session', { p_session_id: sessionId });
+        const row = data && data[0];
+
+        if (row) {
+          clearInterval(poll);
+          showSuccess(row.download_token, row.license_key);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(poll);
+          showState('state-error');
         }
+      }, 2000);
+    }
 
-        function showDownload(token, licenseKey) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('success-content').style.display = 'block';
-            if (licenseKey) {
-                document.getElementById('license-area').innerHTML = `
-                    <div style="background:#1a0f2b; border:1px solid #5a189a; border-radius:12px; padding:1rem;">
-                        <div style="font-size:0.9rem; color:#9d4edd;">Your License Key</div>
-                        <div style="font-size:1.1rem; color:#c77dff; font-weight:bold; margin:0.3rem 0;">${licenseKey}</div>
-                        <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${licenseKey}')">Copy Key</button>
-                    </div>
-                `;
-            }
-            document.getElementById('download-area').innerHTML = `
-                <a href="download.html?token=${token}" class="btn">
-                    Download AiRi Installer
-                </a>
-            `;
-        }
+    checkPurchase();
+  </script>
 
-        checkPurchase();
-    </script>
 </body>
 </html>
-
