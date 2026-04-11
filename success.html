@@ -66,14 +66,12 @@
             const poll = setInterval(async () => {
                 attempts++;
                 const { data, error } = await supabaseClient
-                    .from('purchases')
-                    .select('download_token, license_key')
-                    .eq('stripe_session_id', sessionId)
-                    .single();
+                    .rpc('get_purchase_by_session', { p_session_id: sessionId });
 
-                if (data) {
+                const row = data && data[0];
+                if (row) {
                     clearInterval(poll);
-                    showDownload(data.download_token, data.license_key);
+                    showDownload(row.download_token, row.license_key);
                 } else if (attempts >= maxAttempts) {
                     clearInterval(poll);
                     document.getElementById('loading').style.display = 'none';
