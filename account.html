@@ -1215,9 +1215,12 @@
           return;
         }
         if (session?.user) {
-          // If user came from buy.html, send them back there after login
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get("redirect") === "buy" && event === "SIGNED_IN") {
+          // Check URL param first, then localStorage (survives email confirmation round-trip)
+          const urlParam = new URLSearchParams(window.location.search).get("redirect");
+          const storedRedirect = localStorage.getItem("post_auth_redirect");
+          const redirectTarget = urlParam || storedRedirect;
+          if (redirectTarget === "buy" && event === "SIGNED_IN") {
+            localStorage.removeItem("post_auth_redirect");
             window.location.href = "buy.html";
             return;
           }
@@ -1261,11 +1264,15 @@
       if (!email || !password) return setStatus("Enter email and password.", "error");
       if (!twitchUsername) return setStatus("Twitch username is required.", "error");
 
+      // Persist redirect intent so it survives the email confirmation round-trip
+      const pendingRedirect = new URLSearchParams(window.location.search).get("redirect");
+      if (pendingRedirect) localStorage.setItem("post_auth_redirect", pendingRedirect);
+
       const { data, error } = await supabase.auth.signUp({
         email, password,
         options: {
           data: { twitch_username: twitchUsername },
-          emailRedirectTo: window.location.href, // returns to current page (preserves ?redirect=buy if present)
+          emailRedirectTo: window.location.origin + "/account.html",
         }
       });
       if (error) {
