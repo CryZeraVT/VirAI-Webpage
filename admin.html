@@ -1985,7 +1985,7 @@
           btn.addEventListener("click", async () => {
             const userId = btn.getAttribute("data-id");
             const email = btn.getAttribute("data-email");
-            if (!confirm(`Delete user ${email}?\n\nThis removes auth account, profile, licenses, purchases, token usage, and beta signup records.`)) return;
+            if (!confirm(`Delete user ${email}?\n\nThis removes auth account, profile, licenses, purchases, token quotas, boost purchases, token usage, and beta signup records.`)) return;
             if (!confirm(`Final confirm: permanently delete ${email}? This cannot be undone.`)) return;
 
             btn.disabled = true;

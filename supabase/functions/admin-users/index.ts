@@ -266,12 +266,21 @@ serve(async (req) => {
         .delete()
         .in("license_key", licenseKeys);
       if (tokenDeleteError) throw tokenDeleteError;
+
+      // Remove boost purchase audit rows
+      await supabase.from("boost_purchases").delete().in("license_key", licenseKeys);
+
+      // Remove token quota rows
+      await supabase.from("token_quotas").delete().in("license_key", licenseKeys);
     }
 
     if (twitchUsername) {
       await supabase.from("token_usage").delete().eq("twitch_channel", twitchUsername);
       await supabase.from("token_usage").delete().eq("twitch_username", twitchUsername);
     }
+
+    // Remove purchase records (download tokens)
+    await supabase.from("purchases").delete().eq("email", email);
 
     const { error: betaError } = await supabase.from("beta_signups").delete().eq("email", email);
     if (betaError) throw betaError;
