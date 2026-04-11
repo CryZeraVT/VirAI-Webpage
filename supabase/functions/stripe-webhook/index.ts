@@ -44,6 +44,60 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid signature" }, 400);
   }
 
+  // ── Subscription cancelled / ended ──────────────────────────────────────
+  if (event.type === "customer.subscription.deleted") {
+    const sub = event.data.object as Stripe.Subscription;
+
+    // Find the license tied to this subscription
+    const { data: purchase } = await supabase
+      .from("purchases")
+      .select("license_key")
+      .eq("stripe_subscription_id", sub.id)
+      .maybeSingle();
+
+    const licenseKey = purchase?.license_key ?? "";
+    if (licenseKey) {
+      const { error } = await supabase
+        .from("licenses")
+        .update({ status: "inactive" })
+        .eq("license_key", licenseKey);
+      if (error) console.error("Failed to deactivate license on cancellation:", error);
+      else console.log("License deactivated on subscription cancellation:", licenseKey);
+    } else {
+      console.error("subscription.deleted: no purchase record found for sub", sub.id);
+    }
+
+    return jsonResponse({ received: true });
+  }
+
+  // ── Payment failed (non-fatal — Stripe will retry) ────────────────────
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+
+    if (subId) {
+      const sub = await stripe.subscriptions.retrieve(subId);
+      // Only deactivate if Stripe has given up retrying (status becomes past_due or canceled)
+      if (sub.status === "canceled" || sub.status === "unpaid") {
+        const { data: purchase } = await supabase
+          .from("purchases")
+          .select("license_key")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+
+        const licenseKey = purchase?.license_key ?? "";
+        if (licenseKey) {
+          await supabase.from("licenses").update({ status: "inactive" }).eq("license_key", licenseKey);
+          console.log("License deactivated after payment failure:", licenseKey);
+        }
+      } else {
+        console.log("Payment failed but Stripe still retrying — leaving license active. Sub:", subId, "status:", sub.status);
+      }
+    }
+
+    return jsonResponse({ received: true });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
