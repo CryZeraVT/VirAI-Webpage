@@ -1263,7 +1263,10 @@
 
       const { data, error } = await supabase.auth.signUp({
         email, password,
-        options: { data: { twitch_username: twitchUsername } }
+        options: {
+          data: { twitch_username: twitchUsername },
+          emailRedirectTo: window.location.href, // returns to current page (preserves ?redirect=buy if present)
+        }
       });
       if (error) {
         const msg = error.message.toLowerCase();
