@@ -93,6 +93,7 @@ serve(async (req) => {
         license_key: licenseKey,
         email: email || null,
         status: "active",
+        tier: "standard",
       });
 
     if (licenseError) {
