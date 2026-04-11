@@ -1215,6 +1215,12 @@
           return;
         }
         if (session?.user) {
+          // If user came from buy.html, send them back there after login
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get("redirect") === "buy" && event === "SIGNED_IN") {
+            window.location.href = "buy.html";
+            return;
+          }
           await enterSignedIn(session.user, event);
         } else if (event === "INITIAL_SESSION") {
           // No session on first load — show login

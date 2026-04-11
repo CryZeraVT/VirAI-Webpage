@@ -5,25 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redirecting to Payment...</title>
     <link rel="stylesheet" href="style.css">
-    <script>
-        const STRIPE_LINK = "https://buy.stripe.com/test_9B65kD0KL7LadaXbiDdjO01";
-        
-        function redirectToStripe() {
-            window.location.href = STRIPE_LINK;
-        }
-        
-        // Auto-redirect after 3 seconds
-        setTimeout(redirectToStripe, 2000);
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <div class="status-box">
             <div class="spinner"></div>
-            <h2>Redirecting to Stripe...</h2>
-            <p>You are being transferred to our secure payment processor.</p>
-            <button onclick="redirectToStripe()" class="btn" style="margin-top: 1rem;">Click if not redirected</button>
+            <h2 id="status-title">Checking your account...</h2>
+            <p id="status-msg">Please wait a moment.</p>
         </div>
     </div>
+
+    <script>
+        const SUPABASE_URL  = 'https://rgigtqpesabuyaumibaj.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
+        const STRIPE_LINK   = 'https://buy.stripe.com/test_9B65kD0KL7LadaXbiDdjO01';
+
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+        async function init() {
+            const { data: { session } } = await client.auth.getSession();
+
+            if (!session) {
+                // Not logged in — send to account page with return flag
+                document.getElementById('status-title').textContent = 'Account required';
+                document.getElementById('status-msg').textContent   = 'Please sign in or create a free account first. Redirecting...';
+                setTimeout(() => {
+                    window.location.href = 'account.html?redirect=buy';
+                }, 1500);
+                return;
+            }
+
+            // Logged in — proceed to Stripe
+            document.getElementById('status-title').textContent = 'Redirecting to Stripe...';
+            document.getElementById('status-msg').textContent   = 'You are being transferred to our secure payment processor.';
+            setTimeout(() => {
+                window.location.href = STRIPE_LINK;
+            }, 800);
+        }
+
+        init();
+    </script>
 </body>
 </html>
