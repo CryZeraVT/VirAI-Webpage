@@ -605,7 +605,7 @@
 
           <!-- Top users quick view -->
           <div class="usage-section">
-            <p class="usage-section-title">Top Users by Token Usage</p>
+            <p class="usage-section-title">All Users by Token Usage</p>
             <div class="table-container" style="max-height: 260px;">
               <table class="data-table">
                 <thead><tr>
@@ -1186,9 +1186,9 @@
       document.getElementById("total-cost").textContent     = "$" + totalCost.toFixed(4);
       document.getElementById("active-users").textContent   = uniqueUsers;
 
-      // Overview top-users mini table
+      // Overview all-users table
       const userStats = aggregateByUser(data);
-      const topUsers  = Object.values(userStats).sort((a, b) => b.tokens - a.tokens).slice(0, 10);
+      const topUsers  = Object.values(userStats).sort((a, b) => b.tokens - a.tokens);
       const topBody   = document.getElementById("overview-top-users-body");
       if (!topUsers.length) {
         topBody.innerHTML = `<tr><td colspan="4" class="loading">No data for selected range.</td></tr>`;
