@@ -1150,7 +1150,8 @@
     async function fetchTokenUsageRows(startIso = null, endIso = null) {
       let query = supabase
         .from("token_usage")
-        .select("created_at,license_key,twitch_channel,provider,model,prompt_tokens,completion_tokens,cost_usd");
+        .select("created_at,license_key,twitch_channel,provider,model,prompt_tokens,completion_tokens,cost_usd")
+        .limit(100000);
       if (startIso) query = query.gte("created_at", startIso);
       if (endIso)   query = query.lte("created_at", endIso);
       const { data, error } = await query;
