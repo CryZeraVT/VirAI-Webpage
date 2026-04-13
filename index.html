@@ -1956,7 +1956,7 @@ document.querySelectorAll('.bento-card').forEach(card => {
   const SUPA_URL = 'https://rgigtqpesabuyaumibaj.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
   try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/announcements?active=eq.true&order=created_at.desc&limit=1`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/r2_versions?is_active=eq.true&order=created_at.desc&limit=1`, {
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
     });
     const data = await r.json();

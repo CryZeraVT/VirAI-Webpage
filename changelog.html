@@ -285,9 +285,9 @@
 
   async function loadChangelog() {
     const { data, error } = await supabase
-      .from("announcements")
+      .from("r2_versions")
       .select("*")
-      .eq("active", true)
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (error) {
