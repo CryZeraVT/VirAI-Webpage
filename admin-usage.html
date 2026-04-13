@@ -1143,19 +1143,24 @@
       return inputCost + outputCost;
     }
 
-    function getTwitchName(row) {
-      return String(row?.twitch_channel || "").trim();
-    }
+    // ─── Aggregated summary fetch (bypasses all row caps) ────────────────────
+    let _summaryCache = null;
+    let _summaryCacheKey = null;
 
-    async function fetchTokenUsageRows(startIso = null, endIso = null) {
-      // Uses RPC to bypass PostgREST max_rows server cap on direct table reads
-      const { data, error } = await supabase.rpc("get_token_usage", {
+    async function fetchUsageSummary(startIso = null, endIso = null) {
+      const key = `${startIso || ""}|${endIso || ""}`;
+      if (_summaryCache && _summaryCacheKey === key) return _summaryCache;
+      const { data, error } = await supabase.rpc("get_usage_summary", {
         start_time: startIso ?? null,
         end_time:   endIso   ?? null,
       });
       if (error) throw error;
-      return Array.isArray(data) ? data : [];
+      _summaryCache    = data || { by_user: [], by_day: [], by_model: [] };
+      _summaryCacheKey = key;
+      return _summaryCache;
     }
+
+    function clearSummaryCache() { _summaryCache = null; _summaryCacheKey = null; }
 
     function monthRangeIso(monthsAgo = 0) {
       const now = new Date();
@@ -1167,18 +1172,21 @@
     // ─── Overview / stats ─────────────────────────────────────────────────────
     async function loadStats() {
       const { startIso, endIso } = getDateFilterFull();
-      let data = [];
-      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      clearSummaryCache();
+      let summary = { by_user: [], by_day: [], by_model: [] };
+      try { summary = await fetchUsageSummary(startIso, endIso); }
       catch (e) { console.error("Error loading stats:", e); }
       await loadPricingMap();
 
-      const totalRequests = data.length;
-      const totalTokens   = data.reduce((s, r) => s + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens), 0);
-      const totalCost     = data.reduce(
-        (s, r) => s + computeCostFromPricing(r.provider, r.model, r.prompt_tokens, r.completion_tokens, r.cost_usd),
-        0
-      );
-      const uniqueUsers   = new Set(data.map(r => String(r.license_key || "").trim()).filter(Boolean)).size;
+      const byUser  = summary.by_user  || [];
+      const byDay   = summary.by_day   || [];
+      const byModel = summary.by_model || [];
+
+      const totalRequests = byUser.reduce((s, u) => s + asNumber(u.requests), 0);
+      const totalTokens   = byUser.reduce((s, u) => s + asNumber(u.tokens),   0);
+      const totalCost     = byModel.reduce((s, m) =>
+        s + computeCostFromPricing(m.provider, m.model, m.prompt_tokens, m.completion_tokens, m.cost), 0);
+      const uniqueUsers   = byUser.length;
 
       document.getElementById("total-requests").textContent = totalRequests.toLocaleString();
       document.getElementById("total-tokens").textContent   = totalTokens.toLocaleString();
@@ -1186,92 +1194,50 @@
       document.getElementById("active-users").textContent   = uniqueUsers;
 
       // Overview all-users table
-      const userStats = aggregateByUser(data);
-      const topUsers  = Object.values(userStats).sort((a, b) => b.tokens - a.tokens);
-      const topBody   = document.getElementById("overview-top-users-body");
-      if (!topUsers.length) {
+      const topBody = document.getElementById("overview-top-users-body");
+      if (!byUser.length) {
         topBody.innerHTML = `<tr><td colspan="4" class="loading">No data for selected range.</td></tr>`;
       } else {
-        topBody.innerHTML = topUsers.map(u => `
+        topBody.innerHTML = byUser.map(u => `
           <tr>
-            <td>${u.twitch
-              ? `<a href="https://twitch.tv/${u.twitch}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch}</a>`
-              : `<span class="license-key" title="${u.license}">${u.license.substring(0,15)}…</span>`
+            <td>${u.twitch_channel
+              ? `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>`
+              : `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>`
             }</td>
-            <td>${u.requests.toLocaleString()}</td>
-            <td>${u.tokens.toLocaleString()}</td>
-            <td>$${u.cost.toFixed(4)}</td>
+            <td>${asNumber(u.requests).toLocaleString()}</td>
+            <td>${asNumber(u.tokens).toLocaleString()}</td>
+            <td>$${asNumber(u.cost).toFixed(4)}</td>
           </tr>`).join("");
       }
 
-      // Mini charts
-      buildOverviewDailyChart(data);
-      buildOverviewModelChart(data);
-    }
-
-    function aggregateByUser(data) {
-      const m = {};
-      data.forEach(row => {
-        const twitch  = getTwitchName(row);
-        const license = String(row.license_key || "").trim();
-        const key     = twitch || license;
-        if (!key) return;
-        if (!m[key]) m[key] = { twitch, license, requests: 0, tokens: 0, cost: 0 };
-        m[key].requests++;
-        m[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        m[key].cost   += computeCostFromPricing(
-          row.provider,
-          row.model,
-          row.prompt_tokens,
-          row.completion_tokens,
-          row.cost_usd
-        );
-      });
-      return m;
+      buildOverviewDailyChart(byDay);
+      buildOverviewModelChart(byModel);
     }
 
     // ─── User usage table ─────────────────────────────────────────────────────
     async function loadUserUsage() {
       const { startIso, endIso } = getDateFilterFull();
       const tbody = document.getElementById("user-table-body");
-      let data = [];
-      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      let summary = { by_user: [] };
+      try { summary = await fetchUsageSummary(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; return; }
       await loadPricingMap();
 
-      if (!data.length) { tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`; return; }
+      const byUser = summary.by_user || [];
+      if (!byUser.length) { tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`; return; }
 
-      const userStats = {};
-      data.forEach(row => {
-        const twitch  = getTwitchName(row);
-        const license = String(row.license_key || "").trim();
-        const key     = twitch || license;
-        if (!key) return;
-        if (!userStats[key]) userStats[key] = { twitch, license, requests: 0, prompt: 0, completion: 0, cost: 0 };
-        userStats[key].requests++;
-        userStats[key].prompt     += asNumber(row.prompt_tokens);
-        userStats[key].completion += asNumber(row.completion_tokens);
-        userStats[key].cost       += computeCostFromPricing(
-          row.provider,
-          row.model,
-          row.prompt_tokens,
-          row.completion_tokens,
-          row.cost_usd
-        );
-      });
-
-      const sorted = Object.entries(userStats).sort((a, b) => b[1].cost - a[1].cost);
-      tbody.innerHTML = sorted.map(([, s]) => `
+      const sorted = [...byUser].sort((a, b) => asNumber(b.cost) - asNumber(a.cost));
+      tbody.innerHTML = sorted.map(u => `
         <tr>
-          <td>${s.twitch
-            ? `<a href="https://twitch.tv/${s.twitch}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${s.twitch}</a>`
-            : `<span class="license-key" title="${s.license}">${s.license.substring(0,15)}…</span>`
+          <td>${u.twitch_channel
+            ? `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>`
+            : `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>`
           }</td>
-          <td>${s.requests.toLocaleString()}</td>
-          <td>${s.prompt.toLocaleString()}</td>
-          <td>${s.completion.toLocaleString()}</td>
-          <td>${(s.prompt + s.completion).toLocaleString()}</td>
-          <td>$${s.cost.toFixed(4)}</td>
+          <td>${asNumber(u.requests).toLocaleString()}</td>
+          <td>${asNumber(u.prompt_tokens).toLocaleString()}</td>
+          <td>${asNumber(u.completion_tokens).toLocaleString()}</td>
+          <td>${asNumber(u.tokens).toLocaleString()}</td>
+          <td>$${asNumber(u.cost).toFixed(4)}</td>
         </tr>`).join("");
     }
 
@@ -1279,35 +1245,20 @@
     async function loadDailyUsage() {
       const { startIso, endIso } = getDailyFilter();
       const tbody = document.getElementById("daily-table-body");
-      let data = [];
-      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      let summary = { by_day: [] };
+      try { summary = await fetchUsageSummary(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="4">Error: ${e.message}</td></tr>`; return; }
       await loadPricingMap();
 
-      if (!data.length) { tbody.innerHTML = `<tr><td colspan="4">No usage data found.</td></tr>`; return; }
+      const byDay = summary.by_day || [];
+      if (!byDay.length) { tbody.innerHTML = `<tr><td colspan="4">No usage data found.</td></tr>`; return; }
 
-      const dailyStats = {};
-      data.forEach(row => {
-        const date = new Date(row.created_at).toISOString().split("T")[0];
-        if (!dailyStats[date]) dailyStats[date] = { requests: 0, tokens: 0, cost: 0 };
-        dailyStats[date].requests++;
-        dailyStats[date].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        dailyStats[date].cost   += computeCostFromPricing(
-          row.provider,
-          row.model,
-          row.prompt_tokens,
-          row.completion_tokens,
-          row.cost_usd
-        );
-      });
-
-      const sorted = Object.entries(dailyStats).sort((a, b) => b[0].localeCompare(a[0]));
-      tbody.innerHTML = sorted.map(([date, s]) => `
+      tbody.innerHTML = byDay.map(d => `
         <tr>
-          <td>${date}</td>
-          <td>${s.requests.toLocaleString()}</td>
-          <td>${s.tokens.toLocaleString()}</td>
-          <td>$${s.cost.toFixed(4)}</td>
+          <td>${d.day}</td>
+          <td>${asNumber(d.requests).toLocaleString()}</td>
+          <td>${asNumber(d.tokens).toLocaleString()}</td>
+          <td>$${asNumber(d.cost).toFixed(4)}</td>
         </tr>`).join("");
     }
 
@@ -1315,41 +1266,29 @@
     async function loadModelUsage() {
       const { startIso, endIso } = getDateFilterFull();
       const tbody = document.getElementById("model-table-body");
-      let data = [];
-      try { data = await fetchTokenUsageRows(startIso, endIso); }
+      let summary = { by_model: [] };
+      try { summary = await fetchUsageSummary(startIso, endIso); }
       catch (e) { tbody.innerHTML = `<tr><td colspan="5">Error: ${e.message}</td></tr>`; return; }
       await loadPricingMap();
 
-      if (!data.length) { tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`; return; }
+      const byModel = summary.by_model || [];
+      if (!byModel.length) { tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`; return; }
 
-      const modelStats = {};
-      data.forEach(row => {
-        const key = `${row.provider}|${row.model}`;
-        if (!modelStats[key]) modelStats[key] = { provider: row.provider, model: row.model, requests: 0, tokens: 0, cost: 0 };
-        modelStats[key].requests++;
-        modelStats[key].tokens += asNumber(row.prompt_tokens) + asNumber(row.completion_tokens);
-        modelStats[key].cost   += computeCostFromPricing(
-          row.provider,
-          row.model,
-          row.prompt_tokens,
-          row.completion_tokens,
-          row.cost_usd
-        );
-      });
-
-      const sorted = Object.values(modelStats).sort((a, b) => b.requests - a.requests);
-      tbody.innerHTML = sorted.map(s => `
-        <tr>
-          <td><span class="model-badge">${s.model}</span></td>
-          <td>${s.provider}</td>
-          <td>${s.requests.toLocaleString()}</td>
-          <td>${s.tokens.toLocaleString()}</td>
-          <td>$${s.cost.toFixed(4)}</td>
-        </tr>`).join("");
+      tbody.innerHTML = byModel.map(m => {
+        const cost = computeCostFromPricing(m.provider, m.model, m.prompt_tokens, m.completion_tokens, m.cost);
+        return `<tr>
+          <td><span class="model-badge">${m.model || "unknown"}</span></td>
+          <td>${m.provider || "unknown"}</td>
+          <td>${asNumber(m.requests).toLocaleString()}</td>
+          <td>${asNumber(m.tokens).toLocaleString()}</td>
+          <td>$${cost.toFixed(4)}</td>
+        </tr>`;
+      }).join("");
     }
 
     // ─── Load everything for the current global range ────────────────────────
     async function loadAllDataForRange() {
+      clearSummaryCache();
       await Promise.all([
         loadStats(),
         loadUserUsage(),
@@ -1359,6 +1298,7 @@
     }
 
     async function loadAllData() {
+      clearSummaryCache();
       await Promise.all([
         loadStats(),
         loadUserUsage(),
@@ -1390,26 +1330,21 @@
       };
     }
 
-    // Overview – daily request line chart
-    function buildOverviewDailyChart(data) {
+    // Overview – daily request line chart (accepts pre-aggregated by_day array)
+    function buildOverviewDailyChart(byDay) {
       const ctx = document.getElementById("overviewDailyChart");
       if (!ctx) return;
       if (overviewDailyChart) overviewDailyChart.destroy();
 
-      const dayMap = {};
-      data.forEach(r => {
-        const d = new Date(r.created_at).toISOString().split("T")[0];
-        dayMap[d] = (dayMap[d] || 0) + 1;
-      });
-      const sorted = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
+      const sorted = [...byDay].sort((a, b) => a.day.localeCompare(b.day)).slice(-14);
 
       overviewDailyChart = new Chart(ctx, {
         type: "line",
         data: {
-          labels: sorted.map(([d]) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })),
+          labels: sorted.map(d => new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" })),
           datasets: [{
             label: "Requests",
-            data: sorted.map(([, v]) => v),
+            data: sorted.map(d => asNumber(d.requests)),
             borderColor: "#a78bfa",
             backgroundColor: "rgba(167,139,250,0.12)",
             fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: "#a78bfa"
@@ -1419,24 +1354,19 @@
       });
     }
 
-    // Overview – model token doughnut
-    function buildOverviewModelChart(data) {
+    // Overview – model token doughnut (accepts pre-aggregated by_model array)
+    function buildOverviewModelChart(byModel) {
       const ctx = document.getElementById("overviewModelChart");
       if (!ctx) return;
       if (overviewModelChart) overviewModelChart.destroy();
 
-      const modelMap = {};
-      data.forEach(r => {
-        const k = r.model || "unknown";
-        modelMap[k] = (modelMap[k] || 0) + asNumber(r.prompt_tokens) + asNumber(r.completion_tokens);
-      });
-      const entries = Object.entries(modelMap).sort((a, b) => b[1] - a[1]);
+      const sorted = [...byModel].sort((a, b) => asNumber(b.tokens) - asNumber(a.tokens));
 
       overviewModelChart = new Chart(ctx, {
         type: "doughnut",
         data: {
-          labels: entries.map(([k]) => k),
-          datasets: [{ data: entries.map(([, v]) => v), backgroundColor: CHART_COLORS, borderColor: "rgba(15,5,30,0.8)", borderWidth: 2 }]
+          labels: sorted.map(m => m.model || "unknown"),
+          datasets: [{ data: sorted.map(m => asNumber(m.tokens)), backgroundColor: CHART_COLORS, borderColor: "rgba(15,5,30,0.8)", borderWidth: 2 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
@@ -1452,46 +1382,42 @@
       const tbody = document.getElementById("revenue-daily-body");
       const { startIso, endIso, monthStart, monthEnd } = monthRangeIso(monthsAgo);
 
-      const { data, error } = await supabase
-        .from("token_usage")
-        .select("created_at,provider,model,prompt_tokens,completion_tokens,cost_usd")
-        .gte("created_at", startIso)
-        .lte("created_at", endIso);
-
-      if (error) {
-        console.error("Revenue fallback error:", error);
+      let summary = { by_day: [], by_model: [] };
+      try { summary = await fetchUsageSummary(startIso, endIso); }
+      catch (e) {
+        console.error("Revenue fallback error:", e);
         tbody.innerHTML = `<tr><td colspan="5">Error loading data</td></tr>`;
         return;
       }
 
-      const rows = Array.isArray(data) ? data : [];
       await loadPricingMap();
+
+      // Build dayMap and byModel from pre-aggregated summary (no row cap)
       const dayMap = {};
       const byModel = {};
       let inputTokens = 0;
       let outputTokens = 0;
       let totalCost = 0;
 
-      rows.forEach((r) => {
-        const d = new Date(r.created_at).toISOString().split("T")[0];
-        if (!dayMap[d]) dayMap[d] = { date: d, requests: 0, input: 0, output: 0, cost: 0 };
-        const inTok = asNumber(r.prompt_tokens);
-        const outTok = asNumber(r.completion_tokens);
-        const c = computeCostFromPricing(r.provider, r.model, inTok, outTok, r.cost_usd);
-        dayMap[d].requests += 1;
-        dayMap[d].input += inTok;
-        dayMap[d].output += outTok;
-        dayMap[d].cost += c;
-        inputTokens += inTok;
-        outputTokens += outTok;
-        totalCost += c;
+      (summary.by_day || []).forEach(d => {
+        dayMap[d.day] = {
+          date: d.day,
+          requests: asNumber(d.requests),
+          input:    asNumber(d.prompt_tokens),
+          output:   asNumber(d.completion_tokens),
+          cost:     asNumber(d.cost)
+        };
+      });
 
-        const modelKey = `${r.provider || "unknown"}/${r.model || "unknown"}`;
-        if (!byModel[modelKey]) byModel[modelKey] = { requests: 0, input: 0, output: 0, cost: 0 };
-        byModel[modelKey].requests += 1;
-        byModel[modelKey].input += inTok;
-        byModel[modelKey].output += outTok;
-        byModel[modelKey].cost += c;
+      (summary.by_model || []).forEach(m => {
+        const inTok  = asNumber(m.prompt_tokens);
+        const outTok = asNumber(m.completion_tokens);
+        const c = computeCostFromPricing(m.provider, m.model, inTok, outTok, m.cost);
+        const modelKey = `${m.provider || "unknown"}/${m.model || "unknown"}`;
+        byModel[modelKey] = { requests: asNumber(m.requests), input: inTok, output: outTok, cost: c };
+        inputTokens  += inTok;
+        outputTokens += outTok;
+        totalCost    += c;
       });
 
       const { data: plans } = await supabase
