@@ -859,8 +859,11 @@
                 <div id="nl-editor" style="min-height:180px;"></div>
               </div>
               <p class="nl-format-hint">
-                Toolbar: <span title="Bold">B</span> <span title="Italic">I</span> <span title="Underline">U</span> · H1/H2 headings · bullet &amp; numbered lists · links · blockquote · divider · clear
+                Toolbar: <span title="Bold">B</span> <span title="Italic">I</span> <span title="Underline">U</span> · H1/H2 headings · bullet &amp; numbered lists · links · 🖼 image (uploads to R2) · blockquote · code · clear
               </p>
+              <span id="nl-img-status" style="display:none;font-size:0.8rem;color:#a78bfa;margin-top:4px;">⏳ Uploading image to R2...</span>
+              <!-- Hidden file input for image uploads -->
+              <input id="nl-img-picker" type="file" accept="image/*" style="display:none;">
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;">
               <button id="nl-preview-btn" class="btn btn-outline" style="border-color:#a78bfa;color:#a78bfa;padding:10px 22px;font-weight:600;">
@@ -2444,16 +2447,11 @@
           ['clean']
         ],
         handlers: {
-          // Override image handler: prompt for URL instead of base64 (email-safe)
+          // Upload image to Supabase Storage, insert public URL (email-safe)
           image: function() {
-            const url = prompt('Image URL (must be a public https:// link):');
-            if (!url || !url.startsWith('http')) {
-              if (url !== null) alert('Please enter a valid https:// URL.');
-              return;
-            }
-            const range = nlQuill.getSelection(true);
-            nlQuill.insertEmbed(range.index, 'image', url, Quill.sources.USER);
-            nlQuill.setSelection(range.index + 1, Quill.sources.SILENT);
+            const picker = document.getElementById('nl-img-picker');
+            picker.value = '';
+            picker.click();
           }
         }
       }
@@ -2543,6 +2541,40 @@
 </table>
 </body></html>`;
   }
+
+  /* ── Supabase Storage image upload handler ───────────────── */
+  document.getElementById('nl-img-picker').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('nl-img-status');
+    const range = nlQuill.getSelection(true) || { index: nlQuill.getLength() - 1 };
+
+    statusEl.style.display = 'inline';
+    statusEl.textContent = `⏳ Uploading ${file.name}…`;
+
+    try {
+      const ext  = file.name.split('.').pop().toLowerCase();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from('newsletter-images')
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (upErr) throw upErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('newsletter-images')
+        .getPublicUrl(path);
+
+      nlQuill.insertEmbed(range.index, 'image', publicUrl, Quill.sources.USER);
+      nlQuill.setSelection(range.index + 1, Quill.sources.SILENT);
+      statusEl.style.display = 'none';
+    } catch (err) {
+      statusEl.textContent = '❌ Upload failed: ' + (err.message || err);
+      statusEl.style.color = '#ef4444';
+    }
+  });
 
   /* ── Preview button handler ───────────────────────────────── */
   document.getElementById('nl-preview-btn').addEventListener('click', () => {
