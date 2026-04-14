@@ -108,7 +108,7 @@ serve(async (req) => {
   <hr style="border-color:#2d1b4e;margin:28px 0;">
   <p style="font-size:0.8em;color:#4b5563;margin:0;">
     You're receiving this because you signed up at <a href="${SITE_URL}" style="color:#7c3aed;">${SITE_URL}</a>.<br>
-    — The ViriTTS Team
+    — The AiRi Team
   </p>
 </body>
 </html>`;
