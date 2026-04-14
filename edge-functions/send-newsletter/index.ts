@@ -65,24 +65,23 @@ function buildHtml(subject: string, bodyHtml: string): string {
 
     <!-- ══ HEADER ══ -->
     <tr>
-      <td align="center" style="background:linear-gradient(160deg,#1e0533 0%,#3b0764 40%,#0c4a6e 100%);border-radius:16px 16px 0 0;padding:36px 40px 24px;border:1px solid rgba(167,139,250,0.25);border-bottom:none;">
-
-        <!-- Logo image -->
-        <table align="center" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-          <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="140" height="auto" style="max-width:140px;margin-bottom:16px;" onerror="this.style.display='none'">
-        </td></tr></table>
-
-        <!-- Mascot centered via table -->
-        <table align="center" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-          <img src="${IMG_BASE}/virittsplusmascot.png" alt="AiRi" width="120" height="auto" style="max-width:120px;" onerror="this.style.display='none'">
-        </td></tr></table>
-
+      <td style="background:linear-gradient(160deg,#1e0533 0%,#3b0764 40%,#0c4a6e 100%);border-radius:16px 16px 0 0;padding:24px 36px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <!-- Logo left -->
+          <td valign="middle">
+            <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="110" height="auto" style="max-width:110px;display:block;" onerror="this.style.display='none'">
+          </td>
+          <!-- By VirForge right -->
+          <td align="right" valign="middle">
+            <span style="font-size:0.75rem;color:rgba(255,255,255,0.45);font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.06em;text-transform:uppercase;">By VirForge</span>
+          </td>
+        </tr></table>
       </td>
     </tr>
 
     <!-- ══ SUBJECT BANNER ══ -->
     <tr>
-      <td style="background:linear-gradient(90deg,#2e1065,#1e3a5f);padding:28px 40px 20px;border-left:1px solid rgba(167,139,250,0.25);border-right:1px solid rgba(167,139,250,0.25);">
+      <td style="background:linear-gradient(90deg,#2e1065,#1e3a5f);padding:28px 36px 20px;">
         <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;letter-spacing:-0.2px;">${subject}</p>
         <div style="margin-top:10px;height:2px;background:linear-gradient(90deg,#7c3aed,#06b6d4,transparent);border-radius:999px;"></div>
       </td>
@@ -90,28 +89,28 @@ function buildHtml(subject: string, bodyHtml: string): string {
 
     <!-- ══ BODY ══ -->
     <tr>
-      <td style="background:#0f0621;padding:28px 40px 8px;border-left:1px solid rgba(167,139,250,0.25);border-right:1px solid rgba(167,139,250,0.25);">
+      <td style="background:#0f0621;padding:28px 36px 8px;">
         ${styledBody}
       </td>
     </tr>
 
     <!-- ══ CTA ══ -->
     <tr>
-      <td style="background:#0f0621;padding:20px 40px 36px;text-align:center;border-left:1px solid rgba(167,139,250,0.25);border-right:1px solid rgba(167,139,250,0.25);">
+      <td style="background:#0f0621;padding:20px 36px 36px;text-align:center;">
         <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#ffffff;text-decoration:none;font-weight:700;font-size:0.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.03em;">Explore AiRi &rarr;</a>
       </td>
     </tr>
 
     <!-- ══ DIVIDER ══ -->
     <tr>
-      <td style="background:#0f0621;padding:0 40px;border-left:1px solid rgba(167,139,250,0.25);border-right:1px solid rgba(167,139,250,0.25);">
+      <td style="background:#0f0621;padding:0 36px;">
         <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.4),transparent);"></div>
       </td>
     </tr>
 
     <!-- ══ FOOTER ══ -->
     <tr>
-      <td style="background:#080014;padding:24px 40px;text-align:center;border-radius:0 0 16px 16px;border:1px solid rgba(167,139,250,0.25);border-top:none;">
+      <td style="background:#080014;padding:24px 36px;text-align:center;border-radius:0 0 16px 16px;">
         <p style="margin:0 0 6px;font-size:0.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
           You're getting this because you signed up at
           <a href="${SITE_URL}" style="color:#a78bfa;text-decoration:none;">${SITE_URL}</a>
