@@ -1,134 +1,134 @@
-// send-newsletter — Supabase Edge Function
-// Deploy via: Supabase Dashboard → Edge Functions → New Function → paste this
-// Required secret: RESEND_API_KEY (same key used by send-beta-approval)
-
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const RESEND_API = "https://api.resend.com/emails";
-const FROM_ADDRESS = "AiRi <noreply@viritts.com>"; // Change to your verified sender
+const supabaseUrl     = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceRoleKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const resendApiKey    = Deno.env.get("RESEND_API_KEY") ?? "";
+const FROM_ADDRESS    = "ViriTTS <noreply@virflowsocial.com>";
+const SITE_URL        = "https://viritts.com";
 
-interface NewsletterPayload {
-  subject: string;
-  body: string; // plain text — we'll convert to simple HTML
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
-Deno.serve(async (req) => {
+async function sendResendEmail(to: string, subject: string, html: string, text: string) {
+  if (!resendApiKey) {
+    console.warn("RESEND_API_KEY not set — skipping email");
+    return { ok: false, error: "RESEND_API_KEY not configured" };
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from: FROM_ADDRESS, to: [to], subject, html, text }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("Resend error:", err);
+    return { ok: false, error: err };
+  }
+  return { ok: true };
+}
+
+serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
-      },
-    });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  // Verify caller is an admin
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const supabase   = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) return jsonResponse({ error: "Admin access required" }, 403);
+
+  // Parse body
+  let subject: string, body: string;
   try {
-    // Admin-only: verify the caller is an admin
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const payload = await req.json();
+    subject = String(payload.subject ?? "").trim();
+    body    = String(payload.body    ?? "").trim();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON" }, 400);
+  }
 
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+  if (!subject || !body) {
+    return jsonResponse({ error: "subject and body are required" }, 400);
+  }
 
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401, headers: { "Access-Control-Allow-Origin": "*" } });
-    }
+  // Fetch subscribed list
+  const { data: subscribers, error: subError } = await supabase
+    .from("mailing_list")
+    .select("email, name")
+    .eq("subscribed", true);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+  if (subError) return jsonResponse({ error: subError.message }, 500);
+  if (!subscribers || subscribers.length === 0) {
+    return jsonResponse({ sent: 0, total: 0, message: "No active subscribers" });
+  }
 
-    if (!profile?.is_admin) {
-      return Response.json({ error: "Admin access required" }, { status: 403, headers: { "Access-Control-Allow-Origin": "*" } });
-    }
-
-    // Parse payload
-    const { subject, body }: NewsletterPayload = await req.json();
-    if (!subject?.trim() || !body?.trim()) {
-      return Response.json({ error: "subject and body are required" }, { status: 400 });
-    }
-
-    // Fetch all active subscribers
-    const { data: subscribers, error: subError } = await supabase
-      .from("mailing_list")
-      .select("email, name")
-      .eq("subscribed", true);
-
-    if (subError) throw subError;
-    if (!subscribers || subscribers.length === 0) {
-      return Response.json({ sent: 0, message: "No active subscribers" });
-    }
-
-    // Convert plain text body to simple HTML (preserves line breaks)
-    const htmlBody = `
+  const htmlBody = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 20px;color:#1a1a2e;background:#fff;">
-  <div style="margin-bottom:28px;">
-    <img src="https://viritts.com/assets/logo.png" alt="AiRi" style="height:36px;" onerror="this.style.display='none'">
-  </div>
-  <h2 style="margin:0 0 20px;font-size:1.4rem;color:#1a1a2e;">${subject}</h2>
-  <div style="font-size:1rem;line-height:1.7;color:#374151;">
+<body style="background:#0a0014;color:#e2e8f0;font-family:sans-serif;padding:32px;max-width:560px;margin:0 auto;">
+  <h2 style="color:#a78bfa;margin-bottom:4px;">${subject}</h2>
+  <hr style="border-color:#2d1b4e;margin:20px 0;">
+  <div style="font-size:1rem;line-height:1.8;color:#d1d5db;">
     ${body.replace(/\n/g, "<br>")}
   </div>
-  <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">
-  <p style="font-size:0.8rem;color:#9ca3af;margin:0;">
-    You're receiving this because you signed up at viritts.com.<br>
-    <a href="https://viritts.com" style="color:#7c3aed;">viritts.com</a>
+  <hr style="border-color:#2d1b4e;margin:28px 0;">
+  <p style="font-size:0.8em;color:#4b5563;margin:0;">
+    You're receiving this because you signed up at <a href="${SITE_URL}" style="color:#7c3aed;">${SITE_URL}</a>.<br>
+    — The ViriTTS Team
   </p>
 </body>
 </html>`;
 
-    // Send to each subscriber (Resend free tier: batch or loop)
-    let sent = 0;
-    const errors: string[] = [];
+  // Send to each subscriber
+  let sent = 0;
+  const errors: string[] = [];
 
-    for (const sub of subscribers) {
-      try {
-        const res = await fetch(RESEND_API, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: FROM_ADDRESS,
-            to: sub.email,
-            subject,
-            html: htmlBody,
-            text: body,
-          }),
-        });
-
-        if (res.ok) {
-          sent++;
-        } else {
-          const err = await res.json().catch(() => ({}));
-          errors.push(`${sub.email}: ${err?.message || res.status}`);
-        }
-      } catch (e) {
-        errors.push(`${sub.email}: ${e}`);
-      }
+  for (const sub of subscribers) {
+    const result = await sendResendEmail(sub.email, subject, htmlBody, body);
+    if (result.ok) {
+      sent++;
+    } else {
+      errors.push(`${sub.email}: ${result.error}`);
     }
-
-    return Response.json(
-      { sent, total: subscribers.length, errors: errors.length ? errors : undefined },
-      { headers: { "Access-Control-Allow-Origin": "*" } }
-    );
-  } catch (err) {
-    return Response.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500, headers: { "Access-Control-Allow-Origin": "*" } }
-    );
   }
+
+  return jsonResponse({
+    sent,
+    total: subscribers.length,
+    errors: errors.length ? errors : undefined,
+  });
 });
