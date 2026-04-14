@@ -21,9 +21,33 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function buildHtml(subject: string, bodyHtml: string): string {
-  // bodyHtml is pre-formatted HTML from Quill editor (or plain text converted to <p> tags)
+// Inject inline styles onto Quill HTML elements — Gmail strips <style> blocks
+function inlineStyles(html: string): string {
+  function inject(tag: string, style: string, input: string): string {
+    const re = new RegExp(`<${tag}(>|\\s)`, "gi");
+    return input.replace(re, (_m, end) =>
+      `<${tag} style="${style}"${end === ">" ? ">" : " "}`
+    );
+  }
+  let o = html;
+  o = inject("p",          "margin:0 0 12px;color:#c4b5fd;font-size:.97rem;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("h2",         "margin:0 0 14px;color:#f0e6ff;font-size:1.2rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("h3",         "margin:0 0 12px;color:#f0e6ff;font-size:1rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("ul",         "margin:0 0 14px;padding-left:20px;color:#c4b5fd;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("ol",         "margin:0 0 14px;padding-left:20px;color:#c4b5fd;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("li",         "margin-bottom:6px;color:#c4b5fd;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("blockquote", "margin:0 0 14px;padding:10px 16px;border-left:4px solid #7c3aed;background:rgba(124,58,237,.1);color:#a78bfa;", o);
+  o = inject("strong",     "color:#f0e6ff;", o);
+  o = inject("em",         "color:#d1d5db;font-style:italic;", o);
+  o = inject("a",          "color:#a78bfa;text-decoration:underline;", o);
+  o = inject("img",        "max-width:100%;height:auto;border-radius:8px;display:block;margin:8px 0;", o);
+  o = inject("pre",        "background:#1e1835;color:#c4b5fd;padding:10px 14px;border-radius:6px;overflow:auto;margin:0 0 14px;", o);
+  o = inject("code",       "background:#1e1835;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:.9em;", o);
+  return o;
+}
 
+function buildHtml(subject: string, bodyHtml: string): string {
+  const styledBody = inlineStyles(bodyHtml);
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -67,21 +91,7 @@ function buildHtml(subject: string, bodyHtml: string): string {
     <!-- ══ BODY ══ -->
     <tr>
       <td style="background:#0f0621;padding:28px 40px 8px;border-left:1px solid rgba(167,139,250,0.25);border-right:1px solid rgba(167,139,250,0.25);">
-        <style>
-          .ec p{margin:0 0 12px;color:#c4b5fd;font-size:.97rem;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif}
-          .ec h1,.ec h2,.ec h3{color:#f0e6ff;margin:0 0 12px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif}
-          .ec h1{font-size:1.5rem}.ec h2{font-size:1.2rem}.ec h3{font-size:1rem}
-          .ec ul,.ec ol{margin:0 0 14px;padding-left:20px;color:#c4b5fd;font-size:.97rem;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif}
-          .ec li{margin-bottom:6px}
-          .ec blockquote{margin:0 0 14px;padding:10px 16px;border-left:4px solid #7c3aed;background:rgba(124,58,237,.1);color:#a78bfa}
-          .ec a{color:#a78bfa}
-          .ec strong{color:#f0e6ff}
-          .ec em{color:#d1d5db}
-          .ec pre{background:#1e1835;color:#c4b5fd;padding:10px 14px;border-radius:6px;overflow:auto}
-          .ec code{background:#1e1835;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:.9em}
-          .ec img{max-width:100%;height:auto;border-radius:8px;display:block;margin:8px 0}
-        </style>
-        <div class="ec">${bodyHtml}</div>
+        ${styledBody}
       </td>
     </tr>
 
