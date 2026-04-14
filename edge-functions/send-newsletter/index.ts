@@ -36,9 +36,9 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401, headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
     const { data: profile } = await supabase
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (!profile?.is_admin) {
-      return Response.json({ error: "Admin access required" }, { status: 403 });
+      return Response.json({ error: "Admin access required" }, { status: 403, headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
     // Parse payload

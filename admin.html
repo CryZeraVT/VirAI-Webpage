@@ -2021,23 +2021,14 @@
       statusEl.textContent = "";
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-newsletter`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({ subject, body }),
+        const { data: result, error: invokeErr } = await supabase.functions.invoke("send-newsletter", {
+          body: { subject, body },
         });
 
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok || result.error) throw new Error(result.error || result.message || `HTTP ${res.status}`);
+        if (invokeErr) throw invokeErr;
+        if (result?.error) throw new Error(result.error);
 
-        statusEl.textContent = `✅ Sent to ${result.sent || count} subscriber(s)!`;
+        statusEl.textContent = `✅ Sent to ${result?.sent || count} subscriber(s)!`;
         statusEl.style.color = "#22c55e";
         document.getElementById("nl-subject").value = "";
         document.getElementById("nl-body").value    = "";
