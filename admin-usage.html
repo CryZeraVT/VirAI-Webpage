@@ -246,6 +246,19 @@
       border-top: 1px solid rgba(124,58,237,0.1);
       padding-top: 7px;
     }
+    .key-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #a78bfa;
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 999px;
+      padding: 1px 6px;
+      margin-left: 5px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
 
     /* ── Main content ─────────────────────────────────────────── */
     .usage-main {
@@ -1234,6 +1247,16 @@
       return inputCost + outputCost;
     }
 
+    function renderUserName(u) {
+      const keyBadge = asNumber(u.license_count) > 1
+        ? `<span class="key-badge" title="${u.license_count} license keys">🔑 ×${u.license_count}</span>`
+        : "";
+      if (u.twitch_channel) {
+        return `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>${keyBadge}`;
+      }
+      return `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>${keyBadge}`;
+    }
+
     // ─── Aggregated summary fetch (bypasses all row caps) ────────────────────
     let _summaryCache = null;
     let _summaryCacheKey = null;
@@ -1291,10 +1314,7 @@
       } else {
         topBody.innerHTML = byUser.map(u => `
           <tr>
-            <td>${u.twitch_channel
-              ? `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>`
-              : `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>`
-            }</td>
+            <td>${renderUserName(u)}</td>
             <td>${asNumber(u.requests).toLocaleString()}</td>
             <td>${asNumber(u.tokens).toLocaleString()}</td>
             <td>$${asNumber(u.cost).toFixed(4)}</td>
@@ -1320,10 +1340,7 @@
       const sorted = [...byUser].sort((a, b) => asNumber(b.cost) - asNumber(a.cost));
       tbody.innerHTML = sorted.map(u => `
         <tr>
-          <td>${u.twitch_channel
-            ? `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>`
-            : `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>`
-          }</td>
+          <td>${renderUserName(u)}</td>
           <td>${asNumber(u.requests).toLocaleString()}</td>
           <td>${asNumber(u.prompt_tokens).toLocaleString()}</td>
           <td>${asNumber(u.completion_tokens).toLocaleString()}</td>
@@ -2068,25 +2085,17 @@
         grid.style.display  = "grid";
         empty.style.display = "none";
 
-        grid.innerHTML = users.map(u => {
-          const name    = u.twitch_channel || u.license_key || "Unknown";
-          const isTwitch = !!u.twitch_channel;
-          const nameHtml = isTwitch
-            ? `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank">📺 ${u.twitch_channel}</a>`
-            : `<span title="${u.license_key}">🔑 ${String(u.license_key||"").substring(0,16)}…</span>`;
-
-          return `
+        grid.innerHTML = users.map(u => `
             <div class="live-card">
               <div class="live-card-name">
                 <span class="live-dot"></span>
-                ${nameHtml}
+                ${renderUserName(u)}
               </div>
               <div class="live-card-meta">
                 <span><strong>${asNumber(u.requests)}</strong>requests</span>
               </div>
               <div class="live-card-lastseen">Last seen ${timeAgo(u.last_seen)}</div>
-            </div>`;
-        }).join("");
+            </div>`).join("");
 
       } catch (e) {
         console.error("Live users error:", e);
