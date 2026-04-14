@@ -61,20 +61,30 @@ function buildHtml(subject: string, bodyHtml: string): string {
 <tr><td align="center" style="padding:40px 16px;">
 <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
 
-  <!-- ══ HEADER CARD — AiRi purple → VirForge blue/cyan gradient ══ -->
+  <!-- ══ HEADER CARD — dark gradient, AiRi | divider | VirForge ══ -->
   <tr>
     <td style="padding-bottom:10px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="background:linear-gradient(90deg,#5b21b6 0%,#8b5cf6 38%,#1e40af 65%,#0ea5e9 100%);border-radius:16px;padding:22px 36px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td valign="middle">
-                <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" height="auto" style="max-width:150px;display:block;" onerror="this.style.display='none'">
-              </td>
-              <td align="right" valign="middle">
-                <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;" onerror="this.style.display='none'">
-              </td>
-            </tr></table>
+          <td style="background:linear-gradient(90deg,#2a0040 0%,#0f0018 30%,#080014 52%,#000d30 72%,#001848 100%);border-radius:16px;padding:18px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <!-- AiRi logo — left -->
+                <td valign="middle">
+                  <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="130" height="auto" style="max-width:130px;display:block;" onerror="this.style.display='none'">
+                </td>
+                <!-- Push right side to far right -->
+                <td width="100%"></td>
+                <!-- Vertical divider -->
+                <td valign="middle" style="padding:0 18px;">
+                  <div style="width:1px;height:38px;background:rgba(255,255,255,0.22);"></div>
+                </td>
+                <!-- VirForge logo — right -->
+                <td valign="middle">
+                  <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="88" height="auto" style="max-width:88px;display:block;" onerror="this.style.display='none'">
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
