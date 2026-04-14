@@ -65,17 +65,24 @@ function buildHtml(subject: string, bodyHtml: string): string {
 
     <!-- ══ HEADER ══ -->
     <tr>
-      <td style="background:linear-gradient(160deg,#1e0533 0%,#3b0764 40%,#0c4a6e 100%);border-radius:16px 16px 0 0;padding:24px 36px;">
+      <td style="background:#ffffff;border-radius:16px 16px 0 0;padding:22px 36px 20px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <!-- Logo left -->
+          <!-- AiRi logo left -->
           <td valign="middle">
-            <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="110" height="auto" style="max-width:110px;display:block;" onerror="this.style.display='none'">
+            <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" height="auto" style="max-width:150px;display:block;" onerror="this.style.display='none'">
           </td>
-          <!-- By VirForge right -->
+          <!-- VirForge logo right -->
           <td align="right" valign="middle">
-            <span style="font-size:0.75rem;color:rgba(255,255,255,0.45);font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.06em;text-transform:uppercase;">By VirForge</span>
+            <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;opacity:0.85;" onerror="this.style.display='none'">
           </td>
         </tr></table>
+      </td>
+    </tr>
+
+    <!-- ══ HEADER ACCENT LINE ══ -->
+    <tr>
+      <td style="background:#ffffff;padding:0 0 0 0;">
+        <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);"></div>
       </td>
     </tr>
 
