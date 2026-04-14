@@ -716,7 +716,15 @@
           </div>
 
           <div class="admin-section">
-            <div class="admin-section-title">Recent Licenses</div>
+            <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+              <span>All Licenses</span>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;" id="license-filter-btns">
+                <button class="btn btn-outline license-filter active" data-filter="all"    style="padding:4px 12px;font-size:0.8em;">All <span id="lf-all">—</span></button>
+                <button class="btn btn-outline license-filter"        data-filter="active" style="padding:4px 12px;font-size:0.8em;border-color:#22c55e;color:#22c55e;">Active <span id="lf-active">—</span></button>
+                <button class="btn btn-outline license-filter"        data-filter="expiring" style="padding:4px 12px;font-size:0.8em;border-color:#f59e0b;color:#f59e0b;">⚠️ Expiring Soon <span id="lf-expiring">—</span></button>
+                <button class="btn btn-outline license-filter"        data-filter="inactive" style="padding:4px 12px;font-size:0.8em;border-color:#6b7280;color:#6b7280;">Inactive <span id="lf-inactive">—</span></button>
+              </div>
+            </div>
             <div id="admin-licenses-list">Loading...</div>
           </div>
         </div>
@@ -1499,26 +1507,23 @@
       }
     });
 
+    let _licenseFilter = "all";
+
     async function loadAdminLicenses() {
       const listEl = document.getElementById("admin-licenses-list");
+      listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#6b7280;">Loading...</div>`;
+
       const { data, error } = await supabase
         .from("licenses")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .order("status", { ascending: false })          // active first
+        .order("expires_at", { ascending: true });       // soonest expiry first
 
-      if (error) {
-        listEl.textContent = "Error loading licenses.";
-        return;
-      }
+      if (error) { listEl.textContent = "Error loading licenses."; return; }
+      if (!data || data.length === 0) { listEl.textContent = "No licenses found."; return; }
 
-      if (!data || data.length === 0) {
-        listEl.textContent = "No licenses found.";
-        return;
-      }
-
-      // Resolve twitch names by license email (when available from beta signups).
-      const emails = [...new Set(data.map(lic => String(lic.email || "").trim().toLowerCase()).filter(Boolean))];
+      // Resolve twitch names from beta_signups
+      const emails = [...new Set(data.map(l => String(l.email || "").trim().toLowerCase()).filter(Boolean))];
       const twitchByEmail = new Map();
       const signupNameByEmail = new Map();
       if (emails.length > 0) {
@@ -1527,67 +1532,119 @@
           .select("email,name,twitch_username,created_at")
           .in("email", emails)
           .order("created_at", { ascending: false });
-
         for (const row of (signupRows || [])) {
-          const emailKey = String(row.email || "").trim().toLowerCase();
-          if (!emailKey || twitchByEmail.has(emailKey)) continue;
-          const signupName = String(row.name || "").trim();
-          const twitch = String(row.twitch_username || "").trim();
-          if (signupName) signupNameByEmail.set(emailKey, signupName);
-          if (twitch) twitchByEmail.set(emailKey, twitch);
+          const k = String(row.email || "").trim().toLowerCase();
+          if (!k || twitchByEmail.has(k)) continue;
+          if (row.name) signupNameByEmail.set(k, String(row.name).trim());
+          if (row.twitch_username) twitchByEmail.set(k, String(row.twitch_username).trim());
         }
       }
 
-      listEl.innerHTML = data.map(lic => `
-        <div class="announcement-item">
-          <div class="announcement-info">
-            <h4 style="display: flex; align-items: center; gap: 10px;">
-              ${lic.license_key}
-              <span class="badge ${lic.status === 'active' ? 'badge-active' : ''}" style="background: ${lic.status === 'active' ? '#22c55e' : '#4b5563'};">
-                ${lic.status.toUpperCase()}
-              </span>
+      const now = Date.now();
+      const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+
+      function classifyLic(lic) {
+        if (lic.status !== "active") return "inactive";
+        if (!lic.expires_at) return "active";
+        const ms = new Date(lic.expires_at).getTime() - now;
+        if (ms < 0) return "expired";
+        if (ms <= FIVE_DAYS) return "expiring";
+        return "active";
+      }
+
+      // Count per category
+      const counts = { all: data.length, active: 0, expiring: 0, inactive: 0 };
+      data.forEach(l => {
+        const c = classifyLic(l);
+        if (c === "active")   counts.active++;
+        if (c === "expiring") { counts.active++; counts.expiring++; }
+        if (c === "inactive" || c === "expired") counts.inactive++;
+      });
+
+      document.getElementById("lf-all").textContent      = `(${counts.all})`;
+      document.getElementById("lf-active").textContent   = `(${counts.active})`;
+      document.getElementById("lf-expiring").textContent = `(${counts.expiring})`;
+      document.getElementById("lf-inactive").textContent = `(${counts.inactive})`;
+
+      // Filter
+      const filtered = data.filter(l => {
+        const c = classifyLic(l);
+        if (_licenseFilter === "all")      return true;
+        if (_licenseFilter === "active")   return c === "active" || c === "expiring";
+        if (_licenseFilter === "expiring") return c === "expiring";
+        if (_licenseFilter === "inactive") return c === "inactive" || c === "expired";
+        return true;
+      });
+
+      if (!filtered.length) {
+        listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#6b7280;">No licenses in this category.</div>`;
+        return;
+      }
+
+      function expiryBanner(lic) {
+        if (!lic.expires_at) return "";
+        const c = classifyLic(lic);
+        const expDate = new Date(lic.expires_at);
+        if (c === "expired") {
+          return `<div style="margin-top:6px;padding:5px 10px;background:rgba(239,68,68,0.12);border-left:3px solid #ef4444;border-radius:4px;font-size:0.8em;color:#ef4444;">🚫 Expired ${expDate.toLocaleDateString()}</div>`;
+        }
+        if (c === "expiring") {
+          const daysLeft = Math.ceil((expDate.getTime() - now) / 86400000);
+          return `<div style="margin-top:6px;padding:5px 10px;background:rgba(245,158,11,0.12);border-left:3px solid #f59e0b;border-radius:4px;font-size:0.8em;color:#f59e0b;">⚠️ Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""} — ${expDate.toLocaleDateString()}</div>`;
+        }
+        return "";
+      }
+
+      listEl.innerHTML = filtered.map(lic => {
+        const emailKey = String(lic.email || "").trim().toLowerCase();
+        const twitch   = twitchByEmail.get(emailKey) || "—";
+        const name     = signupNameByEmail.get(emailKey) || String(lic.email || "").split("@")[0] || "Beta User";
+        const cls      = classifyLic(lic);
+        const statusColor = cls === "active" ? "#22c55e" : cls === "expiring" ? "#f59e0b" : "#6b7280";
+        const statusLabel = cls === "expired" ? "EXPIRED" : cls === "expiring" ? "EXPIRING" : lic.status.toUpperCase();
+
+        return `
+        <div class="announcement-item" style="${cls === "expiring" ? "border-left:3px solid #f59e0b;" : cls === "expired" || cls === "inactive" ? "opacity:0.75;" : ""}">
+          <div class="announcement-info" style="flex:1;min-width:0;">
+            <h4 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-family:monospace;font-size:0.92em;">${lic.license_key}</span>
+              <span style="background:${statusColor};color:#0f051e;font-size:0.68em;font-weight:700;padding:2px 8px;border-radius:999px;">${statusLabel}</span>
             </h4>
-            <p>📧 ${lic.email}</p>
-            <p>🎮 ${twitchByEmail.get(String(lic.email || "").trim().toLowerCase()) || "—"}</p>
-            <p style="font-size: 0.8em; color: #888;">Expires: ${lic.expires_at ? new Date(lic.expires_at).toLocaleDateString() : 'Never'}</p>
+            <p>📧 ${lic.email || "—"}</p>
+            <p>🎮 ${twitch !== "—" ? `<a href="https://twitch.tv/${twitch}" target="_blank" style="color:#9146FF;text-decoration:none;">${twitch}</a>` : "—"}</p>
+            ${expiryBanner(lic)}
+            <p style="font-size:0.78em;color:#4b5563;margin-top:4px;">Created: ${new Date(lic.created_at).toLocaleDateString()}</p>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <button class="btn btn-outline toggle-status-btn" 
-              data-key="${lic.license_key}" 
-              data-status="${lic.status}"
-              style="border-color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; color: ${lic.status === 'active' ? '#f59e0b' : '#22c55e'}; padding: 5px 10px; font-size: 0.8em;">
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <button class="btn btn-outline toggle-status-btn"
+              data-key="${lic.license_key}" data-status="${lic.status}"
+              style="border-color:${lic.status === 'active' ? '#f59e0b' : '#22c55e'};color:${lic.status === 'active' ? '#f59e0b' : '#22c55e'};padding:5px 10px;font-size:0.8em;">
               ${lic.status === 'active' ? 'Deactivate' : 'Activate'}
             </button>
             <button class="btn btn-outline resend-beta-email-btn"
-              data-key="${lic.license_key}"
-              data-email="${lic.email}"
-              data-name="${signupNameByEmail.get(String(lic.email || "").trim().toLowerCase()) || String(lic.email || "").split("@")[0] || "Beta User"}"
-              data-expires="${lic.expires_at || ""}"
+              data-key="${lic.license_key}" data-email="${lic.email}"
+              data-name="${name}" data-expires="${lic.expires_at || ""}"
               style="border-color:#06b6d4;color:#06b6d4;padding:5px 10px;font-size:0.8em;">
-              Resend Beta Email
+              Resend Email
             </button>
-            <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Revoke</button>
+            <button class="btn btn-outline delete-license-btn" data-key="${lic.license_key}"
+              style="border-color:#ff4444;color:#ff4444;padding:5px 10px;font-size:0.8em;">Revoke</button>
           </div>
-        </div>
-      `).join("");
+        </div>`;
+      }).join("");
 
-      document.querySelectorAll(".toggle-status-btn").forEach(btn => {
+      // Wire buttons
+      listEl.querySelectorAll(".toggle-status-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
           const key = btn.getAttribute("data-key");
-          const currentStatus = btn.getAttribute("data-status");
-          const newStatus = currentStatus === "active" ? "inactive" : "active";
-          
-          const { error } = await supabase
-            .from("licenses")
-            .update({ status: newStatus })
-            .eq("license_key", key);
-            
-          if (error) alert("Error updating status: " + error.message);
+          const newStatus = btn.getAttribute("data-status") === "active" ? "inactive" : "active";
+          const { error } = await supabase.from("licenses").update({ status: newStatus }).eq("license_key", key);
+          if (error) alert("Error: " + error.message);
           else loadAdminLicenses();
         });
       });
 
-      document.querySelectorAll(".delete-license-btn").forEach(btn => {
+      listEl.querySelectorAll(".delete-license-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
           const key = btn.getAttribute("data-key");
           if (!confirm(`Revoke license ${key}?`)) return;
@@ -1597,56 +1654,44 @@
         });
       });
 
-      document.querySelectorAll(".resend-beta-email-btn").forEach(btn => {
+      listEl.querySelectorAll(".resend-beta-email-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
-          const email = (btn.getAttribute("data-email") || "").trim().toLowerCase();
+          const email      = (btn.getAttribute("data-email") || "").trim().toLowerCase();
           const licenseKey = (btn.getAttribute("data-key") || "").trim();
-          const name = (btn.getAttribute("data-name") || "Beta User").trim();
-          const expiresAt = btn.getAttribute("data-expires") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-          if (!email || !licenseKey) {
-            alert("Missing email or license key for resend.");
-            return;
-          }
+          const name       = (btn.getAttribute("data-name") || "Beta User").trim();
+          const expiresAt  = btn.getAttribute("data-expires") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          if (!email || !licenseKey) { alert("Missing email or license key."); return; }
           if (!confirm(`Resend beta email to ${email}?\n\nLicense: ${licenseKey}`)) return;
-
           const oldText = btn.textContent;
-          btn.disabled = true;
-          btn.textContent = "📧 Sending...";
+          btn.disabled = true; btn.textContent = "📧 Sending...";
           try {
             const res = await fetch(`${SUPABASE_URL}/functions/v1/send-beta-approval`, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "apikey": SUPABASE_ANON_KEY,
-                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-              },
-              body: JSON.stringify({
-                name,
-                email,
-                license_key: licenseKey,
-                expires_at: expiresAt,
-              }),
+              headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+              body: JSON.stringify({ name, email, license_key: licenseKey, expires_at: expiresAt }),
             });
-
-            const emailData = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              throw new Error(emailData?.error || emailData?.message || `HTTP ${res.status}`);
-            }
-            if (!emailData?.success) {
-              alert(`Email failed: ${emailData?.error || "Unknown error"}`);
-            } else {
-              alert(`✅ Beta email resent to ${email}`);
-            }
+            const result = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(result?.error || result?.message || `HTTP ${res.status}`);
+            if (!result?.success) alert(`Email failed: ${result?.error || "Unknown error"}`);
+            else alert(`✅ Beta email resent to ${email}`);
           } catch (err) {
-            alert(`Failed to resend email: ${err?.message || err}`);
+            alert(`Failed: ${err?.message || err}`);
           } finally {
-            btn.disabled = false;
-            btn.textContent = oldText;
+            btn.disabled = false; btn.textContent = oldText;
           }
         });
       });
     }
+
+    // Wire license filter buttons
+    document.querySelectorAll(".license-filter").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".license-filter").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        _licenseFilter = btn.getAttribute("data-filter");
+        loadAdminLicenses();
+      });
+    });
 
     // ── Beta Signups ──────────────────────────────────────────────────────────
 
