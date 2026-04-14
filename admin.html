@@ -1026,6 +1026,7 @@
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window._supabase = supabase; // expose for non-module script blocks (e.g. Quill handlers)
 
     const statusEl = document.getElementById("admin-status");
     const contentEl = document.getElementById("admin-content");
@@ -2557,13 +2558,16 @@
       const ext  = file.name.split('.').pop().toLowerCase();
       const path = `${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
 
-      const { error: upErr } = await supabase.storage
+      const sb = window._supabase;
+      if (!sb) throw new Error('Admin session not ready — please refresh the page.');
+
+      const { error: upErr } = await sb.storage
         .from('newsletter-images')
         .upload(path, file, { contentType: file.type, upsert: false });
 
       if (upErr) throw upErr;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = sb.storage
         .from('newsletter-images')
         .getPublicUrl(path);
 
