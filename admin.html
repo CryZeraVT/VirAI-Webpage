@@ -448,6 +448,11 @@
           <span class="tab-label">Beta Signups</span>
           <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:1px 7px;font-size:0.72em;display:none;"></span>
         </button>
+        <button class="nav-tab" data-tab="newsletter">
+          <span class="tab-icon">📧</span>
+          <span class="tab-label">Newsletter</span>
+          <span id="newsletter-badge" style="background:#a78bfa;color:#0f051e;border-radius:10px;padding:1px 7px;font-size:0.72em;display:none;"></span>
+        </button>
 
         <div class="sidebar-footer">
           <a href="admin-usage.html">📊 Token Usage Dashboard</a>
@@ -770,6 +775,52 @@
           </div>
           <div id="beta-signups-list">
             <div style="text-align:center;padding:40px;color:#4b5563;">Loading signups...</div>
+          </div>
+        </div>
+
+        <!-- Tab: Newsletter -->
+        <div class="tab-content" id="tab-newsletter">
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>📧 Newsletter</h3>
+                <p>Send updates to everyone subscribed through the "Stay in the Know" form.</p>
+              </div>
+              <button id="refresh-newsletter" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Compose -->
+          <div class="admin-section">
+            <div class="admin-section-title">📝 Compose Email Blast</div>
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Subject</label>
+              <input id="nl-subject" type="text" class="form-input" placeholder="e.g. AiRi Update — New features are here!">
+            </div>
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Message <span style="font-weight:400;color:#4b5563;text-transform:none;">(plain text — line breaks preserved)</span></label>
+              <textarea id="nl-body" class="form-input" rows="8" placeholder="Hey everyone,&#10;&#10;We've got some exciting updates to share...&#10;&#10;— The AiRi Team" style="resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+              <button id="nl-send-btn" class="btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:700;padding:10px 28px;">
+                📤 Send to All Subscribers
+              </button>
+              <span id="nl-status" style="font-size:0.88rem;"></span>
+            </div>
+            <p style="margin-top:12px;font-size:0.78rem;color:#4b5563;">
+              ⚠️ This will email <strong id="nl-sub-count">—</strong> subscribed address(es). Double-check before sending.
+            </p>
+          </div>
+
+          <!-- Subscriber list -->
+          <div class="admin-section">
+            <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Subscribers</span>
+              <span id="nl-total-badge" style="background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);border-radius:999px;padding:2px 12px;font-size:0.78em;font-weight:600;">— total</span>
+            </div>
+            <div id="newsletter-list">
+              <div style="text-align:center;padding:30px;color:#6b7280;">Loading...</div>
+            </div>
           </div>
         </div>
 
@@ -1329,10 +1380,10 @@
         const tabEl = document.getElementById(`tab-${tab.dataset.tab}`);
         if (!tabEl) return;
         tabEl.classList.add("active");
-        // Re-trigger tab animation
         tabEl.style.animation = "none";
         void tabEl.offsetWidth;
         tabEl.style.animation = "";
+        if (tab.dataset.tab === "newsletter") loadNewsletterSubscribers();
       });
     });
 
@@ -1894,6 +1945,113 @@
 
     document.getElementById("beta-filter").addEventListener("change", loadBetaSignups);
     document.getElementById("refresh-signups").addEventListener("click", loadBetaSignups);
+
+    // ── Newsletter ────────────────────────────────────────────────────────────
+    async function loadNewsletterSubscribers() {
+      const listEl  = document.getElementById("newsletter-list");
+      const countEl = document.getElementById("nl-sub-count");
+      const badgeEl = document.getElementById("nl-total-badge");
+      const navBadge = document.getElementById("newsletter-badge");
+      listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#6b7280;">Loading...</div>`;
+
+      const { data, error } = await supabase
+        .from("mailing_list")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) { listEl.innerHTML = `<p style="color:#ef4444;">Error: ${error.message}</p>`; return; }
+      if (!data || data.length === 0) { listEl.innerHTML = `<p style="color:#6b7280;text-align:center;padding:30px;">No subscribers yet.</p>`; return; }
+
+      const subscribed   = data.filter(r => r.subscribed !== false);
+      const unsubscribed = data.filter(r => r.subscribed === false);
+
+      countEl.textContent = subscribed.length;
+      badgeEl.textContent = `${data.length} total`;
+      navBadge.textContent = subscribed.length;
+      navBadge.style.display = subscribed.length ? "inline-block" : "none";
+
+      function renderRow(r) {
+        const subColor = r.subscribed !== false ? "#22c55e" : "#6b7280";
+        const subLabel = r.subscribed !== false ? "SUBSCRIBED" : "UNSUBSCRIBED";
+        return `
+          <div class="announcement-item" style="${r.subscribed === false ? "opacity:0.55;" : ""}">
+            <div class="announcement-info">
+              <h4 style="display:flex;align-items:center;gap:8px;">
+                ${r.name || "<span style='color:#6b7280;font-style:italic;'>No name</span>"}
+                <span style="background:${subColor};color:#0f051e;font-size:0.68em;font-weight:700;padding:2px 8px;border-radius:999px;">${subLabel}</span>
+              </h4>
+              <p>📧 ${r.email}</p>
+              <p style="font-size:0.78em;color:#4b5563;">Signed up: ${new Date(r.created_at).toLocaleDateString()} · Source: ${r.source || "unknown"}</p>
+            </div>
+            <button class="btn" data-email="${r.email}" data-subscribed="${r.subscribed !== false}"
+              onclick="toggleMailingSubscription('${r.email}', ${r.subscribed !== false})"
+              style="background:${r.subscribed !== false ? '#4b5563' : '#22c55e'};color:${r.subscribed !== false ? '#e2e8f0' : '#0f051e'};border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;flex-shrink:0;">
+              ${r.subscribed !== false ? "Unsubscribe" : "Resubscribe"}
+            </button>
+          </div>`;
+      }
+
+      listEl.innerHTML = subscribed.map(renderRow).join("") +
+        (unsubscribed.length ? `<div style="margin:14px 0 6px;font-size:0.78em;color:#4b5563;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Unsubscribed (${unsubscribed.length})</div>` + unsubscribed.map(renderRow).join("") : "");
+    }
+
+    async function toggleMailingSubscription(email, currentlySubscribed) {
+      const { error } = await supabase
+        .from("mailing_list")
+        .update({ subscribed: !currentlySubscribed })
+        .eq("email", email);
+      if (error) alert("Error: " + error.message);
+      else loadNewsletterSubscribers();
+    }
+
+    async function sendNewsletter() {
+      const subject = document.getElementById("nl-subject").value.trim();
+      const body    = document.getElementById("nl-body").value.trim();
+      const statusEl = document.getElementById("nl-status");
+      const btn      = document.getElementById("nl-send-btn");
+
+      if (!subject) { statusEl.textContent = "❌ Subject is required."; statusEl.style.color = "#ef4444"; return; }
+      if (!body)    { statusEl.textContent = "❌ Message body is required."; statusEl.style.color = "#ef4444"; return; }
+
+      const count = parseInt(document.getElementById("nl-sub-count").textContent) || 0;
+      if (!confirm(`Send "${subject}" to ${count} subscriber(s)?`)) return;
+
+      btn.disabled = true;
+      btn.textContent = "📤 Sending...";
+      statusEl.textContent = "";
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/send-newsletter`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ subject, body }),
+        });
+
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok || result.error) throw new Error(result.error || result.message || `HTTP ${res.status}`);
+
+        statusEl.textContent = `✅ Sent to ${result.sent || count} subscriber(s)!`;
+        statusEl.style.color = "#22c55e";
+        document.getElementById("nl-subject").value = "";
+        document.getElementById("nl-body").value    = "";
+      } catch (err) {
+        statusEl.textContent = "❌ " + (err.message || "Send failed.");
+        statusEl.style.color = "#ef4444";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "📤 Send to All Subscribers";
+      }
+    }
+
+    document.getElementById("nl-send-btn").addEventListener("click", sendNewsletter);
+    document.getElementById("refresh-newsletter").addEventListener("click", loadNewsletterSubscribers);
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {
