@@ -65,7 +65,7 @@ function buildHtml(subject: string, bodyHtml: string): string {
 
     <!-- ══ HEADER ══ -->
     <tr>
-      <td style="background:#ffffff;border-radius:16px 16px 0 0;padding:22px 36px 20px;">
+      <td style="background:#080014;border-radius:16px 16px 0 0;padding:22px 36px 20px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
           <!-- AiRi logo left -->
           <td valign="middle">
@@ -73,7 +73,7 @@ function buildHtml(subject: string, bodyHtml: string): string {
           </td>
           <!-- VirForge logo right -->
           <td align="right" valign="middle">
-            <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;opacity:0.85;" onerror="this.style.display='none'">
+            <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;" onerror="this.style.display='none'">
           </td>
         </tr></table>
       </td>
@@ -81,7 +81,7 @@ function buildHtml(subject: string, bodyHtml: string): string {
 
     <!-- ══ HEADER ACCENT LINE ══ -->
     <tr>
-      <td style="background:#ffffff;padding:0 0 0 0;">
+      <td style="background:#080014;padding:0;">
         <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);"></div>
       </td>
     </tr>
