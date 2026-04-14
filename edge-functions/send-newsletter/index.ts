@@ -30,19 +30,19 @@ function inlineStyles(html: string): string {
     );
   }
   let o = html;
-  o = inject("p",          "margin:0 0 12px;color:#c4b5fd;font-size:.97rem;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("h2",         "margin:0 0 14px;color:#f0e6ff;font-size:1.2rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("h3",         "margin:0 0 12px;color:#f0e6ff;font-size:1rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("ul",         "margin:0 0 14px;padding-left:20px;color:#c4b5fd;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("ol",         "margin:0 0 14px;padding-left:20px;color:#c4b5fd;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("li",         "margin-bottom:6px;color:#c4b5fd;font-family:'Segoe UI',Arial,sans-serif;", o);
-  o = inject("blockquote", "margin:0 0 14px;padding:10px 16px;border-left:4px solid #7c3aed;background:rgba(124,58,237,.1);color:#a78bfa;", o);
-  o = inject("strong",     "color:#f0e6ff;", o);
-  o = inject("em",         "color:#d1d5db;font-style:italic;", o);
-  o = inject("a",          "color:#a78bfa;text-decoration:underline;", o);
+  o = inject("p",          "margin:0 0 12px;color:#374151;font-size:.97rem;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("h2",         "margin:0 0 14px;color:#111827;font-size:1.2rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("h3",         "margin:0 0 12px;color:#111827;font-size:1rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("ul",         "margin:0 0 14px;padding-left:20px;color:#374151;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("ol",         "margin:0 0 14px;padding-left:20px;color:#374151;line-height:1.8;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("li",         "margin-bottom:6px;color:#374151;font-family:'Segoe UI',Arial,sans-serif;", o);
+  o = inject("blockquote", "margin:0 0 14px;padding:10px 16px;border-left:4px solid #7c3aed;background:rgba(124,58,237,.06);color:#4b5563;", o);
+  o = inject("strong",     "color:#111827;", o);
+  o = inject("em",         "color:#4b5563;font-style:italic;", o);
+  o = inject("a",          "color:#7c3aed;text-decoration:underline;", o);
   o = inject("img",        "max-width:100%;height:auto;border-radius:8px;display:block;margin:8px 0;", o);
-  o = inject("pre",        "background:#1e1835;color:#c4b5fd;padding:10px 14px;border-radius:6px;overflow:auto;margin:0 0 14px;", o);
-  o = inject("code",       "background:#1e1835;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:.9em;", o);
+  o = inject("pre",        "background:#f3f4f6;color:#1f2937;padding:10px 14px;border-radius:6px;overflow:auto;margin:0 0 14px;", o);
+  o = inject("code",       "background:#f3f4f6;color:#1f2937;padding:2px 5px;border-radius:4px;font-size:.9em;", o);
   return o;
 }
 
@@ -56,70 +56,62 @@ function buildHtml(subject: string, bodyHtml: string): string {
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>${subject}</title>
 </head>
-<body style="margin:0;padding:0;background:#0d0020;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0020;min-height:100vh;">
-<tr><td align="center" style="padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f4f4f7;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f7;min-height:100vh;">
+<tr><td align="center" style="padding:36px 16px;">
 <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
 
-  <!-- ══ HEADER CARD — dark gradient, AiRi | divider | VirForge ══ -->
+  <!-- ══ HEADER BAR — dark gradient, slim, AiRi | divider | VirForge ══ -->
   <tr>
-    <td style="padding-bottom:10px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="background:linear-gradient(90deg,#2a0040 0%,#0f0018 30%,#080014 52%,#000d30 72%,#001848 100%);border-radius:16px;padding:18px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <!-- AiRi logo — left -->
-                <td valign="middle">
-                  <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="130" height="auto" style="max-width:130px;display:block;" onerror="this.style.display='none'">
-                </td>
-                <!-- Push right side to far right -->
-                <td width="100%"></td>
-                <!-- Vertical divider -->
-                <td valign="middle" style="padding:0 18px;">
-                  <div style="width:1px;height:38px;background:rgba(255,255,255,0.22);"></div>
-                </td>
-                <!-- VirForge logo — right -->
-                <td valign="middle">
-                  <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="88" height="auto" style="max-width:88px;display:block;" onerror="this.style.display='none'">
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+    <td style="padding-bottom:0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="background:linear-gradient(90deg,#2a0040 0%,#0f0018 30%,#080014 52%,#000d30 72%,#001848 100%);border-radius:14px 14px 0 0;padding:14px 28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td valign="middle">
+              <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="120" height="auto" style="max-width:120px;display:block;" onerror="this.style.display='none'">
+            </td>
+            <td width="100%"></td>
+            <td valign="middle" style="padding:0 16px;">
+              <div style="width:1px;height:34px;background:rgba(255,255,255,0.2);"></div>
+            </td>
+            <td valign="middle">
+              <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="110" height="auto" style="max-width:110px;display:block;" onerror="this.style.display='none'">
+            </td>
+          </tr></table>
+        </td>
+      </tr></table>
     </td>
   </tr>
 
-  <!-- ══ CONTENT CARD — solid dark, subject + separator + body + cta ══ -->
+  <!-- ══ CONTENT CARD — white, subject + gradient line + body + cta ══ -->
   <tr>
     <td>
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
         <!-- Subject -->
         <tr>
-          <td style="background:#0f0621;border-radius:16px 16px 0 0;padding:28px 36px 20px;">
-            <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;letter-spacing:-0.2px;">${subject}</p>
+          <td style="background:#ffffff;padding:28px 36px 16px;">
+            <p style="margin:0;font-size:1.25rem;font-weight:800;color:#111827;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;letter-spacing:-0.2px;">${subject}</p>
           </td>
         </tr>
 
         <!-- Purple→cyan separator line -->
         <tr>
-          <td style="background:#0f0621;padding:0 36px;">
+          <td style="background:#ffffff;padding:0 36px 16px;">
             <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:999px;"></div>
           </td>
         </tr>
 
         <!-- Body -->
         <tr>
-          <td style="background:#0f0621;padding:24px 36px 8px;">
+          <td style="background:#ffffff;padding:4px 36px 8px;">
             ${styledBody}
           </td>
         </tr>
 
         <!-- CTA -->
         <tr>
-          <td style="background:#0f0621;padding:16px 36px 36px;text-align:center;border-radius:0 0 16px 16px;">
+          <td style="background:#ffffff;padding:16px 36px 36px;text-align:center;border-radius:0 0 14px 14px;">
             <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#ffffff;text-decoration:none;font-weight:700;font-size:0.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.03em;">Explore AiRi &rarr;</a>
           </td>
         </tr>
@@ -128,14 +120,14 @@ function buildHtml(subject: string, bodyHtml: string): string {
     </td>
   </tr>
 
-  <!-- ══ FOOTER — bare text below both cards ══ -->
+  <!-- ══ FOOTER ══ -->
   <tr>
-    <td style="padding:20px 36px;text-align:center;">
-      <p style="margin:0 0 6px;font-size:0.78rem;color:#4b5563;font-family:'Segoe UI',Arial,sans-serif;">
+    <td style="padding:18px 36px;text-align:center;">
+      <p style="margin:0 0 4px;font-size:0.76rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
         You're getting this because you signed up at
-        <a href="${SITE_URL}" style="color:#a78bfa;text-decoration:none;">${SITE_URL}</a>
+        <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">${SITE_URL}</a>
       </p>
-      <p style="margin:0;font-size:0.72rem;color:#374151;font-family:'Segoe UI',Arial,sans-serif;">
+      <p style="margin:0;font-size:0.72rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
         &copy; ${new Date().getFullYear()} AiRi &mdash; All rights reserved
       </p>
     </td>
