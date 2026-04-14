@@ -358,6 +358,7 @@
     }
     .badge-critical { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
     .badge-active   { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .license-filter.active { outline: 2px solid rgba(167,139,250,0.6); filter: brightness(1.4); }
 
     /* ── Btn tweaks ──────────────────────────────────────────── */
     .btn {
@@ -719,10 +720,10 @@
             <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
               <span>All Licenses</span>
               <div style="display:flex;gap:8px;flex-wrap:wrap;" id="license-filter-btns">
-                <button class="btn btn-outline license-filter active" data-filter="all"    style="padding:4px 12px;font-size:0.8em;">All <span id="lf-all">—</span></button>
-                <button class="btn btn-outline license-filter"        data-filter="active" style="padding:4px 12px;font-size:0.8em;border-color:#22c55e;color:#22c55e;">Active <span id="lf-active">—</span></button>
-                <button class="btn btn-outline license-filter"        data-filter="expiring" style="padding:4px 12px;font-size:0.8em;border-color:#f59e0b;color:#f59e0b;">⚠️ Expiring Soon <span id="lf-expiring">—</span></button>
-                <button class="btn btn-outline license-filter"        data-filter="inactive" style="padding:4px 12px;font-size:0.8em;border-color:#6b7280;color:#6b7280;">Inactive <span id="lf-inactive">—</span></button>
+                <button class="license-filter active" data-filter="all"      style="padding:5px 14px;font-size:0.8em;font-weight:600;border-radius:6px;cursor:pointer;border:none;background:rgba(255,255,255,0.12);color:#e9d5ff;">All <span id="lf-all">—</span></button>
+                <button class="license-filter"        data-filter="active"   style="padding:5px 14px;font-size:0.8em;font-weight:600;border-radius:6px;cursor:pointer;border:none;background:rgba(34,197,94,0.15);color:#22c55e;">Active <span id="lf-active">—</span></button>
+                <button class="license-filter"        data-filter="expiring" style="padding:5px 14px;font-size:0.8em;font-weight:600;border-radius:6px;cursor:pointer;border:none;background:rgba(245,158,11,0.15);color:#f59e0b;">⚠️ Expiring Soon <span id="lf-expiring">—</span></button>
+                <button class="license-filter"        data-filter="inactive" style="padding:5px 14px;font-size:0.8em;font-weight:600;border-radius:6px;cursor:pointer;border:none;background:rgba(107,114,128,0.15);color:#9ca3af;">Inactive <span id="lf-inactive">—</span></button>
               </div>
             </div>
             <div id="admin-licenses-list">Loading...</div>
