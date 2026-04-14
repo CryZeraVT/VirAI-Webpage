@@ -79,6 +79,7 @@ function buildHtml(subject: string, bodyHtml: string): string {
           .ec em{color:#d1d5db}
           .ec pre{background:#1e1835;color:#c4b5fd;padding:10px 14px;border-radius:6px;overflow:auto}
           .ec code{background:#1e1835;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:.9em}
+          .ec img{max-width:100%;height:auto;border-radius:8px;display:block;margin:8px 0}
         </style>
         <div class="ec">${bodyHtml}</div>
       </td>

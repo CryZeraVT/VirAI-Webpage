@@ -415,6 +415,7 @@
     .ql-snow .ql-tooltip a.ql-remove::before { color: #ef4444; }
     .nl-format-hint { font-size: 0.75rem; color: #4b5563; margin-top: 6px; }
     .nl-format-hint span { color: #a78bfa; cursor: default; }
+    .ql-editor img { max-width: 100%; border-radius: 6px; margin: 8px 0; display: block; }
 
     /* ── Preview modal ────────────────────────────────────────── */
     #nl-preview-modal {
@@ -2433,14 +2434,29 @@
     theme: 'snow',
     placeholder: 'Hey everyone,\n\nWe\'ve got some exciting updates to share...\n\n— The AiRi Team',
     modules: {
-      toolbar: [
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ header: 2 }, { header: 3 }],
-        [{ list: 'ordered' }, { list: 'bullet' }],
-        ['link', 'blockquote', 'code-block'],
-        [{ color: [] }],
-        ['clean']
-      ]
+      toolbar: {
+        container: [
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ header: 2 }, { header: 3 }],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link', 'image', 'blockquote', 'code-block'],
+          [{ color: [] }, { align: [] }],
+          ['clean']
+        ],
+        handlers: {
+          // Override image handler: prompt for URL instead of base64 (email-safe)
+          image: function() {
+            const url = prompt('Image URL (must be a public https:// link):');
+            if (!url || !url.startsWith('http')) {
+              if (url !== null) alert('Please enter a valid https:// URL.');
+              return;
+            }
+            const range = nlQuill.getSelection(true);
+            nlQuill.insertEmbed(range.index, 'image', url, Quill.sources.USER);
+            nlQuill.setSelection(range.index + 1, Quill.sources.SILENT);
+          }
+        }
+      }
     }
   });
 
@@ -2494,6 +2510,7 @@
           .ec em{color:#d1d5db}
           .ec pre{background:#1e1835;color:#c4b5fd;padding:10px 14px;border-radius:6px;overflow:auto}
           .ec code{background:#1e1835;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:.9em}
+          .ec img{max-width:100%;height:auto;border-radius:8px;display:block;margin:8px 0}
         </style>
         <div class="ec">${bodyHtml}</div>
       </td>
