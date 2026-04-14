@@ -127,11 +127,8 @@ function buildHtml(subject: string, bodyHtml: string): string {
         You're getting this because you signed up at
         <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">${SITE_URL}</a>
       </p>
-      <p style="margin:0 0 4px;font-size:0.72rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
-        &copy; ${new Date().getFullYear()} AiRi &mdash; All rights reserved
-      </p>
-      <p style="margin:0;font-size:0.70rem;color:#b0b8c5;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.03em;">
-        by <strong style="color:#7c3aed;">VirForge Software</strong>
+      <p style="margin:0;font-size:0.72rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
+        &copy; ${new Date().getFullYear()} AiRi &mdash; A <strong style="color:#7c3aed;">VirForge</strong> Product
       </p>
     </td>
   </tr>
