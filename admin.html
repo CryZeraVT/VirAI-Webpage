@@ -2502,57 +2502,64 @@
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0020;min-height:100vh;">
 <tr><td align="center" style="padding:40px 16px;">
   <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
-    <!-- Header -->
+
+    <!-- HEADER CARD — AiRi purple → VirForge blue/cyan gradient -->
     <tr>
-      <td style="background:#080014;border-radius:16px 16px 0 0;padding:22px 36px 20px;">
+      <td style="padding-bottom:10px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td valign="middle">
-            <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" style="max-width:150px;display:block;">
-          </td>
-          <td align="right" valign="middle">
-            <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" style="max-width:100px;display:block;margin-left:auto;">
+          <td style="background:linear-gradient(90deg,#5b21b6 0%,#8b5cf6 38%,#1e40af 65%,#0ea5e9 100%);border-radius:16px;padding:22px 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td valign="middle">
+                <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" style="max-width:150px;display:block;">
+              </td>
+              <td align="right" valign="middle">
+                <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" style="max-width:100px;display:block;margin-left:auto;">
+              </td>
+            </tr></table>
           </td>
         </tr></table>
       </td>
     </tr>
-    <!-- Header accent line -->
+
+    <!-- CONTENT CARD — solid dark, subject + separator + body + cta -->
     <tr>
-      <td style="background:#080014;padding:0;">
-        <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);"></div>
+      <td>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <!-- Subject -->
+          <tr>
+            <td style="background:#0f0621;border-radius:16px 16px 0 0;padding:28px 36px 20px;">
+              <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;">${subject}</p>
+            </td>
+          </tr>
+          <!-- Purple→cyan separator line -->
+          <tr>
+            <td style="background:#0f0621;padding:0 36px;">
+              <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:999px;"></div>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="background:#0f0621;padding:24px 36px 8px;">
+              ${styledBody}
+            </td>
+          </tr>
+          <!-- CTA -->
+          <tr>
+            <td style="background:#0f0621;padding:16px 36px 36px;text-align:center;border-radius:0 0 16px 16px;">
+              <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#fff;text-decoration:none;font-weight:700;font-size:.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;">Explore AiRi &rarr;</a>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
-    <!-- Subject banner -->
+
+    <!-- FOOTER — bare text below both cards -->
     <tr>
-      <td style="background:linear-gradient(90deg,#2e1065,#1e3a5f);padding:28px 36px 20px;">
-        <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;">${subject}</p>
-        <div style="margin-top:10px;height:2px;background:linear-gradient(90deg,#7c3aed,#06b6d4,transparent);border-radius:999px;"></div>
-      </td>
-    </tr>
-    <!-- Body -->
-    <tr>
-      <td style="background:#0f0621;padding:28px 36px 8px;">
-        ${styledBody}
-      </td>
-    </tr>
-    <!-- CTA -->
-    <tr>
-      <td style="background:#0f0621;padding:20px 36px 36px;text-align:center;">
-        <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#fff;text-decoration:none;font-weight:700;font-size:.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;">Explore AiRi &rarr;</a>
-      </td>
-    </tr>
-    <!-- Divider -->
-    <tr>
-      <td style="background:#0f0621;padding:0 36px;">
-        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.4),transparent);"></div>
-      </td>
-    </tr>
-    <!-- Footer -->
-    <tr>
-      <td style="background:#080014;padding:24px 36px;text-align:center;border-radius:0 0 16px 16px;">
-        <p style="margin:0 0 6px;font-size:.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
+      <td style="padding:20px 36px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:.78rem;color:#4b5563;font-family:'Segoe UI',Arial,sans-serif;">
           You're getting this because you signed up at <a href="${SITE_URL}" style="color:#a78bfa;text-decoration:none;">${SITE_URL}</a>
         </p>
-        <p style="margin:0;font-size:.72rem;color:#3d3550;font-family:'Segoe UI',Arial,sans-serif;">
+        <p style="margin:0;font-size:.72rem;color:#374151;font-family:'Segoe UI',Arial,sans-serif;">
           &copy; ${year} AiRi &mdash; All rights reserved
         </p>
       </td>

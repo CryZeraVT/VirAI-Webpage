@@ -59,78 +59,79 @@ function buildHtml(subject: string, bodyHtml: string): string {
 <body style="margin:0;padding:0;background:#0d0020;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0020;min-height:100vh;">
 <tr><td align="center" style="padding:40px 16px;">
+<table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
 
-  <!-- Outer card -->
-  <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
-
-    <!-- ══ HEADER ══ -->
-    <tr>
-      <td style="background:#080014;border-radius:16px 16px 0 0;padding:22px 36px 20px;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <!-- AiRi logo left -->
-          <td valign="middle">
-            <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" height="auto" style="max-width:150px;display:block;" onerror="this.style.display='none'">
+  <!-- ══ HEADER CARD — AiRi purple → VirForge blue/cyan gradient ══ -->
+  <tr>
+    <td style="padding-bottom:10px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="background:linear-gradient(90deg,#5b21b6 0%,#8b5cf6 38%,#1e40af 65%,#0ea5e9 100%);border-radius:16px;padding:22px 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td valign="middle">
+                <img src="${IMG_BASE}/airittstextonly.png" alt="AiRi" width="150" height="auto" style="max-width:150px;display:block;" onerror="this.style.display='none'">
+              </td>
+              <td align="right" valign="middle">
+                <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;" onerror="this.style.display='none'">
+              </td>
+            </tr></table>
           </td>
-          <!-- VirForge logo right -->
-          <td align="right" valign="middle">
-            <img src="${IMG_BASE}/VirForge-transpar.png" alt="VirForge" width="100" height="auto" style="max-width:100px;display:block;margin-left:auto;" onerror="this.style.display='none'">
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- ══ CONTENT CARD — solid dark, subject + separator + body + cta ══ -->
+  <tr>
+    <td>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+        <!-- Subject -->
+        <tr>
+          <td style="background:#0f0621;border-radius:16px 16px 0 0;padding:28px 36px 20px;">
+            <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;letter-spacing:-0.2px;">${subject}</p>
           </td>
-        </tr></table>
-      </td>
-    </tr>
+        </tr>
 
-    <!-- ══ HEADER ACCENT LINE ══ -->
-    <tr>
-      <td style="background:#080014;padding:0;">
-        <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);"></div>
-      </td>
-    </tr>
+        <!-- Purple→cyan separator line -->
+        <tr>
+          <td style="background:#0f0621;padding:0 36px;">
+            <div style="height:3px;background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:999px;"></div>
+          </td>
+        </tr>
 
-    <!-- ══ SUBJECT BANNER ══ -->
-    <tr>
-      <td style="background:linear-gradient(90deg,#2e1065,#1e3a5f);padding:28px 36px 20px;">
-        <p style="margin:0;font-size:1.3rem;font-weight:800;color:#f0e6ff;font-family:'Segoe UI',Arial,sans-serif;line-height:1.3;letter-spacing:-0.2px;">${subject}</p>
-        <div style="margin-top:10px;height:2px;background:linear-gradient(90deg,#7c3aed,#06b6d4,transparent);border-radius:999px;"></div>
-      </td>
-    </tr>
+        <!-- Body -->
+        <tr>
+          <td style="background:#0f0621;padding:24px 36px 8px;">
+            ${styledBody}
+          </td>
+        </tr>
 
-    <!-- ══ BODY ══ -->
-    <tr>
-      <td style="background:#0f0621;padding:28px 36px 8px;">
-        ${styledBody}
-      </td>
-    </tr>
+        <!-- CTA -->
+        <tr>
+          <td style="background:#0f0621;padding:16px 36px 36px;text-align:center;border-radius:0 0 16px 16px;">
+            <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#ffffff;text-decoration:none;font-weight:700;font-size:0.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.03em;">Explore AiRi &rarr;</a>
+          </td>
+        </tr>
 
-    <!-- ══ CTA ══ -->
-    <tr>
-      <td style="background:#0f0621;padding:20px 36px 36px;text-align:center;">
-        <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%);color:#ffffff;text-decoration:none;font-weight:700;font-size:0.95rem;padding:14px 40px;border-radius:999px;font-family:'Segoe UI',Arial,sans-serif;letter-spacing:0.03em;">Explore AiRi &rarr;</a>
-      </td>
-    </tr>
+      </table>
+    </td>
+  </tr>
 
-    <!-- ══ DIVIDER ══ -->
-    <tr>
-      <td style="background:#0f0621;padding:0 36px;">
-        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.4),transparent);"></div>
-      </td>
-    </tr>
+  <!-- ══ FOOTER — bare text below both cards ══ -->
+  <tr>
+    <td style="padding:20px 36px;text-align:center;">
+      <p style="margin:0 0 6px;font-size:0.78rem;color:#4b5563;font-family:'Segoe UI',Arial,sans-serif;">
+        You're getting this because you signed up at
+        <a href="${SITE_URL}" style="color:#a78bfa;text-decoration:none;">${SITE_URL}</a>
+      </p>
+      <p style="margin:0;font-size:0.72rem;color:#374151;font-family:'Segoe UI',Arial,sans-serif;">
+        &copy; ${new Date().getFullYear()} AiRi &mdash; All rights reserved
+      </p>
+    </td>
+  </tr>
 
-    <!-- ══ FOOTER ══ -->
-    <tr>
-      <td style="background:#080014;padding:24px 36px;text-align:center;border-radius:0 0 16px 16px;">
-        <p style="margin:0 0 6px;font-size:0.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
-          You're getting this because you signed up at
-          <a href="${SITE_URL}" style="color:#a78bfa;text-decoration:none;">${SITE_URL}</a>
-        </p>
-        <p style="margin:0;font-size:0.72rem;color:#3d3550;font-family:'Segoe UI',Arial,sans-serif;">
-          &copy; ${new Date().getFullYear()} AiRi &mdash; All rights reserved
-        </p>
-      </td>
-    </tr>
-
-  </table>
-  <!-- end card -->
-
+</table>
 </td></tr>
 </table>
 </body>
