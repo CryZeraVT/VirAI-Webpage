@@ -48,7 +48,8 @@ function inlineStyles(html: string): string {
 
 function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string): string {
   const styledBody = inlineStyles(bodyHtml);
-  const unsubscribeUrl = `${SITE_URL}/unsubscribe.html?token=${unsubscribeToken}`;
+  // Link goes directly to edge function — it processes the token server-side and redirects to unsubscribe.html?status=ok
+  const unsubscribeUrl = `${supabaseUrl}/functions/v1/unsubscribe?token=${unsubscribeToken}`;
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>

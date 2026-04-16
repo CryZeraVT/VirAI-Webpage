@@ -222,7 +222,6 @@
 
   <script>
   (function () {
-    const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
 
     function show(id) {
       document.querySelectorAll(".state").forEach(el => el.classList.remove("active"));
@@ -230,33 +229,15 @@
       if (el) el.classList.add("active");
     }
 
-    const params  = new URLSearchParams(window.location.search);
-    const status  = params.get("status");
-    const token   = params.get("token");
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
 
-    // If redirected here from edge function with a status already set
+    // Status is set by the edge function after processing the token server-side
     if (status === "ok")      { show("ok");      return; }
     if (status === "invalid") { show("invalid"); return; }
     if (status === "missing") { show("missing"); return; }
 
-    // If token is in URL, call edge function directly (JS-driven)
-    if (token) {
-      show("loading");
-      fetch(`${SUPABASE_URL}/functions/v1/unsubscribe?token=${encodeURIComponent(token)}`, {
-        method: "GET",
-        redirect: "manual",
-      })
-        .then(res => {
-          // Edge function redirects — a manual redirect fetch returns opaqueredirect
-          // We treat any response (including redirect) as success since the function
-          // handles the DB update before redirecting.
-          show("ok");
-        })
-        .catch(() => show("error"));
-      return;
-    }
-
-    // No token, no status
+    // Landed here without a status — likely direct navigation
     show("missing");
   })();
   </script>
