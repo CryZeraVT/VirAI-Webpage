@@ -2097,10 +2097,26 @@
         if (invokeErr) throw invokeErr;
         if (result?.error) throw new Error(result.error);
 
-        statusEl.textContent = `✅ Sent to ${result?.sent || count} subscriber(s)!`;
-        statusEl.style.color = "#22c55e";
-        document.getElementById("nl-subject").value = "";
-        nlQuill.setContents([]);
+        const sent  = result?.sent  ?? 0;
+        const total = result?.total ?? 0;
+        const errs  = result?.errors ?? [];
+
+        if (result?.message) {
+          // e.g. "No active subscribers"
+          statusEl.textContent = `⚠️ ${result.message}`;
+          statusEl.style.color = "#f59e0b";
+        } else if (sent === 0 && errs.length > 0) {
+          statusEl.textContent = `❌ Sent 0/${total}. First error: ${errs[0]}`;
+          statusEl.style.color = "#ef4444";
+        } else if (errs.length > 0) {
+          statusEl.textContent = `⚠️ Sent ${sent}/${total}. ${errs.length} failed: ${errs[0]}`;
+          statusEl.style.color = "#f59e0b";
+        } else {
+          statusEl.textContent = `✅ Sent to ${sent} subscriber(s)!`;
+          statusEl.style.color = "#22c55e";
+          document.getElementById("nl-subject").value = "";
+          nlQuill.setContents([]);
+        }
       } catch (err) {
         statusEl.textContent = "❌ " + (err.message || "Send failed.");
         statusEl.style.color = "#ef4444";
