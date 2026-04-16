@@ -529,6 +529,42 @@
       margin-top: 6px;
     }
 
+    /* ── Account Tabs ───────────────────────────────────── */
+    .account-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.18);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tab-btn:hover { color: #a78bfa; background: rgba(124,58,237,0.08); }
+    .tab-btn.active {
+      background: rgba(124,58,237,0.18);
+      color: #a78bfa;
+      box-shadow: inset 0 0 0 1px rgba(124,58,237,0.3);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeSlideIn 0.25s cubic-bezier(0.22,1,0.36,1) both; }
+
     /* ── Newsletter Section ──────────────────────────────── */
     .newsletter-section {
       margin-top: 24px;
@@ -716,28 +752,53 @@
 
           <hr class="divider">
 
-          <!-- License keys section -->
-          <div class="license-section">
-            <h3>🔑 Your Licenses <button id="load-keys" class="btn btn-outline" style="font-size:0.78rem;padding:5px 12px;margin-left:auto;">Refresh</button></h3>
-            <div id="keys-list">
-              <div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>
-            </div>
+          <!-- ── Tab navigation ── -->
+          <div class="account-tabs">
+            <button class="tab-btn active" data-tab="software">💻 Software</button>
+            <button class="tab-btn" data-tab="subscription">📧 Subscription</button>
           </div>
 
-          <!-- Token Quota section -->
-          <div class="quota-section" id="quota-section">
-            <h3>⚡ Token Usage</h3>
-            <div id="quota-list">
-              <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>
+          <!-- ── Software tab ── -->
+          <div class="tab-panel active" id="tab-software">
+
+            <!-- License keys section -->
+            <div class="license-section">
+              <h3>🔑 Your Licenses <button id="load-keys" class="btn btn-outline" style="font-size:0.78rem;padding:5px 12px;margin-left:auto;">Refresh</button></h3>
+              <div id="keys-list">
+                <div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>
+              </div>
             </div>
+
+            <!-- Token Quota section -->
+            <div class="quota-section" id="quota-section">
+              <h3>⚡ Token Usage</h3>
+              <div id="quota-list">
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Newsletter section -->
-          <div class="newsletter-section" id="newsletter-section">
-            <h3>📧 Newsletter</h3>
-            <div id="newsletter-card-wrap">
-              <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
+          <!-- ── Subscription tab ── -->
+          <div class="tab-panel" id="tab-subscription">
+
+            <!-- Info block -->
+            <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
+              <p style="margin:0 0 6px;font-size:0.92rem;font-weight:700;color:#e2e8f0;">AiRi Newsletter</p>
+              <p style="margin:0;font-size:0.85rem;color:#9ca3af;line-height:1.6;">
+                Get updates on new features, release notes, and AiRi news delivered to your inbox.
+                You can unsubscribe or re-subscribe at any time below.
+              </p>
             </div>
+
+            <!-- Newsletter status card -->
+            <div class="newsletter-section" id="newsletter-section">
+              <h3>📧 Email Subscription</h3>
+              <div id="newsletter-card-wrap">
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -1237,6 +1298,9 @@
         $("signed-in-sub").textContent = "AiRi Beta";
         $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
         $("newsletter-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
+        // Reset tabs to Software on sign-out
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "software"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-software"));
         showView("view-signed-out");
         clearStatus();
         return;
@@ -1554,6 +1618,15 @@
         window.history.replaceState(null, "", clean);
       }
     })();
+
+    // ── Account Tabs ─────────────────────────────────────────────
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.tab;
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b === btn));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${target}`));
+      });
+    });
 
     // ── Newsletter ────────────────────────────────────────────────
     async function loadNewsletter(user) {
