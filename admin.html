@@ -2426,7 +2426,7 @@
         </div>
         <button id="nl-preview-close" title="Close preview">✕</button>
       </div>
-      <iframe id="nl-preview-frame" title="Email preview" sandbox="allow-same-origin"></iframe>
+      <iframe id="nl-preview-frame" title="Email preview" sandbox="allow-scripts"></iframe>
     </div>
   </div>
 
@@ -2563,8 +2563,11 @@
         <p style="margin:0 0 4px;font-size:.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
           You're getting this because you signed up at <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">${SITE_URL}</a>
         </p>
-        <p style="margin:0;font-size:.74rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
+        <p style="margin:0 0 6px;font-size:.74rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
           &copy; ${year} AiRi &mdash; A <strong style="color:#7c3aed;">VirForge</strong> Product
+        </p>
+        <p style="margin:0;font-size:.72rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
+          Don't want these emails? <a href="${SITE_URL}/unsubscribe.html?token=[unsubscribe_token]" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
         </p>
       </td>
     </tr>
