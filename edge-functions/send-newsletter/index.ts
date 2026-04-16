@@ -46,8 +46,9 @@ function inlineStyles(html: string): string {
   return o;
 }
 
-function buildHtml(subject: string, bodyHtml: string): string {
+function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string): string {
   const styledBody = inlineStyles(bodyHtml);
+  const unsubscribeUrl = `${SITE_URL}/unsubscribe.html?token=${unsubscribeToken}`;
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -127,8 +128,12 @@ function buildHtml(subject: string, bodyHtml: string): string {
         You're getting this because you signed up at
         <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">${SITE_URL}</a>
       </p>
-      <p style="margin:0;font-size:0.74rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
+      <p style="margin:0 0 6px;font-size:0.74rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
         &copy; ${new Date().getFullYear()} AiRi &mdash; A <strong style="color:#7c3aed;">VirForge</strong> Product
+      </p>
+      <p style="margin:0;font-size:0.72rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
+        Don't want these emails?
+        <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
       </p>
     </td>
   </tr>
@@ -183,15 +188,15 @@ serve(async (req) => {
   if (!subject || (!bodyText && !bodyHtml)) return jsonResponse({ error: "subject and body are required" }, 400);
 
   const { data: subscribers, error: subError } = await supabase
-    .from("mailing_list").select("email, name").eq("subscribed", true);
+    .from("mailing_list").select("email, name, unsubscribe_token").eq("subscribed", true);
   if (subError) return jsonResponse({ error: subError.message }, 500);
   if (!subscribers || subscribers.length === 0) return jsonResponse({ sent: 0, total: 0, message: "No active subscribers" });
 
-  const html = buildHtml(subject, bodyHtml);
   let sent = 0;
   const errors: string[] = [];
 
   for (const sub of subscribers) {
+    const html = buildHtml(subject, bodyHtml, sub.unsubscribe_token ?? "");
     const result = await sendResendEmail(sub.email, subject, html, bodyText);
     if (result.ok) sent++;
     else errors.push(`${sub.email}: ${result.error}`);

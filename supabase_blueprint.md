@@ -82,13 +82,30 @@ RLS: enabled. Users can SELECT their own rows (`email = auth.email()`).
 
 ---
 
+### `mailing_list`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `email` | text | NOT NULL |
+| `name` | text | nullable |
+| `subscribed` | boolean | NOT NULL, default true |
+| `source` | text | nullable, default 'website' |
+| `created_at` | timestamptz | nullable |
+| `unsubscribe_token` | uuid | UNIQUE, NOT NULL, default gen_random_uuid() — added 2026-04-16 |
+
+RLS: enabled. Policies:
+- Service role → ALL
+- Admin (via profiles.is_admin) → SELECT, UPDATE
+- Authenticated user → SELECT + UPDATE where `email = auth.email()`
+
+---
+
 ### Other tables
 - `announcements` — in-app announcements
 - `beta_signups` — beta waitlist (28 entries)
 - `r2_versions` — download versions/URLs from R2 storage
 - `site_settings` — site-level config
 - `subscription_plans` — plan pricing reference
-- `mailing_list` — email list
 
 ---
 
@@ -125,6 +142,8 @@ Trigger function — creates `profiles` row on new auth user signup.
 | `mailing-list-signup` | Mailing list form handler |
 | `send-beta-approval` | Sends beta approval email |
 | `send-password-reset` | Sends password reset email |
+| `send-newsletter` | Admin: sends newsletter to all subscribed users (v18) — per-subscriber HTML with tokenised unsubscribe link |
+| `unsubscribe` | GET `?token=xxx` → token-based unsubscribe (email links); POST with JWT → auth-based unsubscribe (account page) |
 
 ---
 

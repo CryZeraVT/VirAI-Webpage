@@ -529,6 +529,45 @@
       margin-top: 6px;
     }
 
+    /* ── Newsletter Section ──────────────────────────────── */
+    .newsletter-section {
+      margin-top: 24px;
+    }
+    .newsletter-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .newsletter-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .newsletter-status-text {
+      font-size: 0.88rem;
+      color: #9ca3af;
+      line-height: 1.5;
+    }
+    .newsletter-status-text strong {
+      display: block;
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      margin-bottom: 2px;
+    }
+    .badge-subscribed   { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25);  border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .badge-unsubscribed { background: rgba(107,114,128,0.18); color: #9ca3af; border: 1px solid rgba(107,114,128,0.25); border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .badge-not-found    { background: rgba(107,114,128,0.12); color: #6b7280; border: 1px solid rgba(107,114,128,0.2);  border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+
     /* ── Buy Boost Panel ─────────────────────────────────── */
     .boost-panel {
       background: rgba(124,58,237,0.06);
@@ -690,6 +729,14 @@
             <h3>⚡ Token Usage</h3>
             <div id="quota-list">
               <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>
+            </div>
+          </div>
+
+          <!-- Newsletter section -->
+          <div class="newsletter-section" id="newsletter-section">
+            <h3>📧 Newsletter</h3>
+            <div id="newsletter-card-wrap">
+              <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
             </div>
           </div>
 
@@ -966,6 +1013,7 @@
         }
 
         await loadKeys(user);
+        loadNewsletter(user).catch(console.warn);
       } catch (err) {
         console.error("enterSignedIn error:", err);
       } finally {
@@ -1188,6 +1236,7 @@
         $("admin-link").classList.add("hidden");
         $("signed-in-sub").textContent = "AiRi Beta";
         $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
+        $("newsletter-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
         showView("view-signed-out");
         clearStatus();
         return;
@@ -1501,11 +1550,108 @@
       const params = new URLSearchParams(window.location.search);
       if (params.get("boost") === "success") {
         setStatus("✅ Boost purchased! 2,000,000 tokens have been added to your license.", "success");
-        // Clean the URL without a reload
         const clean = window.location.pathname + window.location.hash;
         window.history.replaceState(null, "", clean);
       }
     })();
+
+    // ── Newsletter ────────────────────────────────────────────────
+    async function loadNewsletter(user) {
+      const wrap = $("newsletter-card-wrap");
+      if (!user?.email) { wrap.innerHTML = ""; return; }
+
+      const token = _currentSession?.access_token;
+      if (!token) { wrap.innerHTML = ""; return; }
+
+      try {
+        const res = await withTimeout(
+          fetch(`${SUPABASE_URL}/rest/v1/mailing_list?email=ilike.${encodeURIComponent(user.email)}&select=subscribed&limit=1`, {
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${token}`,
+            },
+          }),
+          6000, "Newsletter query timed out"
+        );
+
+        if (!res.ok) { wrap.innerHTML = ""; return; }
+        const rows = await res.json();
+        const row  = Array.isArray(rows) ? rows[0] : null;
+
+        if (!row) {
+          wrap.innerHTML = `
+            <div class="newsletter-card">
+              <div class="newsletter-status-text">
+                <strong>Not subscribed <span class="badge-not-found">NOT ON LIST</span></strong>
+                You're not on the AiRi mailing list.
+              </div>
+            </div>`;
+          return;
+        }
+
+        if (row.subscribed) {
+          wrap.innerHTML = `
+            <div class="newsletter-card">
+              <div class="newsletter-status-text">
+                <strong>Newsletter <span class="badge-subscribed">SUBSCRIBED</span></strong>
+                You'll receive AiRi news and updates.
+              </div>
+              <button id="unsub-btn" class="btn btn-danger" style="font-size:0.82rem;padding:7px 16px;flex-shrink:0;">
+                Unsubscribe
+              </button>
+            </div>`;
+          $("unsub-btn").addEventListener("click", handleUnsubscribe);
+        } else {
+          wrap.innerHTML = `
+            <div class="newsletter-card">
+              <div class="newsletter-status-text">
+                <strong>Newsletter <span class="badge-unsubscribed">UNSUBSCRIBED</span></strong>
+                You won't receive newsletter emails.
+              </div>
+            </div>`;
+        }
+      } catch {
+        wrap.innerHTML = "";
+      }
+    }
+
+    async function handleUnsubscribe() {
+      const btn = $("unsub-btn");
+      if (!btn) return;
+      if (!confirm("Unsubscribe from the AiRi newsletter?\n\nYou won't receive any more update emails.")) return;
+
+      btn.disabled = true;
+      btn.textContent = "Unsubscribing…";
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setStatus("Session expired — please sign in again.", "error"); showView("view-signed-out"); return; }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/unsubscribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          setStatus("✅ You've been unsubscribed from the newsletter.", "success");
+          await loadNewsletter(_currentUser);
+        } else {
+          setStatus(data.error || `Unsubscribe failed (${res.status}). Try again.`, "error");
+          btn.disabled = false;
+          btn.textContent = "Unsubscribe";
+        }
+      } catch (err) {
+        console.error("Unsubscribe error:", err);
+        setStatus("Network error. Please try again.", "error");
+        btn.disabled = false;
+        btn.textContent = "Unsubscribe";
+      }
+    }
   </script>
 </body>
 </html>

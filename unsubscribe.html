@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unsubscribe — AiRi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    :root {
+      --bg:        #08060f;
+      --primary:   #7c3aed;
+      --cyan:      #06b6d4;
+      --text:      #f4f4f5;
+      --text-muted:#71717a;
+      --border:    rgba(255,255,255,0.07);
+      --border-p:  rgba(124,58,237,0.25);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; opacity: 0.35;
+    }
+
+    .card {
+      position: relative; z-index: 1;
+      max-width: 460px; width: 100%;
+      background: rgba(15,5,30,0.85);
+      border: 1px solid var(--border-p);
+      border-radius: 20px;
+      padding: 44px 40px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      text-align: center;
+      animation: cardPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes cardPop {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .card h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      line-height: 1.65;
+      margin-bottom: 28px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 11px 28px; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 700; text-decoration: none;
+      font-family: 'Inter', sans-serif;
+      border: 1px solid var(--border-p);
+      background: rgba(124,58,237,0.12); color: #a78bfa;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(124,58,237,0.22);
+      box-shadow: 0 4px 16px rgba(124,58,237,0.25);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 40px; height: 40px;
+      border: 3px solid rgba(124,58,237,0.2);
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .separator {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #7c3aed, #06b6d4, transparent);
+      border-radius: 999px;
+      margin: 0 0 28px;
+      opacity: 0.5;
+    }
+
+    .home-link {
+      position: relative; z-index: 1;
+      display: block;
+      margin-top: 20px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .home-link:hover { color: #a78bfa; }
+
+    /* State panels */
+    .state { display: none; }
+    .state.active { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="card">
+
+    <!-- Loading state -->
+    <div class="state" id="state-loading">
+      <div class="spinner"></div>
+      <h1>One moment…</h1>
+      <p>Processing your unsubscribe request.</p>
+    </div>
+
+    <!-- Success state -->
+    <div class="state" id="state-ok">
+      <span class="icon">✅</span>
+      <h1>You're unsubscribed</h1>
+      <div class="separator"></div>
+      <p>You've been removed from the AiRi newsletter. You won't receive any more emails from us.</p>
+      <a href="index.html" class="btn">← Back to AiRi</a>
+    </div>
+
+    <!-- Already unsubscribed / invalid token -->
+    <div class="state" id="state-invalid">
+      <span class="icon">🔗</span>
+      <h1>Link not recognised</h1>
+      <div class="separator"></div>
+      <p>This unsubscribe link is invalid or has already been used. If you're still receiving emails, sign in to your account to unsubscribe.</p>
+      <a href="account.html" class="btn">Go to Account</a>
+    </div>
+
+    <!-- Missing token -->
+    <div class="state" id="state-missing">
+      <span class="icon">❓</span>
+      <h1>No token provided</h1>
+      <div class="separator"></div>
+      <p>This page requires a valid unsubscribe link from an AiRi email. You can also unsubscribe from your account page.</p>
+      <a href="account.html" class="btn">Go to Account</a>
+    </div>
+
+    <!-- Error state -->
+    <div class="state" id="state-error">
+      <span class="icon">⚠️</span>
+      <h1>Something went wrong</h1>
+      <div class="separator"></div>
+      <p>We couldn't process your request right now. Please try again or visit your account page to unsubscribe.</p>
+      <a href="account.html" class="btn">Go to Account</a>
+    </div>
+
+  </div>
+
+  <a href="index.html" class="home-link">← Return to viritts.com</a>
+
+  <!-- Particle canvas -->
+  <script>
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, pts;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    function init() {
+      resize();
+      pts = Array.from({ length: Math.floor((W * H) / 18000) }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.22, vy: (Math.random() - 0.5) * 0.22,
+      }));
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const LINK = 140;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(124,58,237,0.55)'; ctx.fill();
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j], dx = p.x - q.x, dy = p.y - q.y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < LINK) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(124,58,237,${0.15*(1-d/LINK)})`; ctx.lineWidth=0.5; ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    init(); draw();
+  })();
+  </script>
+
+  <script>
+  (function () {
+    const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
+
+    function show(id) {
+      document.querySelectorAll(".state").forEach(el => el.classList.remove("active"));
+      const el = document.getElementById("state-" + id);
+      if (el) el.classList.add("active");
+    }
+
+    const params  = new URLSearchParams(window.location.search);
+    const status  = params.get("status");
+    const token   = params.get("token");
+
+    // If redirected here from edge function with a status already set
+    if (status === "ok")      { show("ok");      return; }
+    if (status === "invalid") { show("invalid"); return; }
+    if (status === "missing") { show("missing"); return; }
+
+    // If token is in URL, call edge function directly (JS-driven)
+    if (token) {
+      show("loading");
+      fetch(`${SUPABASE_URL}/functions/v1/unsubscribe?token=${encodeURIComponent(token)}`, {
+        method: "GET",
+        redirect: "manual",
+      })
+        .then(res => {
+          // Edge function redirects — a manual redirect fetch returns opaqueredirect
+          // We treat any response (including redirect) as success since the function
+          // handles the DB update before redirecting.
+          show("ok");
+        })
+        .catch(() => show("error"));
+      return;
+    }
+
+    // No token, no status
+    show("missing");
+  })();
+  </script>
+</body>
+</html>
