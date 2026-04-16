@@ -17,7 +17,7 @@ serve(async (req) => {
   const url   = new URL(req.url);
   const token = url.searchParams.get("token") ?? "";
 
-  // POST mode: auth-based unsubscribe from account page (email from JWT)
+  // POST mode: auth-based subscribe/unsubscribe from account page (email from JWT)
   if (req.method === "POST") {
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader) {
@@ -37,16 +37,37 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { error } = await supabase
-      .from("mailing_list")
-      .update({ subscribed: false })
-      .eq("email", user.email.toLowerCase());
+    let action = "unsubscribe";
+    try {
+      const body = await req.json();
+      if (body?.action === "subscribe") action = "subscribe";
+    } catch { /* default to unsubscribe */ }
 
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const email = user.email.toLowerCase();
+
+    if (action === "subscribe") {
+      // Upsert — handles both existing unsubscribed rows and brand-new signups
+      const { error } = await supabase
+        .from("mailing_list")
+        .upsert({ email, subscribed: true, source: "account_page" }, { onConflict: "email" });
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      const { error } = await supabase
+        .from("mailing_list")
+        .update({ subscribed: false })
+        .eq("email", email);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {

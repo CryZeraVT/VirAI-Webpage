@@ -1582,10 +1582,14 @@
           wrap.innerHTML = `
             <div class="newsletter-card">
               <div class="newsletter-status-text">
-                <strong>Not subscribed <span class="badge-not-found">NOT ON LIST</span></strong>
+                <strong>Newsletter <span class="badge-not-found">NOT SUBSCRIBED</span></strong>
                 You're not on the AiRi mailing list.
               </div>
+              <button id="resub-btn" class="btn" style="font-size:0.82rem;padding:7px 16px;flex-shrink:0;">
+                Subscribe
+              </button>
             </div>`;
+          $("resub-btn").addEventListener("click", handleResubscribe);
           return;
         }
 
@@ -1608,7 +1612,11 @@
                 <strong>Newsletter <span class="badge-unsubscribed">UNSUBSCRIBED</span></strong>
                 You won't receive newsletter emails.
               </div>
+              <button id="resub-btn" class="btn" style="font-size:0.82rem;padding:7px 16px;flex-shrink:0;">
+                Re-subscribe
+              </button>
             </div>`;
+          $("resub-btn").addEventListener("click", handleResubscribe);
         }
       } catch {
         wrap.innerHTML = "";
@@ -1629,11 +1637,8 @@
 
         const res = await fetch(`${SUPABASE_URL}/functions/v1/unsubscribe`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-            "apikey": SUPABASE_ANON_KEY,
-          },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: "unsubscribe" }),
         });
 
         const data = await res.json().catch(() => ({}));
@@ -1650,6 +1655,40 @@
         setStatus("Network error. Please try again.", "error");
         btn.disabled = false;
         btn.textContent = "Unsubscribe";
+      }
+    }
+
+    async function handleResubscribe() {
+      const btn = $("resub-btn");
+      if (!btn) return;
+
+      btn.disabled = true;
+      btn.textContent = "Subscribing…";
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setStatus("Session expired — please sign in again.", "error"); showView("view-signed-out"); return; }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/unsubscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: "subscribe" }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          setStatus("✅ You've been subscribed to the AiRi newsletter!", "success");
+          await loadNewsletter(_currentUser);
+        } else {
+          setStatus(data.error || `Subscribe failed (${res.status}). Try again.`, "error");
+          btn.disabled = false;
+          btn.textContent = btn.textContent.includes("Re") ? "Re-subscribe" : "Subscribe";
+        }
+      } catch (err) {
+        console.error("Resubscribe error:", err);
+        setStatus("Network error. Please try again.", "error");
+        btn.disabled = false;
+        btn.textContent = btn.textContent.includes("Re") ? "Re-subscribe" : "Subscribe";
       }
     }
   </script>
