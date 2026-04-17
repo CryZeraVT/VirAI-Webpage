@@ -1,5 +1,5 @@
 # Supabase Blueprint — AiRi / viritts.com
-> Last mapped: April 11, 2026. Update before schema changes.
+> Last mapped: April 17, 2026. Update before schema changes.
 
 ## Project
 - URL: `https://rgigtqpesabuyaumibaj.supabase.co`
@@ -63,7 +63,11 @@ RLS: enabled. Users can SELECT their own rows (`email = auth.email()`).
 
 ### `profiles`
 - `id` (uuid, FK → auth.users), `is_admin` (bool), `twitch_username` (text)
+- `tos_version` (text, nullable) — version of the Terms of Service the user accepted (e.g. `"1.0"`). `NULL` = never accepted. Added 2026-04-17.
+- `tos_accepted_at` (timestamptz, nullable) — timestamp of most recent acceptance. Added 2026-04-17.
 - 43 rows
+
+RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid()`). No direct `UPDATE` grant to `authenticated` — ToS fields are written exclusively via `accept_tos(p_version)` RPC.
 
 ---
 
@@ -123,6 +127,9 @@ Returns `jsonb`: `{ allowed, using_boost, tokens_used, boost_remaining, base_lim
 
 ### `handle_new_user()`
 Trigger function — creates `profiles` row on new auth user signup.
+
+### `accept_tos(p_version text)`
+`SECURITY DEFINER` RPC. Updates `profiles.tos_version` + `profiles.tos_accepted_at` for the calling user (`auth.uid()`). Only the `authenticated` role has EXECUTE. This is the only supported write path for ToS columns — used by `account.html` signup flow and the post-signin ToS gate modal. Client constant `CURRENT_TOS_VERSION` in `account.html` drives re-acceptance; bump it whenever the Terms text materially changes.
 
 ---
 

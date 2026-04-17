@@ -433,6 +433,106 @@
     /* Sections visibility ─────────────────────────────────── */
     .hidden { display: none !important; }
 
+    /* ── Terms of Service ──────────────────────────────────── */
+    .tos-box {
+      margin: 18px 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+    .tos-box-header {
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .tos-box-header .tos-status {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .tos-box-header .tos-status.ready { color: var(--green); }
+    .tos-scroll {
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 14px 16px;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(124,58,237,0.5) transparent;
+    }
+    .tos-scroll::-webkit-scrollbar { width: 8px; }
+    .tos-scroll::-webkit-scrollbar-thumb {
+      background: rgba(124,58,237,0.45);
+      border-radius: 4px;
+    }
+    .tos-scroll h4 {
+      margin: 12px 0 4px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .tos-scroll h4:first-child { margin-top: 0; }
+    .tos-scroll p { margin: 0 0 8px; }
+    .tos-accept-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin: 8px 0 4px;
+      padding: 4px 2px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .tos-accept-row input[type="checkbox"] {
+      margin-top: 3px;
+      width: 16px; height: 16px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .tos-accept-row input[type="checkbox"]:disabled { cursor: not-allowed; opacity: 0.5; }
+    .tos-accept-row label { cursor: pointer; user-select: none; }
+    .tos-accept-row label.disabled { cursor: not-allowed; color: var(--text-dim); }
+
+    /* Fullscreen gate shown to signed-in users who haven't accepted current ToS */
+    .tos-gate-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(6,4,12,0.85);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .tos-gate-card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--surface);
+      border: 1px solid var(--border-p);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .tos-gate-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .tos-gate-card .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0 0 8px;
+    }
+    .tos-gate-actions {
+      display: flex; gap: 10px; margin-top: 14px;
+    }
+    .tos-gate-actions .btn { flex: 1; }
+    .tos-gate-actions .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .tos-gate-actions .btn-secondary:hover { color: var(--text); }
+
     /* ── Token Quota Card ────────────────────────────────── */
     .quota-section {
       margin-top: 24px;
@@ -708,7 +808,22 @@
               <input id="signup-password" type="password" placeholder="••••••••" autocomplete="new-password">
             </div>
 
-            <button id="sign-up" class="btn" style="width:100%;margin-top:4px;">Create Account</button>
+            <!-- Terms of Service acceptance ─────────────────── -->
+            <div class="tos-box" aria-labelledby="signup-tos-label">
+              <div class="tos-box-header">
+                <span id="signup-tos-label">Terms of Service <span style="color:var(--text-dim);">·</span> <span id="signup-tos-version">v1.0</span></span>
+                <span class="tos-status" id="signup-tos-status">Scroll to the bottom to enable</span>
+              </div>
+              <div class="tos-scroll" id="signup-tos-scroll" tabindex="0"></div>
+            </div>
+            <div class="tos-accept-row">
+              <input type="checkbox" id="signup-tos-check" disabled>
+              <label for="signup-tos-check" class="disabled" id="signup-tos-check-label">
+                I have read and agree to the AiRi Terms of Service.
+              </label>
+            </div>
+
+            <button id="sign-up" class="btn" style="width:100%;margin-top:8px;" disabled>Create Account</button>
 
             <div style="text-align:center;margin-top:14px;">
               <button class="text-link" id="goto-signin">← Back to Sign In</button>
@@ -811,6 +926,33 @@
     </div>
     </div><!-- /container -->
 
+    <!-- ── ToS Gate (shown when logged-in user hasn't accepted current version) ── -->
+    <div id="tos-gate" class="tos-gate-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tos-gate-title">
+      <div class="tos-gate-card">
+        <h2 id="tos-gate-title">Review &amp; Accept the Terms of Service</h2>
+        <p class="subtitle">
+          We've updated our Terms. Please scroll to the bottom and agree to continue using your AiRi account.
+        </p>
+        <div class="tos-box" style="margin-top:14px;">
+          <div class="tos-box-header">
+            <span>Terms of Service <span style="color:var(--text-dim);">·</span> <span id="gate-tos-version">v1.0</span></span>
+            <span class="tos-status" id="gate-tos-status">Scroll to the bottom to enable</span>
+          </div>
+          <div class="tos-scroll" id="gate-tos-scroll" tabindex="0"></div>
+        </div>
+        <div class="tos-accept-row">
+          <input type="checkbox" id="gate-tos-check" disabled>
+          <label for="gate-tos-check" class="disabled" id="gate-tos-check-label">
+            I have read and agree to the AiRi Terms of Service.
+          </label>
+        </div>
+        <div class="tos-gate-actions">
+          <button id="gate-tos-decline" class="btn btn-secondary">Decline &amp; Sign Out</button>
+          <button id="gate-tos-accept" class="btn" disabled>Accept &amp; Continue</button>
+        </div>
+      </div>
+    </div>
+
     <footer class="footer">
       <div class="container">
         <div class="footer-inner">
@@ -903,6 +1045,147 @@
 
     // ── Helpers ──────────────────────────────────────────────────
     const $ = (id) => document.getElementById(id);
+
+    // ── Terms of Service ─────────────────────────────────────────
+    // Bump CURRENT_TOS_VERSION whenever the text below materially changes;
+    // every user whose profiles.tos_version != this value will be re-gated
+    // on next sign-in and forced to re-accept.
+    const CURRENT_TOS_VERSION = "1.0";
+
+    // !!! PLACEHOLDER — replace with final legal copy. Plain HTML, safe subset only.
+    const TOS_PLACEHOLDER_HTML = `
+      <h4>1. Placeholder Section — Acceptance of Terms</h4>
+      <p>By creating an account or continuing to use AiRi (the "Service"), provided by VirForge, you agree
+      to be bound by these Terms of Service. <em>Replace this paragraph with your finalised acceptance clause.</em></p>
+
+      <h4>2. Placeholder Section — Eligibility &amp; Account</h4>
+      <p>You must be at least the age of majority in your jurisdiction, and you are responsible for the
+      security of your credentials and all activity under your account. <em>Replace with final account-use terms.</em></p>
+
+      <h4>3. Placeholder Section — Acceptable Use</h4>
+      <p>You agree not to misuse the Service, including by violating applicable law, infringing others' rights,
+      or attempting to probe, scan, or reverse-engineer the platform outside of authorised research channels.
+      <em>Replace with the finalised acceptable-use clause.</em></p>
+
+      <h4>4. Placeholder Section — AI Output &amp; Third-Party Models</h4>
+      <p>AiRi may route requests through third-party AI providers. Generated output is provided on an "as is"
+      basis; you are responsible for reviewing anything you publish publicly. <em>Replace with final AI/usage clause.</em></p>
+
+      <h4>5. Placeholder Section — Subscription, Billing &amp; Refunds</h4>
+      <p>Paid tiers are billed through our payment processor. Cancellations and refund eligibility are
+      described at <a href="https://viritts.com/buy.html" target="_blank" rel="noopener">viritts.com/buy</a>.
+      <em>Replace with final billing/refund clause.</em></p>
+
+      <h4>6. Placeholder Section — Privacy</h4>
+      <p>Our handling of personal data is described in the Privacy Policy. <em>Replace with link to final Privacy Policy.</em></p>
+
+      <h4>7. Placeholder Section — Termination</h4>
+      <p>We may suspend or terminate access for breach of these Terms. You may close your account at any time
+      from the Account page. <em>Replace with final termination clause.</em></p>
+
+      <h4>8. Placeholder Section — Disclaimers &amp; Limitation of Liability</h4>
+      <p>The Service is provided "as is" without warranties of any kind. To the fullest extent permitted by law,
+      VirForge is not liable for indirect or consequential damages. <em>Replace with final disclaimer/limitation clause.</em></p>
+
+      <h4>9. Placeholder Section — Changes</h4>
+      <p>We may update these Terms. Material changes will trigger a re-acceptance prompt the next time you sign in.
+      <em>Replace with final change-of-terms clause.</em></p>
+
+      <h4>10. Placeholder Section — Contact</h4>
+      <p>Questions? <em>Replace with final contact details / governing-law clause.</em></p>
+
+      <p style="margin-top:16px;color:var(--text-muted);font-size:0.78rem;">
+        <strong>End of Terms — v${"__VERSION__"}.</strong> By checking the box below you confirm you have
+        read and accept these Terms.
+      </p>
+    `;
+
+    function renderTosInto(containerId, versionLabelId) {
+      const html = TOS_PLACEHOLDER_HTML.replace("__VERSION__", CURRENT_TOS_VERSION);
+      const el = document.getElementById(containerId);
+      if (el) el.innerHTML = html;
+      if (versionLabelId) {
+        const lbl = document.getElementById(versionLabelId);
+        if (lbl) lbl.textContent = `v${CURRENT_TOS_VERSION}`;
+      }
+    }
+
+    /**
+     * Wires scroll-to-bottom → enable checkbox → enable button.
+     * Caller supplies the three element ids and an optional status element id.
+     * Returns the element refs so callers can reset state (e.g. when re-opening the gate).
+     */
+    function wireTosGate({ scrollId, checkId, labelId, buttonId, statusId }) {
+      const scrollEl = document.getElementById(scrollId);
+      const checkEl  = document.getElementById(checkId);
+      const labelEl  = labelId ? document.getElementById(labelId) : null;
+      const buttonEl = document.getElementById(buttonId);
+      const statusEl = statusId ? document.getElementById(statusId) : null;
+      if (!scrollEl || !checkEl || !buttonEl) return null;
+
+      let scrolledToBottom = false;
+
+      function syncButton() {
+        buttonEl.disabled = !(scrolledToBottom && checkEl.checked);
+      }
+      function onScroll() {
+        // Allow 6px of slack for sub-pixel rounding on various DPIs
+        const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 6;
+        if (atBottom && !scrolledToBottom) {
+          scrolledToBottom = true;
+          checkEl.disabled = false;
+          if (labelEl) labelEl.classList.remove("disabled");
+          if (statusEl) {
+            statusEl.textContent = "Ready — tick the box below";
+            statusEl.classList.add("ready");
+          }
+          syncButton();
+        }
+      }
+      scrollEl.addEventListener("scroll", onScroll, { passive: true });
+      checkEl.addEventListener("change", syncButton);
+      // If content is already shorter than the viewport (no scroll needed), unlock immediately.
+      queueMicrotask(() => {
+        if (scrollEl.scrollHeight <= scrollEl.clientHeight + 6) onScroll();
+      });
+
+      return {
+        reset() {
+          scrolledToBottom = false;
+          checkEl.checked = false;
+          checkEl.disabled = true;
+          buttonEl.disabled = true;
+          if (labelEl) labelEl.classList.add("disabled");
+          if (statusEl) {
+            statusEl.textContent = "Scroll to the bottom to enable";
+            statusEl.classList.remove("ready");
+          }
+          scrollEl.scrollTop = 0;
+          // Re-run the "already at bottom" check in case content is short
+          queueMicrotask(() => {
+            if (scrollEl.scrollHeight <= scrollEl.clientHeight + 6) onScroll();
+          });
+        },
+      };
+    }
+
+    async function recordTosAcceptance() {
+      const accessToken = _currentSession?.access_token;
+      if (!accessToken) throw new Error("No session");
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/accept_tos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ p_version: CURRENT_TOS_VERSION }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`accept_tos failed (${res.status}): ${txt}`);
+      }
+    }
 
     function setStatus(msg, type = "success") {
       const el = $("auth-status");
@@ -1024,6 +1307,74 @@
     let _currentUser = null;
     let _currentSession = null;
 
+    // ── ToS gate (post-signin, for users whose tos_version is stale/missing) ─
+    let _gateWiring = null;        // lazy-built controller from wireTosGate
+    let _gateRendered = false;     // TOS body only needs rendering once
+
+    function openTosGate() {
+      const gate = $("tos-gate");
+      if (!gate) return;
+      if (!_gateRendered) {
+        renderTosInto("gate-tos-scroll", "gate-tos-version");
+        _gateRendered = true;
+      }
+      if (!_gateWiring) {
+        _gateWiring = wireTosGate({
+          scrollId: "gate-tos-scroll",
+          checkId:  "gate-tos-check",
+          labelId:  "gate-tos-check-label",
+          buttonId: "gate-tos-accept",
+          statusId: "gate-tos-status",
+        });
+      } else {
+        _gateWiring.reset();
+      }
+      gate.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeTosGate() {
+      const gate = $("tos-gate");
+      if (!gate) return;
+      gate.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+
+    // Wire gate buttons once on page load
+    (function wireGateButtons() {
+      const acceptBtn  = $("gate-tos-accept");
+      const declineBtn = $("gate-tos-decline");
+      if (acceptBtn) {
+        acceptBtn.addEventListener("click", async () => {
+          if (acceptBtn.disabled) return;
+          acceptBtn.disabled = true;
+          const originalLabel = acceptBtn.textContent;
+          acceptBtn.textContent = "Saving…";
+          try {
+            await recordTosAcceptance();
+            closeTosGate();
+            setStatus("Thanks — Terms accepted.", "success");
+            // Resume the normal signed-in bootstrap now that the gate is cleared.
+            if (_currentUser) {
+              try { await loadKeys(_currentUser); } catch (e) { console.warn(e); }
+              try { loadNewsletter(_currentUser).catch(console.warn); } catch (e) { console.warn(e); }
+            }
+          } catch (err) {
+            console.error("accept_tos error:", err);
+            setStatus("Could not record acceptance. Please try again.", "error");
+            acceptBtn.disabled = false;
+            acceptBtn.textContent = originalLabel;
+          }
+        });
+      }
+      if (declineBtn) {
+        declineBtn.addEventListener("click", async () => {
+          closeTosGate();
+          try { await supabase.auth.signOut(); } catch {}
+        });
+      }
+    })();
+
     async function enterSignedIn(user, authEvent) {
       if (_enteringSignedIn) return;
       _enteringSignedIn = true;
@@ -1044,7 +1395,7 @@
         let profile = null;
         try {
           const profileParams = new URLSearchParams({
-            select: "is_admin,twitch_username",
+            select: "is_admin,twitch_username,tos_version,tos_accepted_at",
             id: `eq.${user.id}`,
           });
           const profileRes = await withTimeout(
@@ -1071,6 +1422,24 @@
         }
         if (profile?.twitch_username) {
           $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
+        }
+
+        // If the user just signed up and we stashed a pending ToS acceptance,
+        // record it now that we have a real session.
+        if (localStorage.getItem("pending_tos_version") === CURRENT_TOS_VERSION) {
+          try {
+            await recordTosAcceptance();
+            localStorage.removeItem("pending_tos_version");
+            if (profile) { profile.tos_version = CURRENT_TOS_VERSION; profile.tos_accepted_at = new Date().toISOString(); }
+          } catch (e) {
+            console.warn("Could not record pending ToS acceptance:", e?.message || e);
+          }
+        }
+
+        // ToS gate: if acceptance is missing or stale, block the rest of the page.
+        if (!profile || profile.tos_version !== CURRENT_TOS_VERSION) {
+          openTosGate();
+          return;
         }
 
         await loadKeys(user);
@@ -1288,6 +1657,7 @@
 
       if (event === "SIGNED_OUT") {
         _currentUser = null;
+        closeTosGate();
         if (_passwordSetupActive) {
           enterPasswordSetupMode(_passwordSetupMode || "recovery");
           return;
@@ -1344,7 +1714,22 @@
     // Initial reset/invite routing is handled above before auth callbacks.
 
     // ── Button handlers ───────────────────────────────────────────
-    $("goto-signup").addEventListener("click", () => { clearStatus(); showMode("signup"); });
+    // Render ToS into the signup form + wire the scroll-to-accept gate.
+    renderTosInto("signup-tos-scroll", "signup-tos-version");
+    const _signupTosGate = wireTosGate({
+      scrollId: "signup-tos-scroll",
+      checkId:  "signup-tos-check",
+      labelId:  "signup-tos-check-label",
+      buttonId: "sign-up",
+      statusId: "signup-tos-status",
+    });
+
+    $("goto-signup").addEventListener("click", () => {
+      clearStatus();
+      showMode("signup");
+      // Reset the gate when user re-enters signup mode
+      if (_signupTosGate) _signupTosGate.reset();
+    });
     $("goto-signin").addEventListener("click", () => { clearStatus(); showMode("signin"); });
 
     $("sign-in").addEventListener("click", async () => {
@@ -1372,15 +1757,23 @@
       const password = $("signup-password").value.trim();
       if (!email || !password) return setStatus("Enter email and password.", "error");
       if (!twitchUsername) return setStatus("Twitch username is required.", "error");
+      // Defensive: button is disabled until checked, but double-check here too.
+      if (!$("signup-tos-check").checked) {
+        return setStatus("Please read and accept the Terms of Service.", "error");
+      }
 
       // Persist redirect intent so it survives the email confirmation round-trip
       const pendingRedirect = new URLSearchParams(window.location.search).get("redirect");
       if (pendingRedirect) localStorage.setItem("post_auth_redirect", pendingRedirect);
 
+      // Stash the accepted version so we can record it after email confirm round-trip
+      // (session may not exist yet if email-confirm is enabled).
+      localStorage.setItem("pending_tos_version", CURRENT_TOS_VERSION);
+
       const { data, error } = await supabase.auth.signUp({
         email, password,
         options: {
-          data: { twitch_username: twitchUsername },
+          data: { twitch_username: twitchUsername, tos_version_accepted: CURRENT_TOS_VERSION },
           emailRedirectTo: window.location.origin + "/account.html",
         }
       });
@@ -1395,6 +1788,9 @@
         return setStatus("Account already exists — sign in instead.", "error");
       }
       if (data?.session) {
+        // Session exists immediately (email confirmations disabled) — record acceptance now.
+        try { await recordTosAcceptance(); localStorage.removeItem("pending_tos_version"); }
+        catch (e) { console.warn("Deferred ToS record:", e?.message || e); }
         setStatus("Account created and signed in.", "success");
       } else {
         setStatus("Account created! Check your email to confirm, then sign in.", "info");
