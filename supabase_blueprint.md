@@ -131,6 +131,13 @@ Trigger function — creates `profiles` row on new auth user signup.
 ### `accept_tos(p_version text)`
 `SECURITY DEFINER` RPC. Updates `profiles.tos_version` + `profiles.tos_accepted_at` for the calling user (`auth.uid()`). Only the `authenticated` role has EXECUTE. This is the only supported write path for ToS columns — used by `account.html` signup flow and the post-signin ToS gate modal. Client constant `CURRENT_TOS_VERSION` in `account.html` drives re-acceptance; bump it whenever the Terms text materially changes.
 
+### `publish_tos_version(p_surface text, p_version text, p_body_markdown text)`
+`SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Atomically:
+1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger),
+2. UPSERTs `public.site_settings` with key `<surface>_tos_current_version` → new version.
+
+Validation: surface must be `'app'` or `'web'`; version must match `^\d+(\.\d+)*$` and be strictly greater than the current version; body ≤ 64 KB; `(surface, version)` must not already exist. Returns `{ok, surface, version, sha256}`. EXECUTE granted to `authenticated` only (`anon` explicitly revoked). Called by the "Publish New In-App EULA Version" panel in `admin.html` with a typed-confirmation UI guard on top.
+
 ---
 
 ## Edge Functions

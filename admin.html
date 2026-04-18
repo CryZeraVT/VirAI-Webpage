@@ -838,17 +838,24 @@
 
         <!-- Tab: ToS Audit (READ-ONLY — legal surface) -->
         <!--
-          SAFETY: This panel is strictly read-only. There is NO UI here that
-          writes to licenses, profiles, or site_settings. Version bumps must be
-          performed via SQL by a human to keep legal publishing deliberate and
-          auditable. Do not add a "bump version" button without a formal review.
+          SAFETY: This panel is mostly read-only. The ONLY write path is the
+          "Publish New App EULA" section below, which calls the
+          `publish_tos_version` SECURITY DEFINER RPC. That RPC:
+            • re-checks profiles.is_admin on the server,
+            • enforces dot-numeric monotonic version bump,
+            • writes to the append-only tos_versions table (trigger-enforced,
+              no UPDATE/DELETE possible),
+            • flips site_settings.app_tos_current_version in the same tx.
+          There are NO write controls over licenses or profiles (acceptance
+          state). Do not add any. A version bump forces every user to re-
+          accept on next launch, which is an intentionally heavy action.
         -->
         <div class="tab-content" id="tab-tos-audit">
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3>📜 ToS / EULA Audit</h3>
-                <p>Read-only view of acceptance state. To publish a new version, run the documented SQL migration — there is no button here by design (legal).</p>
+                <h3>📜 ToS / EULA Audit &amp; Publish</h3>
+                <p>Read-only acceptance state for both surfaces. Admins can publish a new <strong>In-App EULA</strong> version below — that action is irreversible and will force every user to re-accept on next launch. Website ToS still requires a code change + redeploy.</p>
               </div>
               <button id="refresh-tos-audit" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
             </div>
@@ -869,6 +876,78 @@
                 <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">hardcoded in account.html (CURRENT_TOS_VERSION)</div>
               </div>
             </div>
+          </div>
+
+          <!-- ───────────────────────────────────────────────────────────
+               Publish New App EULA Version  (admin write path)
+
+               Gated server-side by the publish_tos_version RPC:
+                 • auth.uid() must be non-null
+                 • profiles.is_admin must be true
+                 • version must be dot-numeric and STRICTLY greater than current
+                 • body <= 64KB
+                 • (surface, version) must not already exist
+               Client adds a typed-confirmation guardrail on top of that.
+               ─────────────────────────────────────────────────────────── -->
+          <div class="admin-section" style="margin-bottom:22px;border:1px solid #7c3aed;">
+            <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>✍️ Publish New In-App EULA Version</span>
+              <span style="font-size:0.72rem;color:#f59e0b;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:999px;padding:3px 10px;">ADMIN WRITE</span>
+            </div>
+
+            <details id="tos-publish-details">
+              <summary style="cursor:pointer;color:#a78bfa;font-size:0.88rem;margin-bottom:12px;padding:8px 0;">
+                ▸ Show publish form (click to expand)
+              </summary>
+
+              <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.85rem;color:#fcd34d;">
+                ⚠️ Publishing a new version is <strong>irreversible</strong>. Every existing user will be blocked at launch until they re-accept. The previous version stays archived in <code>tos_versions</code> for legal audit.
+              </div>
+
+              <div class="form-row" style="margin-bottom:12px;">
+                <div class="form-group">
+                  <label>New Version <span style="color:#6b7280;font-weight:400;">(dot-numeric, strictly &gt; current)</span></label>
+                  <input id="tos-publish-version" type="text" class="form-input" placeholder="e.g. 1.1" autocomplete="off">
+                  <p style="font-size:0.78rem;color:#6b7280;margin-top:4px;">Current: <span id="tos-publish-current">—</span> · Suggested: <span id="tos-publish-suggested" style="color:#a78bfa;cursor:pointer;text-decoration:underline;">—</span></p>
+                </div>
+                <div class="form-group">
+                  <label>Surface</label>
+                  <input id="tos-publish-surface" type="text" class="form-input" value="app" readonly style="opacity:0.7;cursor:not-allowed;">
+                  <p style="font-size:0.78rem;color:#6b7280;margin-top:4px;">Website ToS is hardcoded; use a code deploy for that.</p>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:12px;">
+                <label>Body (Markdown) <span style="color:#6b7280;font-weight:400;">— supports <code>[link](url)</code>, headings, bold, lists. Clickable in the desktop app.</span></label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <textarea id="tos-publish-body"
+                            class="form-input"
+                            style="min-height:340px;font-family:'Consolas','Menlo',monospace;font-size:0.82rem;line-height:1.5;resize:vertical;"
+                            placeholder="# AiRi End User License Agreement&#10;&#10;**Version:** 1.1&#10;&#10;Your terms here…"></textarea>
+                  <div id="tos-publish-preview"
+                       style="min-height:340px;max-height:560px;overflow:auto;background:#120826;border:1px solid #2a1550;border-radius:8px;padding:14px 18px;color:#cbd5e1;font-size:0.88rem;line-height:1.6;">
+                    <p style="color:#6b7280;font-style:italic;">Preview will render here as you type…</p>
+                  </div>
+                </div>
+                <p style="font-size:0.76rem;color:#6b7280;margin-top:6px;">
+                  <span id="tos-publish-body-bytes">0</span> / 65536 bytes ·
+                  Preview uses <code>marked</code> with GitHub-flavored Markdown; the desktop app uses Flet's Markdown renderer (visual output may differ slightly).
+                </p>
+              </div>
+
+              <div class="form-group" style="margin-bottom:12px;">
+                <label>Confirmation — type <code id="tos-publish-confirm-hint" style="color:#f59e0b;">PUBLISH 0.0</code> exactly to enable the button</label>
+                <input id="tos-publish-confirm" type="text" class="form-input" placeholder="PUBLISH …" autocomplete="off" autocapitalize="characters" spellcheck="false">
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <button id="tos-publish-btn" class="btn" disabled
+                        style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:700;padding:10px 28px;opacity:0.5;cursor:not-allowed;">
+                  📤 Publish New EULA Version
+                </button>
+                <span id="tos-publish-status" style="font-size:0.88rem;"></span>
+              </div>
+            </details>
           </div>
 
           <!-- App EULA acceptance stats -->
@@ -1302,6 +1381,9 @@
       appVersionEl.textContent = appCurrentVersion || "(not set)";
       webVersionEl.textContent = WEB_TOS_CURRENT_VERSION_HARDCODED || "(not set)";
 
+      // Keep the publish form's hints in sync with the latest current version.
+      _tosPublishSyncCurrent(appCurrentVersion);
+
       // ── 2. Licenses (active only) — aggregate client-side ──────────
       try {
         const { data: licRows, error: licErr } = await supabase
@@ -1433,6 +1515,186 @@
     }
 
     document.getElementById("refresh-tos-audit").addEventListener("click", () => loadTosAudit());
+
+    // ════════════════════════════════════════════════════════════════════
+    // Publish New In-App EULA Version — admin write path
+    //
+    // All server-side validation lives in public.publish_tos_version (RPC).
+    // The UI layer just:
+    //   • suggests a sensible next version,
+    //   • renders a live Markdown preview,
+    //   • enforces a typed confirmation,
+    //   • surfaces errors clearly.
+    // If ANY of these UI guards are bypassed (e.g. someone calls the RPC
+    // from the console), the server still re-checks admin + monotonicity.
+    // ════════════════════════════════════════════════════════════════════
+
+    let _tosPublishCurrent = "";   // last known current version (for guardrails)
+
+    function _tosSuggestNextVersion(current) {
+      // Accept dot-numeric only; if current is invalid/empty, suggest 1.0.
+      if (!current || !/^\d+(\.\d+)*$/.test(current)) return "1.0";
+      const parts = current.split(".").map(n => parseInt(n, 10));
+      parts[parts.length - 1] += 1;
+      return parts.join(".");
+    }
+
+    function _tosCompareVersions(a, b) {
+      // Returns >0 if a>b, <0 if a<b, 0 if equal. Both must be dot-numeric.
+      const pa = a.split(".").map(n => parseInt(n, 10));
+      const pb = b.split(".").map(n => parseInt(n, 10));
+      const len = Math.max(pa.length, pb.length);
+      for (let i = 0; i < len; i++) {
+        const da = pa[i] || 0;
+        const db = pb[i] || 0;
+        if (da !== db) return da - db;
+      }
+      return 0;
+    }
+
+    function _tosPublishSyncCurrent(current) {
+      _tosPublishCurrent = (current || "").trim();
+      const suggested = _tosSuggestNextVersion(_tosPublishCurrent);
+      const curEl       = document.getElementById("tos-publish-current");
+      const sugEl       = document.getElementById("tos-publish-suggested");
+      if (curEl) curEl.textContent = _tosPublishCurrent || "(not set)";
+      if (sugEl) sugEl.textContent = suggested;
+      _tosPublishUpdateButton();
+    }
+
+    function _tosPublishRenderPreview() {
+      const ta       = document.getElementById("tos-publish-body");
+      const preview  = document.getElementById("tos-publish-preview");
+      const bytesEl  = document.getElementById("tos-publish-body-bytes");
+      const text     = ta.value || "";
+      bytesEl.textContent = new TextEncoder().encode(text).length;
+      if (!text.trim()) {
+        preview.innerHTML = `<p style="color:#6b7280;font-style:italic;">Preview will render here as you type…</p>`;
+        return;
+      }
+      try {
+        // marked v11+ returns a string by default; GFM is enabled by default
+        // since v4. No sanitizer: this preview is only shown to the admin
+        // who just typed the content themselves (self-XSS isn't a threat).
+        preview.innerHTML = marked.parse(text, { gfm: true, breaks: false });
+      } catch (e) {
+        preview.innerHTML = `<p style="color:#ef4444;">Preview failed: ${_tosEscape(e.message || e)}</p>`;
+      }
+    }
+
+    function _tosPublishUpdateButton() {
+      const versionEl  = document.getElementById("tos-publish-version");
+      const bodyEl     = document.getElementById("tos-publish-body");
+      const confirmEl  = document.getElementById("tos-publish-confirm");
+      const hintEl     = document.getElementById("tos-publish-confirm-hint");
+      const btn        = document.getElementById("tos-publish-btn");
+      if (!versionEl || !btn) return;
+
+      const version = (versionEl.value || "").trim();
+      const body    = (bodyEl.value || "");
+      const confirm = (confirmEl.value || "").trim();
+
+      // Update the confirmation hint to reflect the currently-typed version.
+      hintEl.textContent = version ? `PUBLISH ${version}` : "PUBLISH 0.0";
+
+      // All three guardrails must pass for the button to enable:
+      const versionOk =
+        /^\d+(\.\d+)*$/.test(version) &&
+        (_tosPublishCurrent === "" ||
+         _tosCompareVersions(version, _tosPublishCurrent) > 0);
+      const bodyOk    = body.trim().length > 0 && body.length <= 65536;
+      const confirmOk = version !== "" && confirm === `PUBLISH ${version}`;
+
+      const enable = versionOk && bodyOk && confirmOk;
+      btn.disabled          = !enable;
+      btn.style.opacity     = enable ? "1"          : "0.5";
+      btn.style.cursor      = enable ? "pointer"    : "not-allowed";
+    }
+
+    async function _tosPublishSubmit() {
+      const btn       = document.getElementById("tos-publish-btn");
+      const statusEl  = document.getElementById("tos-publish-status");
+      const versionEl = document.getElementById("tos-publish-version");
+      const bodyEl    = document.getElementById("tos-publish-body");
+      const confirmEl = document.getElementById("tos-publish-confirm");
+      const surfaceEl = document.getElementById("tos-publish-surface");
+
+      const version = (versionEl.value || "").trim();
+      const body    = bodyEl.value || "";
+      const surface = (surfaceEl.value || "app").trim();
+
+      // Belt & braces second confirmation — cheap, stops the fat-finger path.
+      if (!window.confirm(
+        `Publish new ${surface.toUpperCase()} EULA version ${version}?\n\n` +
+        `• Every active user will be blocked at next launch until they re-accept.\n` +
+        `• This cannot be undone (tos_versions is append-only).\n\n` +
+        `Continue?`
+      )) {
+        return;
+      }
+
+      btn.disabled       = true;
+      btn.style.opacity  = "0.5";
+      btn.style.cursor   = "not-allowed";
+      statusEl.textContent = "⏳ Publishing…";
+      statusEl.style.color = "#a78bfa";
+
+      try {
+        const { data, error } = await supabase.rpc("publish_tos_version", {
+          p_surface:       surface,
+          p_version:       version,
+          p_body_markdown: body,
+        });
+        if (error) throw error;
+        if (!data || data.ok !== true) {
+          throw new Error("RPC returned unexpected payload: " + JSON.stringify(data));
+        }
+
+        statusEl.innerHTML =
+          `✅ Published v${_tosEscape(data.version)} (sha256 ` +
+          `<code style="font-size:0.78rem;">${_tosEscape((data.sha256 || "").slice(0, 12))}…</code>). ` +
+          `Audit panel refreshing…`;
+        statusEl.style.color = "#10b981";
+
+        // Wipe the form so nobody accidentally re-submits the same body.
+        versionEl.value = "";
+        bodyEl.value    = "";
+        confirmEl.value = "";
+        _tosPublishRenderPreview();
+
+        // Reload the audit panel so the new version shows up everywhere.
+        await loadTosAudit();
+      } catch (e) {
+        console.error("publish_tos_version failed:", e);
+        const msg = (e && (e.message || e.hint || e.details)) || String(e);
+        statusEl.textContent = `❌ ${msg}`;
+        statusEl.style.color = "#ef4444";
+      } finally {
+        _tosPublishUpdateButton();  // re-enable if still valid, else keep disabled
+      }
+    }
+
+    // Wire up the form once on load.
+    (function _wireTosPublishForm() {
+      const versionEl   = document.getElementById("tos-publish-version");
+      const bodyEl      = document.getElementById("tos-publish-body");
+      const confirmEl   = document.getElementById("tos-publish-confirm");
+      const suggestedEl = document.getElementById("tos-publish-suggested");
+      const btn         = document.getElementById("tos-publish-btn");
+      if (!versionEl) return;  // ToS tab markup missing — no-op
+
+      versionEl.addEventListener("input", _tosPublishUpdateButton);
+      confirmEl.addEventListener("input", _tosPublishUpdateButton);
+      bodyEl.addEventListener("input",    () => {
+        _tosPublishRenderPreview();
+        _tosPublishUpdateButton();
+      });
+      suggestedEl.addEventListener("click", () => {
+        versionEl.value = suggestedEl.textContent || "";
+        _tosPublishUpdateButton();
+      });
+      btn.addEventListener("click", _tosPublishSubmit);
+    })();
 
     async function loadVersions() {
       try {
@@ -2743,6 +3005,8 @@
 
   <!-- Quill JS -->
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <!-- marked (Markdown renderer, used ONLY for the ToS publish preview pane) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <script>
   /* ── Quill init ───────────────────────────────────────────── */
   const nlQuill = new Quill('#nl-editor', {
