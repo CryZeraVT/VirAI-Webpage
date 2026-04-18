@@ -21,7 +21,9 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.18.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Pinned: older supabase-js cannot decode ES256-signed JWTs after the
+// Supabase asymmetric key migration (see issues #42244 / #42755).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.3";
 
 const stripeSecret   = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const supabaseUrl    = Deno.env.get("SUPABASE_URL") ?? "";

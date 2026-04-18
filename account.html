@@ -1138,7 +1138,11 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // Pinned to 2.103.3 — versions <2.50 cannot decode ES256-signed JWTs
+    // (Supabase asymmetric key migration). `@2` on esm.sh sometimes serves
+    // a stale cached build; pinning avoids the "Unsupported JWT algorithm
+    // ES256" error on session load.
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.3";
 
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
