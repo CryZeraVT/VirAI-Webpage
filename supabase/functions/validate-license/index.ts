@@ -39,6 +39,39 @@ async function getCurrentTosVersion(): Promise<string> {
   return data.value;
 }
 
+// Fetch the canonical Markdown body + sha256 for a given (surface, version).
+// Cached per version for the lifetime of the isolate because rows in
+// tos_versions are append-only — if the key exists, the body is immutable,
+// so we can cache forever without worrying about staleness.
+const _cachedTosBodies: Record<string, { body: string; sha: string }> = {};
+
+async function getTosBody(
+  surface: "app" | "web",
+  version: string,
+): Promise<{ body: string; sha: string }> {
+  if (!version) return { body: "", sha: "" };
+  const cacheKey = `${surface}:${version}`;
+  const hit = _cachedTosBodies[cacheKey];
+  if (hit) return hit;
+
+  const { data, error } = await supabase
+    .from("tos_versions")
+    .select("body_markdown, body_sha256")
+    .eq("surface", surface)
+    .eq("version", version)
+    .maybeSingle();
+
+  if (error || !data) {
+    // If the body row is missing for the advertised version, we treat it as
+    // "no body available" — the app will fall back to its embedded placeholder.
+    // This guarantees that a misconfigured DB NEVER blocks a valid license.
+    return { body: "", sha: "" };
+  }
+  const result = { body: data.body_markdown ?? "", sha: data.body_sha256 ?? "" };
+  _cachedTosBodies[cacheKey] = result;
+  return result;
+}
+
 serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ valid: false, message: "Method not allowed." }, 405);
@@ -94,7 +127,20 @@ serve(async (req) => {
   // If the settings lookup fails, we return tos_current_version="" which the app
   // interprets as "no ToS enforcement right now".
   let tosCurrentVersion = "";
-  try { tosCurrentVersion = await getCurrentTosVersion(); } catch (_) { tosCurrentVersion = ""; }
+  let tosBody = "";
+  let tosBodySha = "";
+  try {
+    tosCurrentVersion = await getCurrentTosVersion();
+    if (tosCurrentVersion) {
+      const b = await getTosBody("app", tosCurrentVersion);
+      tosBody = b.body;
+      tosBodySha = b.sha;
+    }
+  } catch (_) {
+    tosCurrentVersion = "";
+    tosBody = "";
+    tosBodySha = "";
+  }
 
   return jsonResponse({
     valid: true,
@@ -104,5 +150,10 @@ serve(async (req) => {
     tos_current_version:  tosCurrentVersion,
     tos_accepted_version: data.tos_version ?? null,
     tos_accepted_at:      data.tos_accepted_at ?? null,
+    // Canonical Markdown body for the current version. Clients render this
+    // via their own Markdown engine. Empty string ⇒ client should fall back
+    // to its embedded placeholder so the gate never shows blank.
+    tos_body_markdown:    tosBody,
+    tos_body_sha256:      tosBodySha,
   });
 });
