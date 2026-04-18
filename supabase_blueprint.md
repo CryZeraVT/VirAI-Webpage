@@ -1,5 +1,7 @@
 # Supabase Blueprint — AiRi / viritts.com
 > Last mapped: April 17, 2026. Update before schema changes.
+>
+> **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
 ## Project
 - URL: `https://rgigtqpesabuyaumibaj.supabase.co`
