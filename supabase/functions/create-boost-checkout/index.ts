@@ -68,7 +68,7 @@ serve(async (req) => {
     metadata: {
       license_key:   licenseKey,
       purchase_type: "token_boost",
-      tokens_added:  "3000000",
+      tokens_added:  "2000000",
     },
     success_url: `${origin}/account.html?boost=success`,
     cancel_url:  `${origin}/account.html`,

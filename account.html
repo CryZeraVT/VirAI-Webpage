@@ -2070,7 +2070,7 @@
       const boostPanel = _boostPaymentsEnabled ? `
         <div class="boost-panel" id="boost-panel-${licenseKey.replace(/[^A-Z0-9]/g, '')}">
           <h4>Need more tokens?</h4>
-          <p>3,000,000 token boost — one-time add-on, never expires.</p>
+          <p>2,000,000 token boost — one-time add-on, never expires.</p>
           <button class="btn btn-boost buy-boost-btn" data-key="${licenseKey}">
             Buy Token Boost — $5
           </button>
@@ -2169,7 +2169,7 @@
     (function checkBoostReturn() {
       const params = new URLSearchParams(window.location.search);
       if (params.get("boost") === "success") {
-        setStatus("✅ Boost purchased! 3,000,000 tokens have been added to your license.", "success");
+        setStatus("✅ Boost purchased! 2,000,000 tokens have been added to your license.", "success");
         const clean = window.location.pathname + window.location.hash;
         window.history.replaceState(null, "", clean);
       }

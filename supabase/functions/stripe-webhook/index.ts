@@ -153,7 +153,7 @@ serve(async (req) => {
     // ── Token boost purchase ────────────────────────────────────────────────
     if (session.metadata?.purchase_type === "token_boost") {
       const licenseKey = session.metadata.license_key ?? "";
-      const tokensAdded = parseInt(session.metadata.tokens_added ?? "3000000", 10);
+      const tokensAdded = parseInt(session.metadata.tokens_added ?? "2000000", 10);
 
       if (licenseKey) {
         const { error: rpcErr } = await supabase.rpc("add_boost_tokens", {

@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS public.boost_purchases (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   license_key       TEXT NOT NULL,
   stripe_session_id TEXT UNIQUE NOT NULL,
-  tokens_added      BIGINT NOT NULL DEFAULT 3000000,
+  tokens_added      BIGINT NOT NULL DEFAULT 2000000,
   created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -140,7 +140,7 @@ CREATE INDEX IF NOT EXISTS idx_boost_purchases_license_key
 -- Additive RPC — safely adds tokens to boost pool, never resets it
 CREATE OR REPLACE FUNCTION public.add_boost_tokens(
   p_license_key TEXT,
-  p_amount      BIGINT DEFAULT 3000000
+  p_amount      BIGINT DEFAULT 2000000
 ) RETURNS void
   LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
