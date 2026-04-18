@@ -21,6 +21,9 @@
 | `tier` | text | `'beta'` | **beta** / **standard** / **test** |
 | `created_at` | timestamptz | now() | |
 | `last_seen` | timestamptz | null | |
+| `cancel_at_period_end` | boolean | `false` | **Set to `true` when user has scheduled cancellation via Stripe Customer Portal. Written exclusively by `stripe-webhook` on `customer.subscription.updated` events. Cleared on reactivation (Stripe fires `.updated` with `cancel_at_period_end=false`) or on actual period-end cancellation (Stripe fires `.deleted`). License remains `status='active'` until that deletion event.** Added 2026-04-17. |
+| `current_period_end` | timestamptz | null | Mirror of Stripe `subscription.current_period_end`. The date a subscriber's paid access runs through; read by `account.html` Billing tab for the "ending on X" banner. Written by `stripe-webhook` on `customer.subscription.updated`. Added 2026-04-17. |
+| `canceled_at` | timestamptz | null | Audit-only: timestamp of `customer.subscription.deleted` (the moment access actually ended). Remains `null` while active. Added 2026-04-17. |
 
 **Tier logic:**
 - `beta` — free, tokens not counted/tracked
@@ -157,7 +160,8 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 |---|---|
 | `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota |
 | `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage) |
-| `stripe-webhook` | Handles Stripe `checkout.session.completed` → creates license + purchase record |
+| `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). |
+| `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |
 | `validate-license` | Validates license key for app activation |
 | `reset-license` | Clears `machine_id` to allow new PC binding |
 | `admin-users` | Admin: list/manage users |

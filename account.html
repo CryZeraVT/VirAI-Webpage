@@ -734,6 +734,88 @@
       box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
     }
     .btn-boost:disabled { opacity: 0.55; }
+
+    /* ── Billing Section ─────────────────────────────────── */
+    .billing-section {
+      margin-top: 24px;
+    }
+    .billing-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .billing-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .billing-card.ending {
+      border-color: rgba(245,158,11,0.35);
+      background: rgba(245,158,11,0.05);
+    }
+    .billing-card.inactive {
+      border-color: rgba(107,114,128,0.25);
+      background: rgba(107,114,128,0.04);
+    }
+    .billing-status-text {
+      font-size: 0.88rem;
+      color: #9ca3af;
+      line-height: 1.5;
+      flex: 1;
+      min-width: 200px;
+    }
+    .billing-status-text strong {
+      display: block;
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .billing-ending-banner {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.28);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      color: #fbbf24;
+      line-height: 1.5;
+    }
+    .billing-ending-banner strong {
+      color: #fcd34d;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 0.9rem;
+    }
+    .badge-billing-active  { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25);  border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .badge-billing-ending  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.28); border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .badge-billing-none    { background: rgba(107,114,128,0.12); color: #6b7280; border: 1px solid rgba(107,114,128,0.2);  border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700; }
+    .btn-stripe {
+      background: linear-gradient(135deg, #635bff, #7c3aed) !important;
+      color: #fff !important;
+      border-color: transparent !important;
+      font-size: 0.85rem !important;
+    }
+    .btn-stripe:hover:not(:disabled) {
+      opacity: 0.9;
+      box-shadow: 0 4px 18px rgba(99,91,255,0.4) !important;
+    }
+    .btn-stripe:disabled { opacity: 0.55; cursor: not-allowed; }
+    .billing-footnote {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -876,7 +958,8 @@
           <!-- ── Tab navigation ── -->
           <div class="account-tabs">
             <button class="tab-btn active" data-tab="software">💻 Software</button>
-            <button class="tab-btn" data-tab="subscription">📧 Subscription</button>
+            <button class="tab-btn" data-tab="billing">💳 Billing</button>
+            <button class="tab-btn" data-tab="newsletter">📧 Newsletter</button>
           </div>
 
           <!-- ── Software tab ── -->
@@ -900,8 +983,35 @@
 
           </div>
 
-          <!-- ── Subscription tab ── -->
-          <div class="tab-panel" id="tab-subscription">
+          <!-- ── Billing tab ── -->
+          <div class="tab-panel" id="tab-billing">
+
+            <!-- Info block -->
+            <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
+              <p style="margin:0 0 6px;font-size:0.92rem;font-weight:700;color:#e2e8f0;">Manage Your Paid Subscription</p>
+              <p style="margin:0;font-size:0.85rem;color:#9ca3af;line-height:1.6;">
+                View your current plan and manage billing through Stripe's secure portal —
+                update payment methods, download invoices, or cancel your subscription.
+                Cancellations take effect at the end of your current billing period (no refunds).
+              </p>
+            </div>
+
+            <!-- Billing status card -->
+            <div class="billing-section" id="billing-section">
+              <h3>💳 Subscription</h3>
+              <div id="billing-card-wrap">
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
+              </div>
+              <p class="billing-footnote">
+                You'll be redirected to Stripe to manage your subscription.
+                Your session is secure and short-lived.
+              </p>
+            </div>
+
+          </div>
+
+          <!-- ── Newsletter tab ── -->
+          <div class="tab-panel" id="tab-newsletter">
 
             <!-- Info block -->
             <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
@@ -1388,6 +1498,7 @@
             if (_currentUser) {
               try { await loadKeys(_currentUser); } catch (e) { console.warn(e); }
               try { loadNewsletter(_currentUser).catch(console.warn); } catch (e) { console.warn(e); }
+              try { loadBilling(_currentUser).catch(console.warn); } catch (e) { console.warn(e); }
             }
           } catch (err) {
             console.error("accept_tos error:", err);
@@ -1480,6 +1591,7 @@
 
         await loadKeys(user);
         loadNewsletter(user).catch(console.warn);
+        loadBilling(user).catch(console.warn);
       } catch (err) {
         console.error("enterSignedIn error:", err);
       } finally {
@@ -1704,6 +1816,7 @@
         $("signed-in-sub").textContent = "AiRi Beta";
         $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
         $("newsletter-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
+        if ($("billing-card-wrap")) $("billing-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
         // Reset tabs to Software on sign-out
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "software"));
         document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-software"));
@@ -2070,6 +2183,175 @@
         document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${target}`));
       });
     });
+
+    // ── Billing (paid subscription) ───────────────────────────────
+    // Reads the caller's licenses to decide what the Billing card shows:
+    //   - No paid licenses  → "Beta / no paid plan" state
+    //   - Active + cancel_at_period_end=false → Active card + Manage button
+    //   - Active + cancel_at_period_end=true  → Ending banner + Manage button (lets them undo)
+    //   - All licenses inactive                → Inactive state
+    //
+    // "Manage" calls the create-billing-portal-session edge function,
+    // which derives stripe_customer_id from the caller's JWT and returns
+    // a Stripe portal URL. We never touch customer_id on the client.
+    async function loadBilling(user) {
+      const wrap = $("billing-card-wrap");
+      if (!wrap) return;
+      if (!user?.email) { wrap.innerHTML = ""; return; }
+
+      const token = _currentSession?.access_token;
+      if (!token) {
+        wrap.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Sign in again to view billing.</div>`;
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({
+          select: "license_key,status,tier,cancel_at_period_end,current_period_end,canceled_at",
+          email: `ilike.${user.email}`,
+          order: "created_at.desc",
+        });
+        const res = await withTimeout(
+          fetch(`${SUPABASE_URL}/rest/v1/licenses?${params.toString()}`, {
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${token}`,
+            },
+          }),
+          8000, "Billing query timed out"
+        );
+
+        if (!res.ok) {
+          wrap.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;color:#f87171;">Could not load billing (${res.status}).</div>`;
+          return;
+        }
+
+        const licenses = await res.json();
+        const paid = Array.isArray(licenses)
+          ? licenses.filter(l => l.tier === "standard")
+          : [];
+
+        // No paid subscription found at all (beta-only or brand-new account)
+        if (paid.length === 0) {
+          wrap.innerHTML = `
+            <div class="billing-card inactive">
+              <div class="billing-status-text">
+                <strong>Plan <span class="badge-billing-none">BETA / FREE</span></strong>
+                You don't have an active paid subscription on this account.
+              </div>
+            </div>`;
+          return;
+        }
+
+        // Prefer the first active paid license for display; fall back to most recent
+        const active = paid.find(l => l.status === "active") || paid[0];
+        const isActive    = active.status === "active";
+        const pendingEnd  = !!active.cancel_at_period_end;
+        const periodEnd   = active.current_period_end
+          ? new Date(active.current_period_end)
+          : null;
+        const periodEndFmt = periodEnd
+          ? periodEnd.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+          : null;
+
+        // CASE: Active and pending cancellation at period end → warning banner + still let them undo via portal
+        if (isActive && pendingEnd) {
+          wrap.innerHTML = `
+            <div class="billing-ending-banner">
+              <strong>⚠️ Subscription canceled — ending ${periodEndFmt || "soon"}</strong>
+              Your AiRi subscription will remain active until <strong style="display:inline;color:#fcd34d;">${periodEndFmt || "your current period ends"}</strong>.
+              After that your license will be deactivated. No refunds are issued for unused time.
+              You can reactivate at any time before that date via the Stripe portal.
+            </div>
+            <div class="billing-card ending">
+              <div class="billing-status-text">
+                <strong>Plan <span class="badge-billing-ending">CANCELING</span></strong>
+                Standard plan — access ends ${periodEndFmt || "at period end"}.
+              </div>
+              <button id="manage-billing-btn" class="btn btn-stripe">
+                Reactivate / Manage →
+              </button>
+            </div>`;
+        // CASE: Active and not pending cancellation
+        } else if (isActive) {
+          wrap.innerHTML = `
+            <div class="billing-card">
+              <div class="billing-status-text">
+                <strong>Plan <span class="badge-billing-active">ACTIVE</span></strong>
+                Standard plan — ${periodEndFmt ? `renews ${periodEndFmt}` : "recurring subscription"}.
+              </div>
+              <button id="manage-billing-btn" class="btn btn-stripe">
+                Manage Subscription →
+              </button>
+            </div>`;
+        // CASE: Inactive (period already ended, or payment failed and Stripe gave up)
+        } else {
+          const canceledAt = active.canceled_at
+            ? new Date(active.canceled_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+            : null;
+          wrap.innerHTML = `
+            <div class="billing-card inactive">
+              <div class="billing-status-text">
+                <strong>Plan <span class="badge-billing-none">INACTIVE</span></strong>
+                Your subscription is no longer active${canceledAt ? ` (ended ${canceledAt})` : ""}.
+                You can view past invoices or resubscribe via Stripe.
+              </div>
+              <button id="manage-billing-btn" class="btn btn-stripe">
+                View Billing History →
+              </button>
+            </div>`;
+        }
+
+        const manageBtn = $("manage-billing-btn");
+        if (manageBtn) manageBtn.addEventListener("click", handleOpenBillingPortal);
+
+      } catch (err) {
+        console.error("loadBilling error:", err);
+        wrap.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;color:#f87171;">Could not load billing.</div>`;
+      }
+    }
+
+    async function handleOpenBillingPortal() {
+      const btn = $("manage-billing-btn");
+      if (!btn) return;
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Opening Stripe…";
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setStatus("Session expired — please sign in again.", "error");
+          showView("view-signed-out");
+          return;
+        }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-billing-portal-session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({}),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success && data.url) {
+          // Redirect in the same tab — Stripe's portal return_url brings them back to /account.html
+          window.location.href = data.url;
+        } else {
+          setStatus(data.message || `Could not open billing portal (${res.status}).`, "error");
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
+      } catch (err) {
+        console.error("Billing portal error:", err);
+        setStatus("Network error. Please try again.", "error");
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
 
     // ── Newsletter ────────────────────────────────────────────────
     async function loadNewsletter(user) {

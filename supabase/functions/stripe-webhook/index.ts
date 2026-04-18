@@ -44,6 +44,51 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid signature" }, 400);
   }
 
+  // ── Subscription updated (user toggled cancel_at_period_end in the portal, etc.) ──
+  // Fired on every subscription state change. We track:
+  //   - cancel_at_period_end : true when user has scheduled cancellation,
+  //                            false when they reactivated before period end
+  //   - current_period_end   : the date their paid access runs through
+  //
+  // We do NOT flip licenses.status here — the subscription is still active
+  // until `customer.subscription.deleted` fires at period end.
+  if (event.type === "customer.subscription.updated") {
+    const sub = event.data.object as Stripe.Subscription;
+
+    const { data: purchase } = await supabase
+      .from("purchases")
+      .select("license_key")
+      .eq("stripe_subscription_id", sub.id)
+      .maybeSingle();
+
+    const licenseKey = purchase?.license_key ?? "";
+    if (licenseKey) {
+      const periodEndIso = sub.current_period_end
+        ? new Date(sub.current_period_end * 1000).toISOString()
+        : null;
+
+      const { error } = await supabase
+        .from("licenses")
+        .update({
+          cancel_at_period_end: !!sub.cancel_at_period_end,
+          current_period_end: periodEndIso,
+        })
+        .eq("license_key", licenseKey);
+
+      if (error) {
+        console.error("Failed to update subscription state:", error);
+      } else {
+        console.log(
+          `Subscription state updated: ${licenseKey} cancel_at_period_end=${sub.cancel_at_period_end} period_end=${periodEndIso}`
+        );
+      }
+    } else {
+      console.warn("subscription.updated: no purchase record for sub", sub.id);
+    }
+
+    return jsonResponse({ received: true });
+  }
+
   // ── Subscription cancelled / ended ──────────────────────────────────────
   if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
@@ -59,7 +104,11 @@ serve(async (req) => {
     if (licenseKey) {
       const { error } = await supabase
         .from("licenses")
-        .update({ status: "inactive" })
+        .update({
+          status: "inactive",
+          canceled_at: new Date().toISOString(),
+          cancel_at_period_end: false, // scheduled cancel has now taken effect
+        })
         .eq("license_key", licenseKey);
       if (error) console.error("Failed to deactivate license on cancellation:", error);
       else console.log("License deactivated on subscription cancellation:", licenseKey);
