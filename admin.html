@@ -864,7 +864,7 @@
           <!-- Current versions strip -->
           <div class="admin-section" style="margin-bottom:22px;">
             <div class="admin-section-title">Current Published Versions</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
               <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 16px;">
                 <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">In-App EULA</div>
                 <div style="font-size:1.35rem;font-weight:700;color:#e2e8f0;margin-top:4px;" id="tos-app-current-version">—</div>
@@ -873,9 +873,23 @@
               <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 16px;">
                 <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Website ToS</div>
                 <div style="font-size:1.35rem;font-weight:700;color:#e2e8f0;margin-top:4px;" id="tos-web-current-version">—</div>
-                <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">hardcoded in account.html (CURRENT_TOS_VERSION)</div>
+                <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">
+                  <a href="/terms.html" target="_blank" rel="noopener" style="color:#06b6d4;">/terms.html</a>
+                  · site_settings.web_current_version
+                </div>
+              </div>
+              <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 16px;">
+                <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Privacy Notice</div>
+                <div style="font-size:1.35rem;font-weight:700;color:#e2e8f0;margin-top:4px;" id="tos-privacy-current-version">—</div>
+                <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">
+                  <a href="/privacy.html" target="_blank" rel="noopener" style="color:#06b6d4;">/privacy.html</a>
+                  · site_settings.privacy_current_version
+                </div>
               </div>
             </div>
+            <p style="margin-top:14px;font-size:0.76rem;color:#6b7280;">
+              Privacy Notice is a unilateral notice — there is no per-user acceptance to track. Version bumps just refresh the published document.
+            </p>
           </div>
 
           <!-- ───────────────────────────────────────────────────────────
@@ -912,8 +926,14 @@
                 </div>
                 <div class="form-group">
                   <label>Surface</label>
-                  <input id="tos-publish-surface" type="text" class="form-input" value="app" readonly style="opacity:0.7;cursor:not-allowed;">
-                  <p style="font-size:0.78rem;color:#6b7280;margin-top:4px;">Website ToS is hardcoded; use a code deploy for that.</p>
+                  <select id="tos-publish-surface" class="form-input" style="appearance:auto;">
+                    <option value="app">In-App EULA (forces re-accept on next launch)</option>
+                    <option value="web">Website ToS (forces re-accept at next sign-in)</option>
+                    <option value="privacy">Privacy Notice (no acceptance; informational)</option>
+                  </select>
+                  <p id="tos-publish-surface-hint" style="font-size:0.78rem;color:#6b7280;margin-top:4px;">
+                    Publishes to <code>tos_versions</code> + flips <code>site_settings.app_tos_current_version</code>.
+                  </p>
                 </div>
               </div>
 
@@ -1286,14 +1306,22 @@
 
     // ── ToS / EULA Audit (READ-ONLY) ─────────────────────────────
     //
-    // LEGAL SURFACE — do not add write operations here without review.
-    // All queries below are SELECT-only. Version bumps happen via SQL.
+    // LEGAL SURFACE — write-gated by publish_tos_version RPC (admin-only).
+    // Everything else on this panel is SELECT-only.
     //
-    // Must stay in sync with the constant of the same name in account.html.
-    // If someone ships a new website ToS version, both files need updating.
-    // (Kept hardcoded intentionally — we don't want a missed-deploy / DB-edit
-    // to silently change displayed legal status in the audit panel.)
-    const WEB_TOS_CURRENT_VERSION_HARDCODED = "1.0";
+    // Pointer keys in site_settings:
+    //   app     → app_tos_current_version
+    //   web     → web_current_version
+    //   privacy → privacy_current_version
+    //
+    // These values are loaded on every audit refresh so the UI never
+    // drifts from truth (no more hardcoded WEB_TOS_CURRENT_VERSION).
+    const TOS_POINTER_KEYS = {
+      app:     "app_tos_current_version",
+      web:     "web_current_version",
+      privacy: "privacy_current_version",
+    };
+    const TOS_CURRENT_VERSIONS = { app: "", web: "", privacy: "" };
 
     function _tosEscape(s) {
       return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -1366,23 +1394,32 @@
       webBreakdownEl.innerHTML  = "";
       recentEl.innerHTML        = `<div style="text-align:center;padding:26px;color:#4b5563;">Loading…</div>`;
 
-      // ── 1. Current published app EULA version (site_settings row) ──
-      let appCurrentVersion = "";
+      // ── 1. Load current pointers for all three surfaces in one round-trip ──
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("site_settings")
-          .select("value")
-          .eq("key", "app_tos_current_version")
-          .maybeSingle();
-        appCurrentVersion = (data?.value || "").trim();
+          .select("key,value")
+          .in("key", Object.values(TOS_POINTER_KEYS));
+        if (error) throw error;
+        const byKey = {};
+        (data || []).forEach(r => { byKey[r.key] = (r.value || "").trim(); });
+        TOS_CURRENT_VERSIONS.app     = byKey[TOS_POINTER_KEYS.app]     || "";
+        TOS_CURRENT_VERSIONS.web     = byKey[TOS_POINTER_KEYS.web]     || "";
+        TOS_CURRENT_VERSIONS.privacy = byKey[TOS_POINTER_KEYS.privacy] || "";
       } catch (e) {
-        console.warn("Could not read app_tos_current_version:", e);
+        console.warn("Could not read ToS pointers:", e);
       }
-      appVersionEl.textContent = appCurrentVersion || "(not set)";
-      webVersionEl.textContent = WEB_TOS_CURRENT_VERSION_HARDCODED || "(not set)";
+      const appCurrentVersion     = TOS_CURRENT_VERSIONS.app;
+      const webCurrentVersion     = TOS_CURRENT_VERSIONS.web;
+      const privacyCurrentVersion = TOS_CURRENT_VERSIONS.privacy;
 
-      // Keep the publish form's hints in sync with the latest current version.
-      _tosPublishSyncCurrent(appCurrentVersion);
+      appVersionEl.textContent = appCurrentVersion     || "(not set)";
+      webVersionEl.textContent = webCurrentVersion     || "(not set)";
+      const privacyVersionEl = document.getElementById("tos-privacy-current-version");
+      if (privacyVersionEl) privacyVersionEl.textContent = privacyCurrentVersion || "(not set)";
+
+      // Re-sync the publish form's hints for whichever surface is selected.
+      _tosPublishSyncCurrent();
 
       // ── 2. Licenses (active only) — aggregate client-side ──────────
       try {
@@ -1430,9 +1467,9 @@
         for (const r of profRows) {
           const v = r.tos_version || "";
           versions[v] = (versions[v] || 0) + 1;
-          if (!v)                                                  neverAccepted++;
-          else if (v === WEB_TOS_CURRENT_VERSION_HARDCODED)        acceptedCurrent++;
-          else                                                     acceptedPrior++;
+          if (!v)                                          neverAccepted++;
+          else if (v === webCurrentVersion)                acceptedCurrent++;
+          else                                             acceptedPrior++;
         }
 
         webStatsEl.innerHTML =
@@ -1440,7 +1477,7 @@
           + _tosStatCard("Accepted Current", acceptedCurrent, "#10b981")
           + _tosStatCard("Prior Version",    acceptedPrior,   "#f59e0b")
           + _tosStatCard("Never Accepted",   neverAccepted,   "#ef4444");
-        webBreakdownEl.innerHTML = _tosVersionBreakdown(versions, WEB_TOS_CURRENT_VERSION_HARDCODED);
+        webBreakdownEl.innerHTML = _tosVersionBreakdown(versions, webCurrentVersion);
       } catch (e) {
         webStatsEl.innerHTML = `<div style="text-align:center;padding:26px;color:#ef4444;grid-column:1/-1;">Failed to load profile stats: ${_tosEscape(e.message || e)}</div>`;
       }
@@ -1529,7 +1566,7 @@
     // from the console), the server still re-checks admin + monotonicity.
     // ════════════════════════════════════════════════════════════════════
 
-    let _tosPublishCurrent = "";   // last known current version (for guardrails)
+    let _tosPublishCurrent = "";   // last known current version for the SELECTED surface
 
     function _tosSuggestNextVersion(current) {
       // Accept dot-numeric only; if current is invalid/empty, suggest 1.0.
@@ -1552,13 +1589,36 @@
       return 0;
     }
 
-    function _tosPublishSyncCurrent(current) {
-      _tosPublishCurrent = (current || "").trim();
+    function _tosGetSelectedSurface() {
+      const sel = document.getElementById("tos-publish-surface");
+      return sel ? (sel.value || "app") : "app";
+    }
+
+    // Re-run whenever: audit refresh completes, or user changes the surface
+    // dropdown. Reads current pointer value out of TOS_CURRENT_VERSIONS
+    // (populated by loadTosAudit) so the form always reflects fresh truth.
+    function _tosPublishSyncCurrent() {
+      const surface   = _tosGetSelectedSurface();
+      _tosPublishCurrent = (TOS_CURRENT_VERSIONS[surface] || "").trim();
       const suggested = _tosSuggestNextVersion(_tosPublishCurrent);
-      const curEl       = document.getElementById("tos-publish-current");
-      const sugEl       = document.getElementById("tos-publish-suggested");
+      const curEl     = document.getElementById("tos-publish-current");
+      const sugEl     = document.getElementById("tos-publish-suggested");
+      const hintEl    = document.getElementById("tos-publish-surface-hint");
       if (curEl) curEl.textContent = _tosPublishCurrent || "(not set)";
       if (sugEl) sugEl.textContent = suggested;
+      if (hintEl) {
+        // Surface-specific reminder of what the publish will do.
+        const ptr = TOS_POINTER_KEYS[surface];
+        const extras = {
+          app:     "Every active license will be forced to re-accept on next app launch.",
+          web:     "Every profile whose tos_version != new version will be gated on next sign-in.",
+          privacy: "No acceptance is tracked — this just updates the published document.",
+        };
+        hintEl.innerHTML =
+          `Publishes to <code>tos_versions</code> + flips ` +
+          `<code>site_settings.${ptr}</code>.<br>` +
+          `<span style="color:#a78bfa;">${extras[surface] || ""}</span>`;
+      }
       _tosPublishUpdateButton();
     }
 
@@ -1624,9 +1684,20 @@
       const surface = (surfaceEl.value || "app").trim();
 
       // Belt & braces second confirmation — cheap, stops the fat-finger path.
+      // Different surfaces have different blast radii, so the prompt adapts.
+      const surfaceLabel = {
+        app:     "In-App EULA",
+        web:     "Website Terms of Service",
+        privacy: "Privacy Notice",
+      }[surface] || surface.toUpperCase();
+      const impactLine = {
+        app:     "• Every active license will be blocked at next app launch until the user re-accepts.",
+        web:     "• Every profile with tos_version != new version will be gated at next sign-in.",
+        privacy: "• Informational update only — no re-acceptance is triggered.",
+      }[surface] || "";
       if (!window.confirm(
-        `Publish new ${surface.toUpperCase()} EULA version ${version}?\n\n` +
-        `• Every active user will be blocked at next launch until they re-accept.\n` +
+        `Publish new ${surfaceLabel} version ${version}?\n\n` +
+        `${impactLine}\n` +
         `• This cannot be undone (tos_versions is append-only).\n\n` +
         `Continue?`
       )) {
@@ -1680,6 +1751,7 @@
       const bodyEl      = document.getElementById("tos-publish-body");
       const confirmEl   = document.getElementById("tos-publish-confirm");
       const suggestedEl = document.getElementById("tos-publish-suggested");
+      const surfaceEl   = document.getElementById("tos-publish-surface");
       const btn         = document.getElementById("tos-publish-btn");
       if (!versionEl) return;  // ToS tab markup missing — no-op
 
@@ -1693,6 +1765,16 @@
         versionEl.value = suggestedEl.textContent || "";
         _tosPublishUpdateButton();
       });
+      // When the surface dropdown changes: re-sync the "current"/"suggested"
+      // hints and the per-surface warning; clear the version input to
+      // force a conscious choice rather than carrying it across surfaces.
+      if (surfaceEl) {
+        surfaceEl.addEventListener("change", () => {
+          versionEl.value = "";
+          confirmEl.value = "";
+          _tosPublishSyncCurrent();
+        });
+      }
       btn.addEventListener("click", _tosPublishSubmit);
     })();
 

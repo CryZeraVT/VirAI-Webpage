@@ -108,8 +108,16 @@ RLS: enabled. Policies:
 - `announcements` — in-app announcements
 - `beta_signups` — beta waitlist (28 entries)
 - `r2_versions` — download versions/URLs from R2 storage
-- `site_settings` — site-level config
+- `site_settings` — site-level config (see below for ToS-related keys)
 - `subscription_plans` — plan pricing reference
+- `tos_versions` — append-only store of legal document bodies, keyed by `(surface, version)`. Surfaces: `app`, `web`, `privacy`. `body_sha256` is computed by trigger; UPDATE/DELETE blocked by `tos_versions_block_mutations()`. Public SELECT allowed (legal docs are public by design).
+
+### `site_settings` keys used by ToS surfaces
+| key | purpose |
+|---|---|
+| `app_tos_current_version`     | Pointer → current In-App EULA version. Read by `validate-license` edge function, written by `publish_tos_version('app', …)` RPC. |
+| `web_current_version`         | Pointer → current Website Terms version. Read by `account.html` + `terms.html` + `admin.html`. |
+| `privacy_current_version`     | Pointer → current Privacy Notice version. Read by `privacy.html` + `admin.html`. Privacy is a *notice*, not a contract — no acceptance tracked. |
 
 ---
 
@@ -133,10 +141,13 @@ Trigger function — creates `profiles` row on new auth user signup.
 
 ### `publish_tos_version(p_surface text, p_version text, p_body_markdown text)`
 `SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Atomically:
-1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger),
-2. UPSERTs `public.site_settings` with key `<surface>_tos_current_version` → new version.
+1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger `tos_versions_set_sha()` which qualifies `extensions.digest()` explicitly because pgcrypto lives in the `extensions` schema),
+2. UPSERTs the matching `public.site_settings` pointer:
+   - `app`     → `app_tos_current_version`
+   - `web`     → `web_current_version`
+   - `privacy` → `privacy_current_version`
 
-Validation: surface must be `'app'` or `'web'`; version must match `^\d+(\.\d+)*$` and be strictly greater than the current version; body ≤ 64 KB; `(surface, version)` must not already exist. Returns `{ok, surface, version, sha256}`. EXECUTE granted to `authenticated` only (`anon` explicitly revoked). Called by the "Publish New In-App EULA Version" panel in `admin.html` with a typed-confirmation UI guard on top.
+Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a table CHECK constraint); version must match `^\d+(\.\d+)*$` and be strictly greater than the current version; body ≤ 64 KB; `(surface, version)` must not already exist. Returns `{ok, surface, version, sha256}`. EXECUTE granted to `authenticated` only (`anon` explicitly revoked). Called by the "Publish New … Version" panel in `admin.html` with a typed-confirmation UI guard and a surface dropdown on top.
 
 ---
 

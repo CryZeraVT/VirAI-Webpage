@@ -822,6 +822,12 @@
                 I have read and agree to the AiRi Terms of Service.
               </label>
             </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:-6px;margin-bottom:4px;">
+              Prefer a dedicated page?
+              <a href="terms.html" target="_blank" rel="noopener" style="color:var(--cyan);">Open full Terms</a>
+              ·
+              <a href="privacy.html" target="_blank" rel="noopener" style="color:var(--cyan);">Privacy Notice</a>
+            </div>
 
             <button id="sign-up" class="btn" style="width:100%;margin-top:8px;" disabled>Create Account</button>
 
@@ -967,6 +973,8 @@
             <a href="changelog.html">Changelog</a>
             <a href="vircast.html">VirCast</a>
             <a href="account.html">Account</a>
+            <a href="terms.html">Terms</a>
+            <a href="privacy.html">Privacy</a>
             <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
           </div>
           <div style="font-size:0.8rem;color:var(--text-dim);">© 2026 VirForge Software. All rights reserved.</div>
@@ -1016,6 +1024,9 @@
   })();
   </script>
 
+  <!-- marked: Markdown renderer for the DB-driven ToS body -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -1046,68 +1057,84 @@
     // ── Helpers ──────────────────────────────────────────────────
     const $ = (id) => document.getElementById(id);
 
-    // ── Terms of Service ─────────────────────────────────────────
-    // Bump CURRENT_TOS_VERSION whenever the text below materially changes;
-    // every user whose profiles.tos_version != this value will be re-gated
-    // on next sign-in and forced to re-accept.
-    const CURRENT_TOS_VERSION = "1.0";
+    // ── Terms of Service (DB-driven) ─────────────────────────────
+    // Single source of truth: public.tos_versions (surface='web') +
+    // public.site_settings (key='web_current_version').
+    //
+    // Any authenticated admin can publish new versions from admin.html →
+    // ToS Audit & Publish. This page just reads whatever the pointer
+    // says is current. Bumping the pointer forces every existing user
+    // to re-accept on next sign-in automatically.
+    //
+    // CURRENT_TOS_VERSION and CURRENT_TOS_BODY_MARKDOWN are initially
+    // null; callers must await `fetchCurrentWebToS()` (or call a
+    // function that does, e.g. `renderTosInto`) before using them.
+    let CURRENT_TOS_VERSION       = null;
+    let CURRENT_TOS_BODY_MARKDOWN = null;
+    let _tosLoadPromise           = null;
 
-    // !!! PLACEHOLDER — replace with final legal copy. Plain HTML, safe subset only.
-    const TOS_PLACEHOLDER_HTML = `
-      <h4>1. Placeholder Section — Acceptance of Terms</h4>
-      <p>By creating an account or continuing to use AiRi (the "Service"), provided by VirForge, you agree
-      to be bound by these Terms of Service. <em>Replace this paragraph with your finalised acceptance clause.</em></p>
+    async function fetchCurrentWebToS() {
+      if (_tosLoadPromise) return _tosLoadPromise;
+      _tosLoadPromise = (async () => {
+        const headers = { "apikey": SUPABASE_ANON_KEY, "Accept": "application/json" };
+        // Pointer → current published version for the 'web' surface.
+        const ptrRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/site_settings?key=eq.web_current_version&select=value`,
+          { headers }
+        );
+        if (!ptrRes.ok) throw new Error(`site_settings fetch ${ptrRes.status}`);
+        const ptr = await ptrRes.json();
+        const version = (ptr[0]?.value || "").trim();
+        if (!version) throw new Error("No web_current_version pointer set");
 
-      <h4>2. Placeholder Section — Eligibility &amp; Account</h4>
-      <p>You must be at least the age of majority in your jurisdiction, and you are responsible for the
-      security of your credentials and all activity under your account. <em>Replace with final account-use terms.</em></p>
+        // Body for that version.
+        const verRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/tos_versions` +
+          `?surface=eq.web&version=eq.${encodeURIComponent(version)}` +
+          `&select=version,body_markdown,body_sha256`,
+          { headers }
+        );
+        if (!verRes.ok) throw new Error(`tos_versions fetch ${verRes.status}`);
+        const rows = await verRes.json();
+        const row = rows[0];
+        if (!row) throw new Error(`tos_versions row for web v${version} missing`);
 
-      <h4>3. Placeholder Section — Acceptable Use</h4>
-      <p>You agree not to misuse the Service, including by violating applicable law, infringing others' rights,
-      or attempting to probe, scan, or reverse-engineer the platform outside of authorised research channels.
-      <em>Replace with the finalised acceptable-use clause.</em></p>
+        CURRENT_TOS_VERSION       = row.version;
+        CURRENT_TOS_BODY_MARKDOWN = row.body_markdown || "";
+      })();
+      // Reset the cached promise on failure so retries are possible.
+      _tosLoadPromise.catch(() => { _tosLoadPromise = null; });
+      return _tosLoadPromise;
+    }
 
-      <h4>4. Placeholder Section — AI Output &amp; Third-Party Models</h4>
-      <p>AiRi may route requests through third-party AI providers. Generated output is provided on an "as is"
-      basis; you are responsible for reviewing anything you publish publicly. <em>Replace with final AI/usage clause.</em></p>
+    // Kick off the fetch immediately; renders that land after the DOM is
+    // ready will usually find this already resolved.
+    fetchCurrentWebToS().catch(e => console.warn("web ToS prefetch failed:", e));
 
-      <h4>5. Placeholder Section — Subscription, Billing &amp; Refunds</h4>
-      <p>Paid tiers are billed through our payment processor. Cancellations and refund eligibility are
-      described at <a href="https://viritts.com/buy.html" target="_blank" rel="noopener">viritts.com/buy</a>.
-      <em>Replace with final billing/refund clause.</em></p>
-
-      <h4>6. Placeholder Section — Privacy</h4>
-      <p>Our handling of personal data is described in the Privacy Policy. <em>Replace with link to final Privacy Policy.</em></p>
-
-      <h4>7. Placeholder Section — Termination</h4>
-      <p>We may suspend or terminate access for breach of these Terms. You may close your account at any time
-      from the Account page. <em>Replace with final termination clause.</em></p>
-
-      <h4>8. Placeholder Section — Disclaimers &amp; Limitation of Liability</h4>
-      <p>The Service is provided "as is" without warranties of any kind. To the fullest extent permitted by law,
-      VirForge is not liable for indirect or consequential damages. <em>Replace with final disclaimer/limitation clause.</em></p>
-
-      <h4>9. Placeholder Section — Changes</h4>
-      <p>We may update these Terms. Material changes will trigger a re-acceptance prompt the next time you sign in.
-      <em>Replace with final change-of-terms clause.</em></p>
-
-      <h4>10. Placeholder Section — Contact</h4>
-      <p>Questions? <em>Replace with final contact details / governing-law clause.</em></p>
-
-      <p style="margin-top:16px;color:var(--text-muted);font-size:0.78rem;">
-        <strong>End of Terms — v${"__VERSION__"}.</strong> By checking the box below you confirm you have
-        read and accept these Terms.
-      </p>
-    `;
-
-    function renderTosInto(containerId, versionLabelId) {
-      const html = TOS_PLACEHOLDER_HTML.replace("__VERSION__", CURRENT_TOS_VERSION);
-      const el = document.getElementById(containerId);
-      if (el) el.innerHTML = html;
-      if (versionLabelId) {
-        const lbl = document.getElementById(versionLabelId);
-        if (lbl) lbl.textContent = `v${CURRENT_TOS_VERSION}`;
+    async function renderTosInto(containerId, versionLabelId) {
+      const el  = document.getElementById(containerId);
+      const lbl = versionLabelId ? document.getElementById(versionLabelId) : null;
+      try {
+        await fetchCurrentWebToS();
+      } catch (e) {
+        console.error("renderTosInto: failed to load web ToS:", e);
+        if (el) el.innerHTML = `
+          <div style="padding:18px;color:#fca5a5;text-align:center;">
+            Could not load the Terms of Service from the server.<br>
+            <a href="terms.html" target="_blank" rel="noopener" style="color:#06b6d4;">Open the full Terms in a new tab</a>
+            or <a href="#" onclick="location.reload();return false;" style="color:#06b6d4;">refresh this page</a> to try again.
+          </div>`;
+        if (lbl) lbl.textContent = "v—";
+        return;
       }
+      // marked v11+: GFM enabled, no HTML sanitiser by default. Body is
+      // admin-authored and DB-pinned via append-only tos_versions, so
+      // there is no untrusted-content path here.
+      const html = (typeof marked !== "undefined" && marked.parse)
+        ? marked.parse(CURRENT_TOS_BODY_MARKDOWN || "", { gfm: true, breaks: false })
+        : `<pre style="white-space:pre-wrap;">${(CURRENT_TOS_BODY_MARKDOWN || "").replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>`;
+      if (el) el.innerHTML = html;
+      if (lbl) lbl.textContent = `v${CURRENT_TOS_VERSION}`;
     }
 
     /**
@@ -1172,6 +1199,9 @@
     async function recordTosAcceptance() {
       const accessToken = _currentSession?.access_token;
       if (!accessToken) throw new Error("No session");
+      // Ensure we have the current web ToS version loaded before recording acceptance.
+      await fetchCurrentWebToS();
+      if (!CURRENT_TOS_VERSION) throw new Error("Current Terms version unavailable");
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/accept_tos`, {
         method: "POST",
         headers: {
@@ -1423,6 +1453,12 @@
         if (profile?.twitch_username) {
           $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
         }
+
+        // Ensure we know what the *current* ToS version is before any
+        // gate comparison. If this fails, fall through — the gate will
+        // attempt its own load and surface a friendlier error to the user.
+        try { await fetchCurrentWebToS(); }
+        catch (e) { console.warn("Could not load current web ToS for gate check:", e?.message || e); }
 
         // If the user just signed up and we stashed a pending ToS acceptance,
         // record it now that we have a real session.
@@ -1760,6 +1796,17 @@
       // Defensive: button is disabled until checked, but double-check here too.
       if (!$("signup-tos-check").checked) {
         return setStatus("Please read and accept the Terms of Service.", "error");
+      }
+
+      // The signup ToS box uses the DB-loaded version. If that fetch never
+      // resolved (e.g. offline while the user was reading), refuse to
+      // proceed rather than record an empty/stale acceptance.
+      try { await fetchCurrentWebToS(); }
+      catch (e) {
+        return setStatus("Could not confirm current Terms version. Please refresh and try again.", "error");
+      }
+      if (!CURRENT_TOS_VERSION) {
+        return setStatus("Current Terms version unavailable. Please refresh and try again.", "error");
       }
 
       // Persist redirect intent so it survives the email confirmation round-trip
