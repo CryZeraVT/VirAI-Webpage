@@ -503,6 +503,9 @@
           <span class="tab-label">Beta Signups</span>
           <span id="beta-signups-badge" style="background:#d946ef;color:white;border-radius:10px;padding:1px 7px;font-size:0.72em;display:none;"></span>
         </button>
+        <button class="nav-tab" data-tab="tos-audit">
+          <span class="tab-icon">📜</span><span class="tab-label">ToS Audit</span>
+        </button>
         <button class="nav-tab" data-tab="newsletter">
           <span class="tab-icon">📧</span>
           <span class="tab-label">Newsletter</span>
@@ -833,6 +836,68 @@
           </div>
         </div>
 
+        <!-- Tab: ToS Audit (READ-ONLY — legal surface) -->
+        <!--
+          SAFETY: This panel is strictly read-only. There is NO UI here that
+          writes to licenses, profiles, or site_settings. Version bumps must be
+          performed via SQL by a human to keep legal publishing deliberate and
+          auditable. Do not add a "bump version" button without a formal review.
+        -->
+        <div class="tab-content" id="tab-tos-audit">
+          <div class="tab-header">
+            <div class="tab-header-row">
+              <div>
+                <h3>📜 ToS / EULA Audit</h3>
+                <p>Read-only view of acceptance state. To publish a new version, run the documented SQL migration — there is no button here by design (legal).</p>
+              </div>
+              <button id="refresh-tos-audit" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <!-- Current versions strip -->
+          <div class="admin-section" style="margin-bottom:22px;">
+            <div class="admin-section-title">Current Published Versions</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+              <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 16px;">
+                <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">In-App EULA</div>
+                <div style="font-size:1.35rem;font-weight:700;color:#e2e8f0;margin-top:4px;" id="tos-app-current-version">—</div>
+                <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">site_settings.app_tos_current_version</div>
+              </div>
+              <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 16px;">
+                <div style="font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Website ToS</div>
+                <div style="font-size:1.35rem;font-weight:700;color:#e2e8f0;margin-top:4px;" id="tos-web-current-version">—</div>
+                <div style="font-size:0.72rem;color:#6b7280;margin-top:6px;">hardcoded in account.html (CURRENT_TOS_VERSION)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- App EULA acceptance stats -->
+          <div class="admin-section" style="margin-bottom:22px;">
+            <div class="admin-section-title">🖥️ In-App EULA Acceptance (active licenses)</div>
+            <div id="tos-app-stats" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div style="text-align:center;padding:26px;color:#4b5563;grid-column:1/-1;">Loading…</div>
+            </div>
+            <div id="tos-app-version-breakdown" style="margin-top:14px;"></div>
+          </div>
+
+          <!-- Website ToS acceptance stats -->
+          <div class="admin-section" style="margin-bottom:22px;">
+            <div class="admin-section-title">🌐 Website ToS Acceptance (all profiles)</div>
+            <div id="tos-web-stats" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div style="text-align:center;padding:26px;color:#4b5563;grid-column:1/-1;">Loading…</div>
+            </div>
+            <div id="tos-web-version-breakdown" style="margin-top:14px;"></div>
+          </div>
+
+          <!-- Recent acceptance log -->
+          <div class="admin-section">
+            <div class="admin-section-title">🕒 Recent Acceptances (last 20, newest first)</div>
+            <div id="tos-recent-list">
+              <div style="text-align:center;padding:26px;color:#4b5563;">Loading…</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Tab: Newsletter -->
         <div class="tab-content" id="tab-newsletter">
           <div class="tab-header">
@@ -1139,6 +1204,235 @@
         statusEl.style.color = "#ef4444";
       }
     });
+
+    // ── ToS / EULA Audit (READ-ONLY) ─────────────────────────────
+    //
+    // LEGAL SURFACE — do not add write operations here without review.
+    // All queries below are SELECT-only. Version bumps happen via SQL.
+    //
+    // Must stay in sync with the constant of the same name in account.html.
+    // If someone ships a new website ToS version, both files need updating.
+    // (Kept hardcoded intentionally — we don't want a missed-deploy / DB-edit
+    // to silently change displayed legal status in the audit panel.)
+    const WEB_TOS_CURRENT_VERSION_HARDCODED = "1.0";
+
+    function _tosEscape(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    function _tosMaskKey(k) {
+      if (!k) return "—";
+      const s = String(k);
+      if (s.length <= 8) return s;
+      return s.slice(0, 4) + "…" + s.slice(-4);
+    }
+
+    function _tosMaskMachine(m) {
+      if (!m) return "—";
+      const s = String(m);
+      return s.length > 12 ? s.slice(0, 10) + "…" : s;
+    }
+
+    function _tosStatCard(label, value, color) {
+      const c = color || "#e2e8f0";
+      return `
+        <div style="background:#1a1030;border:1px solid #3a1f6e;border-radius:10px;padding:14px 12px;text-align:center;">
+          <div style="font-size:0.72rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">${_tosEscape(label)}</div>
+          <div style="font-size:1.6rem;font-weight:700;color:${c};margin-top:4px;">${_tosEscape(value)}</div>
+        </div>`;
+    }
+
+    function _tosVersionBreakdown(versionCounts, currentVersion) {
+      const rows = Object.entries(versionCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([v, n]) => {
+          const isCurrent = v && v === currentVersion;
+          const label = v ? `v${v}` : "(never accepted)";
+          const dot = isCurrent ? "#10b981" : (v ? "#f59e0b" : "#ef4444");
+          return `
+            <tr>
+              <td style="padding:6px 10px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dot};margin-right:8px;"></span>${_tosEscape(label)}</td>
+              <td style="padding:6px 10px;text-align:right;font-variant-numeric:tabular-nums;">${n}</td>
+            </tr>`;
+        })
+        .join("");
+      if (!rows) return "";
+      return `
+        <details style="margin-top:6px;">
+          <summary style="cursor:pointer;color:#9ca3af;font-size:0.82rem;">Show version breakdown</summary>
+          <table style="width:100%;margin-top:8px;border-collapse:collapse;background:#120826;border:1px solid #2a1550;border-radius:8px;overflow:hidden;font-size:0.85rem;color:#cbd5e1;">
+            <thead><tr style="background:#1a1030;color:#9ca3af;text-align:left;">
+              <th style="padding:8px 10px;">Version</th>
+              <th style="padding:8px 10px;text-align:right;">Count</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </details>`;
+    }
+
+    async function loadTosAudit() {
+      const appStatsEl      = document.getElementById("tos-app-stats");
+      const appBreakdownEl  = document.getElementById("tos-app-version-breakdown");
+      const webStatsEl      = document.getElementById("tos-web-stats");
+      const webBreakdownEl  = document.getElementById("tos-web-version-breakdown");
+      const recentEl        = document.getElementById("tos-recent-list");
+      const appVersionEl    = document.getElementById("tos-app-current-version");
+      const webVersionEl    = document.getElementById("tos-web-current-version");
+
+      appStatsEl.innerHTML      = `<div style="text-align:center;padding:26px;color:#4b5563;grid-column:1/-1;">Loading…</div>`;
+      webStatsEl.innerHTML      = `<div style="text-align:center;padding:26px;color:#4b5563;grid-column:1/-1;">Loading…</div>`;
+      appBreakdownEl.innerHTML  = "";
+      webBreakdownEl.innerHTML  = "";
+      recentEl.innerHTML        = `<div style="text-align:center;padding:26px;color:#4b5563;">Loading…</div>`;
+
+      // ── 1. Current published app EULA version (site_settings row) ──
+      let appCurrentVersion = "";
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "app_tos_current_version")
+          .maybeSingle();
+        appCurrentVersion = (data?.value || "").trim();
+      } catch (e) {
+        console.warn("Could not read app_tos_current_version:", e);
+      }
+      appVersionEl.textContent = appCurrentVersion || "(not set)";
+      webVersionEl.textContent = WEB_TOS_CURRENT_VERSION_HARDCODED || "(not set)";
+
+      // ── 2. Licenses (active only) — aggregate client-side ──────────
+      try {
+        const { data: licRows, error: licErr } = await supabase
+          .from("licenses")
+          .select("license_key,status,tos_version,tos_accepted_at,tos_accepted_machine_id")
+          .eq("status", "active");
+        if (licErr) throw licErr;
+
+        const total = licRows.length;
+        const versions = {};
+        let acceptedCurrent = 0;
+        let acceptedPrior   = 0;
+        let neverAccepted   = 0;
+        for (const r of licRows) {
+          const v = r.tos_version || "";
+          versions[v] = (versions[v] || 0) + 1;
+          if (!v)                               neverAccepted++;
+          else if (v === appCurrentVersion)     acceptedCurrent++;
+          else                                  acceptedPrior++;
+        }
+
+        appStatsEl.innerHTML =
+            _tosStatCard("Active Licenses", total, "#e2e8f0")
+          + _tosStatCard("Accepted Current", acceptedCurrent, "#10b981")
+          + _tosStatCard("Prior Version",    acceptedPrior,   "#f59e0b")
+          + _tosStatCard("Never Accepted",   neverAccepted,   "#ef4444");
+        appBreakdownEl.innerHTML = _tosVersionBreakdown(versions, appCurrentVersion);
+      } catch (e) {
+        appStatsEl.innerHTML = `<div style="text-align:center;padding:26px;color:#ef4444;grid-column:1/-1;">Failed to load license stats: ${_tosEscape(e.message || e)}</div>`;
+      }
+
+      // ── 3. Profiles — aggregate client-side ────────────────────────
+      try {
+        const { data: profRows, error: profErr } = await supabase
+          .from("profiles")
+          .select("id,tos_version,tos_accepted_at");
+        if (profErr) throw profErr;
+
+        const total = profRows.length;
+        const versions = {};
+        let acceptedCurrent = 0;
+        let acceptedPrior   = 0;
+        let neverAccepted   = 0;
+        for (const r of profRows) {
+          const v = r.tos_version || "";
+          versions[v] = (versions[v] || 0) + 1;
+          if (!v)                                                  neverAccepted++;
+          else if (v === WEB_TOS_CURRENT_VERSION_HARDCODED)        acceptedCurrent++;
+          else                                                     acceptedPrior++;
+        }
+
+        webStatsEl.innerHTML =
+            _tosStatCard("Total Profiles", total, "#e2e8f0")
+          + _tosStatCard("Accepted Current", acceptedCurrent, "#10b981")
+          + _tosStatCard("Prior Version",    acceptedPrior,   "#f59e0b")
+          + _tosStatCard("Never Accepted",   neverAccepted,   "#ef4444");
+        webBreakdownEl.innerHTML = _tosVersionBreakdown(versions, WEB_TOS_CURRENT_VERSION_HARDCODED);
+      } catch (e) {
+        webStatsEl.innerHTML = `<div style="text-align:center;padding:26px;color:#ef4444;grid-column:1/-1;">Failed to load profile stats: ${_tosEscape(e.message || e)}</div>`;
+      }
+
+      // ── 4. Recent acceptance log (last 20 across both surfaces) ────
+      try {
+        const [licR, profR] = await Promise.all([
+          supabase
+            .from("licenses")
+            .select("license_key,tos_version,tos_accepted_at,tos_accepted_machine_id")
+            .not("tos_accepted_at", "is", null)
+            .order("tos_accepted_at", { ascending: false })
+            .limit(20),
+          supabase
+            .from("profiles")
+            .select("id,tos_version,tos_accepted_at")
+            .not("tos_accepted_at", "is", null)
+            .order("tos_accepted_at", { ascending: false })
+            .limit(20),
+        ]);
+        if (licR.error)  throw licR.error;
+        if (profR.error) throw profR.error;
+
+        const merged = [];
+        for (const r of (licR.data || [])) {
+          merged.push({
+            surface:     "App EULA",
+            who:         _tosMaskKey(r.license_key),
+            version:     r.tos_version || "—",
+            at:          r.tos_accepted_at,
+            extra:       "machine " + _tosMaskMachine(r.tos_accepted_machine_id),
+          });
+        }
+        for (const r of (profR.data || [])) {
+          merged.push({
+            surface:     "Website",
+            who:         String(r.id || "").slice(0, 8) + "…",
+            version:     r.tos_version || "—",
+            at:          r.tos_accepted_at,
+            extra:       "",
+          });
+        }
+        merged.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+        const slice = merged.slice(0, 20);
+
+        if (!slice.length) {
+          recentEl.innerHTML = `<div style="text-align:center;padding:26px;color:#6b7280;">No acceptances recorded yet.</div>`;
+        } else {
+          const rows = slice.map(r => `
+            <tr>
+              <td style="padding:8px 10px;color:#9ca3af;">${_tosEscape(r.surface)}</td>
+              <td style="padding:8px 10px;font-family:monospace;">${_tosEscape(r.who)}</td>
+              <td style="padding:8px 10px;">v${_tosEscape(r.version)}</td>
+              <td style="padding:8px 10px;color:#9ca3af;font-size:0.82rem;">${_tosEscape(r.at || "—")}</td>
+              <td style="padding:8px 10px;color:#6b7280;font-size:0.78rem;">${_tosEscape(r.extra)}</td>
+            </tr>`).join("");
+          recentEl.innerHTML = `
+            <table style="width:100%;border-collapse:collapse;background:#120826;border:1px solid #2a1550;border-radius:8px;overflow:hidden;font-size:0.88rem;color:#cbd5e1;">
+              <thead><tr style="background:#1a1030;color:#9ca3af;text-align:left;">
+                <th style="padding:8px 10px;">Surface</th>
+                <th style="padding:8px 10px;">Subject</th>
+                <th style="padding:8px 10px;">Version</th>
+                <th style="padding:8px 10px;">Accepted At (UTC)</th>
+                <th style="padding:8px 10px;">Notes</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>`;
+        }
+      } catch (e) {
+        recentEl.innerHTML = `<div style="text-align:center;padding:26px;color:#ef4444;">Failed to load recent acceptances: ${_tosEscape(e.message || e)}</div>`;
+      }
+    }
+
+    document.getElementById("refresh-tos-audit").addEventListener("click", () => loadTosAudit());
 
     async function loadVersions() {
       try {
@@ -1452,6 +1746,7 @@
         void tabEl.offsetWidth;
         tabEl.style.animation = "";
         if (tab.dataset.tab === "newsletter") loadNewsletterSubscribers();
+        if (tab.dataset.tab === "tos-audit")  loadTosAudit();
       });
     });
 
