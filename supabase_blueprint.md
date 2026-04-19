@@ -1,5 +1,5 @@
 # Supabase Blueprint — AiRi / viritts.com
-> Last mapped: April 17, 2026. Update before schema changes.
+> Last mapped: April 18, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -29,8 +29,10 @@
 
 **Tier logic:**
 - `beta` — free, tokens not counted/tracked
-- `standard` — 2M base tokens per 30-day period, boost pool available
-- `test` — manually set, used to test quota functionality with 50k limit
+- `standard` — base tokens per 30-day period (currently **3M**, admin-editable via `system_config.tier_limits`), boost pool available
+- `test` — manually set, used to test quota functionality (currently **50k**, admin-editable via `system_config.tier_limits`)
+
+> Tier token allocations are **data-driven** since 2026-04-18. Source of truth: `public.system_config` row `key='tier_limits'` (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Edit via the **Tier Limits** tab in `admin.html` (backed by `update_tier_limits` RPC). Edge functions (`ai-proxy`, `get-quota`) cache the value for 60s, so changes go live within a minute. In-code fallback (`3_000_000 / 50_000`) protects against a missing/malformed row.
 
 RLS: enabled. Users can SELECT their own rows (`email = auth.email()`).
 
@@ -45,7 +47,7 @@ RLS: enabled. Users can SELECT their own rows (`email = auth.email()`).
 | `period_start` | timestamptz | now() | Resets every 30 days |
 | `period_end` | timestamptz | now()+30d | Auto-reset by RPC |
 | `tokens_used` | bigint | 0 | Usage in current period |
-| `base_limit` | bigint | 2,000,000 | Synced from tier by ai-proxy |
+| `base_limit` | bigint | 2,000,000 | Upserted per-call by `ai-proxy` from `system_config.tier_limits[tier]`. Column default is legacy (pre-2026-04-18); runtime value is whatever the active `tier_limits` row says (currently 3M for standard). |
 | `boost_tokens_remaining` | bigint | 0 | **Permanent boost pool** — does NOT reset on period rollover |
 | `updated_at` | timestamptz | now() | |
 
@@ -80,8 +82,24 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
 - Key/value store. Known keys:
   - `builtin_ai_provider` — legacy tester AI config
   - `proxy_ai_provider` — prod AI config (provider, model, params)
-  - `api_keys` — provider API keys object
-- 4 rows
+  - `ai_api_keys` — provider API keys object
+  - `tier_limits` — per-tier AI token allocation (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Added 2026-04-18. Written exclusively via `update_tier_limits()` RPC (admin-gated, validated, audited). Read by `admin.html` (via `get_tier_limits()`) and by `ai-proxy` / `get-quota` edge functions (direct table read, 60s in-memory cache).
+
+---
+
+### `system_config_audit`
+> Append-only audit log for every change to `system_config`. Added 2026-04-18.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigserial | PK |
+| `config_key` | text | Which key was changed (e.g. `"tier_limits"`) |
+| `old_value` | jsonb | Previous value (null on first insert) |
+| `new_value` | jsonb | Value written |
+| `changed_by` | uuid | FK → `auth.users(id)` (SET NULL on delete) |
+| `changed_at` | timestamptz | now() |
+
+Indexed on `(config_key, changed_at DESC)`. RLS: enabled. Admins (`profiles.is_admin = true`) have SELECT. No direct INSERT/UPDATE/DELETE grant — rows are written exclusively by `SECURITY DEFINER` RPCs (currently only `update_tier_limits`).
 
 ---
 
@@ -144,6 +162,23 @@ Trigger function — creates `profiles` row on new auth user signup.
 ### `accept_tos(p_version text)`
 `SECURITY DEFINER` RPC. Updates `profiles.tos_version` + `profiles.tos_accepted_at` for the calling user (`auth.uid()`). Only the `authenticated` role has EXECUTE. This is the only supported write path for ToS columns — used by `account.html` signup flow and the post-signin ToS gate modal. Client constant `CURRENT_TOS_VERSION` in `account.html` drives re-acceptance; bump it whenever the Terms text materially changes.
 
+### `get_tier_limits()`
+`SECURITY DEFINER` SQL function. Returns `jsonb` — the current `system_config.tier_limits` row, or the safe default `{"standard": 3000000, "test": 50000}` if the row is missing. EXECUTE granted to `authenticated`. Used by `admin.html` Tier Limits tab; edge functions read the table directly to maintain their own 60s cache. Added 2026-04-18.
+
+### `update_tier_limits(p_limits jsonb, p_apply_to_existing boolean DEFAULT false)`
+`SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Validates: `p_limits` must be a jsonb object; every tier must be in the whitelist `('standard', 'test')`; every value must be `> 0` and `< 100_000_000`. On success:
+1. Snapshots the existing `tier_limits` row,
+2. Upserts `system_config.tier_limits = p_limits`,
+3. Writes an audit row to `system_config_audit`,
+4. If `p_apply_to_existing = true`, for each tier in the new config runs `UPDATE public.token_quotas SET base_limit = <new> WHERE license_key IN (SELECT license_key FROM licenses WHERE tier = <tier> AND status = 'active') AND base_limit <> <new>` and accumulates the affected row count.
+
+Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE granted to `authenticated` (admin gate enforced inside). Added 2026-04-18.
+
+> **Propagation semantics:** With `p_apply_to_existing = false`, changes reach existing customers lazily via `ai-proxy` → `increment_token_quota` on their next AI call (the RPC `ON CONFLICT DO UPDATE SET base_limit = p_base_limit` upserts the per-call tier value). New purchases get the new limit on their first call. With `true`, every active customer's row is backfilled immediately — use when a decrease might otherwise let existing customers exceed the new cap within the current period.
+
+### `count_active_by_tier()`
+`SECURITY DEFINER` SQL helper. Returns `jsonb` of `{tier: active_count}` from `licenses` where `status = 'active' AND tier IS NOT NULL`. Used by the Tier Limits admin UI to show "N active" badges and to size the confirmation dialog. EXECUTE granted to `authenticated`. Added 2026-04-18.
+
 ### `publish_tos_version(p_surface text, p_version text, p_body_markdown text)`
 `SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Atomically:
 1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger `tos_versions_set_sha()` which qualifies `extensions.digest()` explicitly because pgcrypto lives in the `extensions` schema),
@@ -160,8 +195,8 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 
 | Function | Purpose |
 |---|---|
-| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota |
-| `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage) |
+| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota. Reads tier→token limits from `system_config.tier_limits` (60s in-memory cache, falls back to `{standard: 3M, test: 50k}` if missing/malformed). Passes the resolved limit to `increment_token_quota` as `p_base_limit`, which upserts it onto `token_quotas.base_limit`. |
+| `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage). Uses the same cached `system_config.tier_limits` read as `ai-proxy` for the fallback when no `token_quotas` row exists yet (new customer pre-first-call). |
 | `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). |
 | `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |
 | `validate-license` | Validates license key for app activation |

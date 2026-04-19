@@ -484,6 +484,9 @@
         <button class="nav-tab" data-tab="ai-engine">
           <span class="tab-icon">🤖</span><span class="tab-label">AI Engine</span>
         </button>
+        <button class="nav-tab" data-tab="tier-limits">
+          <span class="tab-icon">🎚️</span><span class="tab-label">Tier Limits</span>
+        </button>
         <button class="nav-tab" data-tab="api-keys">
           <span class="tab-icon">🗝️</span><span class="tab-label">API Keys</span>
         </button>
@@ -696,6 +699,66 @@
               <button id="save-prod-config" class="btn" style="background:linear-gradient(135deg,#0891b2,#06b6d4);padding:10px 24px;">💾 Save New Prod Config</button>
               <span id="prod-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
             </div>
+          </div>
+        </div>
+
+        <!-- Tab: Tier Limits ─────────────────────────────────────────────
+             Single source of truth for per-tier AI token allocations.
+             Reads via get_tier_limits() RPC; writes via update_tier_limits()
+             RPC with optional propagation to existing token_quotas rows for
+             active licenses. Every change is logged to system_config_audit.
+        -->
+        <div class="tab-content" id="tab-tier-limits">
+          <div class="tab-header">
+            <h3>🎚️ Tier Limits</h3>
+            <p>Monthly AI token allocation per tier. Used by <code style="color:#06b6d4;">ai-proxy</code> quota enforcement and the account page display. Edge functions cache this for 60 seconds, so changes go live within a minute.</p>
+          </div>
+
+          <div class="admin-section" style="border-color:rgba(6,182,212,0.3);">
+            <div class="admin-section-title" style="color:#06b6d4;">Token Allocation per Tier</div>
+
+            <div id="tier-limits-loading" style="color:#6b7280;font-size:0.9rem;padding:8px 0;">Loading…</div>
+
+            <div id="tier-limits-editor" style="display:none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>
+                    Standard Tier <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">($15/mo · <span id="tl-standard-count" style="color:#06b6d4;">—</span> active)</span>
+                  </label>
+                  <input id="tl-standard" type="number" min="1" max="99999999" step="1000" class="form-input" placeholder="3000000">
+                  <span id="tl-standard-readable" style="color:#6b7280;font-size:0.78rem;">—</span>
+                </div>
+                <div class="form-group">
+                  <label>
+                    Test Tier <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(internal · <span id="tl-test-count" style="color:#06b6d4;">—</span> active)</span>
+                  </label>
+                  <input id="tl-test" type="number" min="1" max="99999999" step="1000" class="form-input" placeholder="50000">
+                  <span id="tl-test-readable" style="color:#6b7280;font-size:0.78rem;">—</span>
+                </div>
+              </div>
+
+              <div style="background:rgba(6,182,212,0.05);border:1px solid rgba(6,182,212,0.2);border-radius:8px;padding:12px;margin:14px 0;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;">
+                  <input id="tl-apply-existing" type="checkbox" style="width:18px;height:18px;cursor:pointer;">
+                  <span style="color:#d1d5db;font-size:0.9rem;">
+                    <strong style="color:#06b6d4;">Apply to existing customers immediately</strong><br>
+                    <span style="color:#6b7280;font-size:0.82rem;">When off, new limits apply only to new purchases and to existing customers on their next AI call (via quota upsert). When on, every active customer's <code>base_limit</code> is backfilled right now.</span>
+                  </span>
+                </label>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+                <button id="tl-save-btn" class="btn" style="background:linear-gradient(135deg,#06b6d4,#0891b2);padding:10px 24px;">💾 Save Tier Limits</button>
+                <button id="tl-refresh-btn" class="btn btn-secondary" style="padding:10px 18px;">↻ Refresh</button>
+                <span id="tl-status" style="font-size:0.85rem;color:#4b5563;"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-section" style="border-color:rgba(167,139,250,0.25);">
+            <div class="admin-section-title" style="color:#a78bfa;">Change History</div>
+            <p style="color:#6b7280;font-size:0.85rem;margin-bottom:10px;">Last 20 changes to tier limits. Append-only audit log.</p>
+            <div id="tier-limits-audit" style="color:#6b7280;font-size:0.85rem;">Loading…</div>
           </div>
         </div>
 
@@ -2114,8 +2177,9 @@
         tabEl.style.animation = "none";
         void tabEl.offsetWidth;
         tabEl.style.animation = "";
-        if (tab.dataset.tab === "newsletter") loadNewsletterSubscribers();
-        if (tab.dataset.tab === "tos-audit")  loadTosAudit();
+        if (tab.dataset.tab === "newsletter")   loadNewsletterSubscribers();
+        if (tab.dataset.tab === "tos-audit")    loadTosAudit();
+        if (tab.dataset.tab === "tier-limits")  loadTierLimits();
       });
     });
 
@@ -2907,6 +2971,214 @@
     document.getElementById("refresh-newsletter").addEventListener("click", loadNewsletterSubscribers);
     document.getElementById("nl-aud-subs")?.addEventListener("change", recomputeTotalRecipients);
     document.getElementById("nl-aud-beta")?.addEventListener("change", recomputeTotalRecipients);
+
+    // ── Tier Limits ──────────────────────────────────────────────────────────
+    // Reads/writes the system_config.tier_limits row via admin RPCs.
+    // All validation happens server-side in update_tier_limits(); the UI
+    // does inline bounds checks only to improve UX.
+
+    function formatTokensReadable(n) {
+      const num = Number(n);
+      if (!Number.isFinite(num) || num <= 0) return "—";
+      if (num >= 1_000_000) return `≈ ${(num / 1_000_000).toFixed(2).replace(/\.?0+$/, "")}M tokens`;
+      if (num >= 1_000)     return `≈ ${(num / 1_000).toFixed(1).replace(/\.?0+$/, "")}K tokens`;
+      return `${num} tokens`;
+    }
+
+    function wireTierReadableEcho() {
+      const s = document.getElementById("tl-standard");
+      const t = document.getElementById("tl-test");
+      const sr = document.getElementById("tl-standard-readable");
+      const tr = document.getElementById("tl-test-readable");
+      if (s && sr) s.addEventListener("input", () => sr.textContent = formatTokensReadable(s.value));
+      if (t && tr) t.addEventListener("input", () => tr.textContent = formatTokensReadable(t.value));
+    }
+    wireTierReadableEcho();
+
+    async function loadTierLimits() {
+      const loadingEl = document.getElementById("tier-limits-loading");
+      const editorEl  = document.getElementById("tier-limits-editor");
+      const statusEl  = document.getElementById("tl-status");
+      statusEl.textContent = "";
+
+      try {
+        // Current config via SECURITY DEFINER helper (safe default if row missing).
+        const { data: limits, error: limErr } = await supabase.rpc("get_tier_limits");
+        if (limErr) throw limErr;
+
+        // Active customer counts per tier — populates the inline "(N active)" badges.
+        const { data: counts, error: cntErr } = await supabase.rpc("count_active_by_tier");
+        if (cntErr) throw cntErr;
+
+        const limObj = (limits && typeof limits === "object") ? limits : {};
+        const cntObj = (counts && typeof counts === "object") ? counts : {};
+
+        const sVal = Number(limObj.standard ?? 3_000_000);
+        const tVal = Number(limObj.test     ?? 50_000);
+
+        document.getElementById("tl-standard").value = sVal;
+        document.getElementById("tl-test").value     = tVal;
+        document.getElementById("tl-standard-readable").textContent = formatTokensReadable(sVal);
+        document.getElementById("tl-test-readable").textContent     = formatTokensReadable(tVal);
+        document.getElementById("tl-standard-count").textContent = cntObj.standard ?? 0;
+        document.getElementById("tl-test-count").textContent     = cntObj.test     ?? 0;
+
+        loadingEl.style.display = "none";
+        editorEl.style.display  = "";
+
+        loadTierLimitsAudit().catch(() => {});
+      } catch (err) {
+        loadingEl.textContent  = "❌ Failed to load: " + (err.message || err);
+        loadingEl.style.color  = "#ef4444";
+      }
+    }
+
+    async function loadTierLimitsAudit() {
+      const auditEl = document.getElementById("tier-limits-audit");
+      try {
+        const { data, error } = await supabase
+          .from("system_config_audit")
+          .select("id, changed_at, changed_by, old_value, new_value")
+          .eq("config_key", "tier_limits")
+          .order("changed_at", { ascending: false })
+          .limit(20);
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          auditEl.innerHTML = "<em>No changes yet.</em>";
+          return;
+        }
+
+        // Gather unique admin UUIDs, resolve to emails via profiles for readability.
+        const uids = [...new Set(data.map(r => r.changed_by).filter(Boolean))];
+        let emailById = {};
+        if (uids.length > 0) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("id, email")
+            .in("id", uids);
+          if (profs) for (const p of profs) emailById[p.id] = p.email;
+        }
+
+        const rowsHtml = data.map(r => {
+          const when = new Date(r.changed_at).toLocaleString();
+          const who  = emailById[r.changed_by] || (r.changed_by ? r.changed_by.slice(0, 8) + "…" : "system");
+          const oldStd = r.old_value?.standard ?? "—";
+          const newStd = r.new_value?.standard ?? "—";
+          const oldTst = r.old_value?.test     ?? "—";
+          const newTst = r.new_value?.test     ?? "—";
+          return `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:6px 10px;color:#9ca3af;font-size:0.8rem;white-space:nowrap;">${when}</td>
+              <td style="padding:6px 10px;color:#d1d5db;font-size:0.82rem;">${who}</td>
+              <td style="padding:6px 10px;color:#a78bfa;font-size:0.82rem;">std: ${oldStd} → <strong>${newStd}</strong></td>
+              <td style="padding:6px 10px;color:#a78bfa;font-size:0.82rem;">test: ${oldTst} → <strong>${newTst}</strong></td>
+            </tr>`;
+        }).join("");
+
+        auditEl.innerHTML = `
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="color:#6b7280;font-size:0.75rem;text-align:left;">
+                <th style="padding:6px 10px;font-weight:600;">When</th>
+                <th style="padding:6px 10px;font-weight:600;">Who</th>
+                <th style="padding:6px 10px;font-weight:600;">Standard</th>
+                <th style="padding:6px 10px;font-weight:600;">Test</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>`;
+      } catch (err) {
+        auditEl.textContent  = "❌ Failed to load audit log: " + (err.message || err);
+        auditEl.style.color  = "#ef4444";
+      }
+    }
+
+    async function saveTierLimits() {
+      const btn      = document.getElementById("tl-save-btn");
+      const statusEl = document.getElementById("tl-status");
+      const sEl      = document.getElementById("tl-standard");
+      const tEl      = document.getElementById("tl-test");
+      const applyEl  = document.getElementById("tl-apply-existing");
+
+      if (btn.dataset.saving === "1") return;
+
+      const sVal = Number(sEl.value);
+      const tVal = Number(tEl.value);
+
+      // Mirror of server-side bounds (server is authoritative; this is just UX).
+      const inBounds = (n) => Number.isFinite(n) && n > 0 && n < 100_000_000;
+      if (!inBounds(sVal) || !inBounds(tVal)) {
+        statusEl.textContent  = "❌ Each value must be between 1 and 99,999,999.";
+        statusEl.style.color  = "#ef4444";
+        return;
+      }
+
+      const applyExisting = !!applyEl.checked;
+
+      // Load currently-shipped values for the diff in the confirmation prompt.
+      let currentStd = null, currentTst = null;
+      try {
+        const { data: cur } = await supabase.rpc("get_tier_limits");
+        if (cur && typeof cur === "object") {
+          currentStd = Number(cur.standard);
+          currentTst = Number(cur.test);
+        }
+      } catch (_e) { /* non-fatal */ }
+
+      const stdActive = Number(document.getElementById("tl-standard-count").textContent) || 0;
+      const tstActive = Number(document.getElementById("tl-test-count").textContent) || 0;
+      const totalActive = stdActive + tstActive;
+
+      const changesLines = [];
+      if (currentStd !== sVal) changesLines.push(`  • Standard: ${currentStd ?? "—"} → ${sVal} (${formatTokensReadable(sVal)})`);
+      if (currentTst !== tVal) changesLines.push(`  • Test:     ${currentTst ?? "—"} → ${tVal} (${formatTokensReadable(tVal)})`);
+      if (changesLines.length === 0) {
+        statusEl.textContent  = "No changes to save.";
+        statusEl.style.color  = "#6b7280";
+        return;
+      }
+
+      const propagationLine = applyExisting
+        ? `\n\n⚠ Apply-to-existing is ON: ${totalActive} active customer row(s) in token_quotas will be backfilled immediately.`
+        : `\n\nApply-to-existing is OFF: changes apply to new purchases and to existing customers on their next AI call.`;
+
+      const confirmMsg = `Save new tier limits?\n\n${changesLines.join("\n")}${propagationLine}\n\nContinue?`;
+      if (!confirm(confirmMsg)) return;
+
+      btn.dataset.saving = "1";
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = "Saving…";
+      statusEl.textContent  = "";
+
+      try {
+        const { data, error } = await supabase.rpc("update_tier_limits", {
+          p_limits:            { standard: sVal, test: tVal },
+          p_apply_to_existing: applyExisting,
+        });
+        if (error) throw error;
+
+        const affected = data?.customers_updated ?? 0;
+        statusEl.textContent  = applyExisting
+          ? `✅ Saved. ${affected} existing customer row(s) updated.`
+          : `✅ Saved. Propagation will happen lazily on next AI call per customer.`;
+        statusEl.style.color  = "#10b981";
+
+        // Refresh the audit log so the new change shows up.
+        loadTierLimitsAudit().catch(() => {});
+      } catch (err) {
+        statusEl.textContent  = "❌ " + (err.message || "Save failed.");
+        statusEl.style.color  = "#ef4444";
+      } finally {
+        btn.dataset.saving = "";
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    document.getElementById("tl-save-btn")?.addEventListener("click", saveTierLimits);
+    document.getElementById("tl-refresh-btn")?.addEventListener("click", () => loadTierLimits());
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {

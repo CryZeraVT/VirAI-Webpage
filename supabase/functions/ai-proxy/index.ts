@@ -3,14 +3,60 @@
 //   "builtin_ai_provider"  → legacy testers
 //   "proxy_ai_provider"    → new prod users (default)
 // max_tokens: optional per-request override (dynamic from persona word limit)
+//
+// Tier token limits are read from system_config key='tier_limits' with an
+// in-memory 60s cache. Admin edits propagate within a minute. Falls back
+// to hardcoded TIER_LIMITS_FALLBACK if the row is missing or malformed so
+// config drift can never break live service.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl    = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const ALLOWED_CONFIG_KEYS = ["builtin_ai_provider", "proxy_ai_provider"] as const;
 type ConfigKey = typeof ALLOWED_CONFIG_KEYS[number];
+
+// Safe fallback used if system_config is missing/malformed. Must stay in
+// sync with the DB seed in the tier_limits_system_config migration.
+const TIER_LIMITS_FALLBACK: Record<string, number> = {
+  standard: 3_000_000,
+  test:     50_000,
+};
+
+// In-memory cache: process-local, refreshed every 60s. Edge Function
+// instances are short-lived so this is fine; worst case a change takes
+// ~60s per warm instance to propagate.
+let TIER_LIMITS_CACHE: Record<string, number> = { ...TIER_LIMITS_FALLBACK };
+let TIER_LIMITS_CACHE_AT = 0;
+const TIER_CACHE_TTL_MS = 60_000;
+
+async function getTierLimits(sb: SupabaseClient): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (now - TIER_LIMITS_CACHE_AT < TIER_CACHE_TTL_MS) return TIER_LIMITS_CACHE;
+  try {
+    const { data, error } = await sb
+      .from("system_config")
+      .select("value")
+      .eq("key", "tier_limits")
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.value && typeof data.value === "object") {
+      const parsed: Record<string, number> = {};
+      for (const [k, v] of Object.entries(data.value as Record<string, unknown>)) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) parsed[k] = n;
+      }
+      if (Object.keys(parsed).length > 0) {
+        TIER_LIMITS_CACHE = parsed;
+        TIER_LIMITS_CACHE_AT = now;
+      }
+    }
+  } catch (e) {
+    console.error("tier_limits read failed, using cached/default:", e);
+  }
+  return TIER_LIMITS_CACHE;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,7 +111,7 @@ serve(async (req) => {
   const trimmedKey = license_key.trim();
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // ── Validate license + read tier ──────────────────────────────────────────
+  // ── Validate license + read tier ─────────────────────────────────────
   const { data: license, error: licError } = await supabase
     .from("licenses")
     .select("status, expires_at, tier")
@@ -77,9 +123,14 @@ serve(async (req) => {
   if (license.expires_at && new Date(license.expires_at) < new Date())
     return jsonResponse({ error: "License has expired" }, 403);
 
-  const isBeta = license.tier === "beta";
+  const tier = (license.tier ?? "standard") as string;
+  const isBeta = tier === "beta";
 
-  // ── Quota pre-check (standard tier only) ──────────────────────────────────
+  // Dynamic tier limits from system_config (cached 60s) with in-code fallback.
+  const tierLimits = await getTierLimits(supabase);
+  const tierLimit  = tierLimits[tier] ?? tierLimits.standard ?? TIER_LIMITS_FALLBACK.standard;
+
+  // ── Quota pre-check (non-beta tiers only) ────────────────────────────
   if (!isBeta) {
     const { data: quota } = await supabase
       .from("token_quotas")
@@ -89,7 +140,7 @@ serve(async (req) => {
 
     if (quota) {
       const periodExpired = new Date(quota.period_end) <= new Date();
-      const baseExhausted = quota.tokens_used >= quota.base_limit;
+      const baseExhausted = quota.tokens_used >= tierLimit;
       const boostEmpty    = quota.boost_tokens_remaining <= 0;
 
       if (!periodExpired && baseExhausted && boostEmpty) {
@@ -97,16 +148,16 @@ serve(async (req) => {
           error: "quota_exceeded",
           quota_blocked: true,
           tokens_used: quota.tokens_used,
-          base_limit: quota.base_limit,
+          base_limit: tierLimit,
           quota_percent: 100,
           boost_remaining: 0,
-          tier: "standard",
+          tier,
         }, 429);
       }
     }
   }
 
-  // ── Read AI config ────────────────────────────────────────────────────────
+  // ── Read AI config ───────────────────────────────────────────────────
   const { data: aiConfig } = await supabase
     .from("system_config")
     .select("value")
@@ -124,7 +175,7 @@ serve(async (req) => {
   const model     = cfg.model ?? "gpt-4o-mini";
   const reasoning = isReasoningModel(provider, model);
 
-  // ── Read API keys ─────────────────────────────────────────────────────────
+  // ── Read API keys ────────────────────────────────────────────────────
   const { data: apiKeysConfig } = await supabase
     .from("system_config")
     .select("value")
@@ -135,7 +186,7 @@ serve(async (req) => {
   if (!apiKey)
     return jsonResponse({ error: `No API key configured for provider: ${provider}` }, 503);
 
-  // ── Build AI payload ──────────────────────────────────────────────────────
+  // ── Build AI payload ─────────────────────────────────────────────────
   let apiUrl: string;
   if (provider === "openai")    apiUrl = "https://api.openai.com/v1/chat/completions";
   else if (provider === "grok") apiUrl = "https://api.x.ai/v1/chat/completions";
@@ -157,7 +208,7 @@ serve(async (req) => {
     aiPayload["presence_penalty"]  = cfg.presence_penalty  ?? 0.3;
   }
 
-  // ── Call provider ─────────────────────────────────────────────────────────
+  // ── Call provider ────────────────────────────────────────────────────
   const aiRes = await fetch(apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
@@ -174,7 +225,7 @@ serve(async (req) => {
     usage?:   { prompt_tokens: number; completion_tokens: number };
   };
 
-  // ── Track usage (always, for analytics) ────────────────────────────────────
+  // ── Track usage (always, for analytics) ──────────────────────────────
   const promptTokens     = aiData.usage?.prompt_tokens ?? 0;
   const completionTokens = aiData.usage?.completion_tokens ?? 0;
   const totalTokens      = promptTokens + completionTokens;
@@ -201,7 +252,7 @@ serve(async (req) => {
     });
   }
 
-  // ── Quota post-increment (standard tier only) ─────────────────────────────
+  // ── Quota post-increment (non-beta tiers only) ───────────────────────
   let quotaInfo: Record<string, unknown> = {};
 
   if (!isBeta && totalTokens > 0) {
@@ -209,11 +260,12 @@ serve(async (req) => {
       p_license_key: trimmedKey,
       p_tokens: totalTokens,
       p_license_active: license.status === "active",
+      p_base_limit: tierLimit,
     });
 
     if (!rpcErr && quotaResult) {
       quotaInfo = {
-        tier: "standard",
+        tier,
         quota_used:      quotaResult.tokens_used,
         quota_limit:     quotaResult.base_limit,
         quota_percent:   quotaResult.quota_percent,
