@@ -810,6 +810,52 @@
       box-shadow: 0 4px 18px rgba(99,91,255,0.4) !important;
     }
     .btn-stripe:disabled { opacity: 0.55; cursor: not-allowed; }
+    /* Right-side column so the Cancel link can sit directly under the
+       Manage button without breaking the card's flex layout. */
+    .billing-action-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    /* Subtle cancel affordance — deliberately de-emphasised so users
+       don't accidentally click it. Stripe's own confirmation screen is
+       still the real gate. */
+    .billing-cancel-link {
+      background: transparent;
+      border: none;
+      padding: 2px 4px;
+      font-size: 0.75rem;
+      color: #6b7280;
+      cursor: pointer;
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+      transition: color 0.15s ease;
+      font-family: inherit;
+    }
+    .billing-cancel-link:hover:not(:disabled) {
+      color: #f87171;
+    }
+    .billing-cancel-link:disabled { opacity: 0.55; cursor: not-allowed; }
+    /* Post-cancel confirmation banner — shown when Stripe redirects
+       back with ?canceled=1. Styled neutral/info rather than alarming
+       because at this point the user is reassured, not warned. */
+    .billing-canceled-banner {
+      background: rgba(99,91,255,0.08);
+      border: 1px solid rgba(99,91,255,0.28);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      color: #a5b4fc;
+      line-height: 1.5;
+    }
+    .billing-canceled-banner strong {
+      color: #c7d2fe;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 0.9rem;
+    }
     .billing-footnote {
       font-size: 0.78rem;
       color: #6b7280;
@@ -1596,6 +1642,11 @@
         await loadKeys(user);
         loadNewsletter(user).catch(console.warn);
         loadBilling(user).catch(console.warn);
+        // If Stripe just bounced them back from a cancel flow, show the
+        // confirmation banner and schedule a re-fetch once the webhook
+        // has had time to update the licenses row. Must run AFTER
+        // loadBilling() so the banner can be inserted next to the wrap.
+        maybeShowPostCancelBanner();
       } catch (err) {
         console.error("enterSignedIn error:", err);
       } finally {
@@ -2278,15 +2329,27 @@
             </div>`;
         // CASE: Active and not pending cancellation
         } else if (isActive) {
+          // Two actions stacked on the right:
+          //   1. Manage Subscription (general portal — upgrade, payment
+          //      method, invoices). Unchanged.
+          //   2. Cancel Subscription (direct-to-cancel flow). Only shown
+          //      here because on the "pending cancellation" card the
+          //      user is already mid-cancel and showing it again would
+          //      be confusing.
           wrap.innerHTML = `
             <div class="billing-card">
               <div class="billing-status-text">
                 <strong>Plan <span class="badge-billing-active">ACTIVE</span></strong>
                 Standard plan — ${periodEndFmt ? `renews ${periodEndFmt}` : "recurring subscription"}.
               </div>
-              <button id="manage-billing-btn" class="btn btn-stripe">
-                Manage Subscription →
-              </button>
+              <div class="billing-action-col">
+                <button id="manage-billing-btn" class="btn btn-stripe">
+                  Manage Subscription →
+                </button>
+                <button id="cancel-billing-btn" class="billing-cancel-link" type="button">
+                  Cancel Subscription
+                </button>
+              </div>
             </div>`;
         // CASE: Inactive (period already ended, or payment failed and Stripe gave up)
         } else {
@@ -2307,7 +2370,10 @@
         }
 
         const manageBtn = $("manage-billing-btn");
-        if (manageBtn) manageBtn.addEventListener("click", handleOpenBillingPortal);
+        if (manageBtn) manageBtn.addEventListener("click", () => handleOpenBillingPortal("manage"));
+
+        const cancelBtn = $("cancel-billing-btn");
+        if (cancelBtn) cancelBtn.addEventListener("click", handleCancelSubscription);
 
       } catch (err) {
         console.error("loadBilling error:", err);
@@ -2315,12 +2381,18 @@
       }
     }
 
-    async function handleOpenBillingPortal() {
-      const btn = $("manage-billing-btn");
+    // Opens a Stripe Customer Portal session. ``flow`` is either
+    // "manage" (default portal homepage) or "cancel" (drops user
+    // directly into Stripe's cancel-confirmation screen). The edge
+    // function resolves stripe_customer_id and (for cancel)
+    // stripe_subscription_id from the JWT — never from client input.
+    async function handleOpenBillingPortal(flow) {
+      const isCancel = flow === "cancel";
+      const btn = $(isCancel ? "cancel-billing-btn" : "manage-billing-btn");
       if (!btn) return;
       const originalLabel = btn.textContent;
       btn.disabled = true;
-      btn.textContent = "Opening Stripe…";
+      btn.textContent = isCancel ? "Opening cancel flow…" : "Opening Stripe…";
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -2337,12 +2409,13 @@
             "Authorization": `Bearer ${session.access_token}`,
             "apikey": SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify(isCancel ? { flow: "cancel" } : {}),
         });
 
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.success && data.url) {
-          // Redirect in the same tab — Stripe's portal return_url brings them back to /account.html
+          // Same-tab redirect — Stripe's portal return_url brings them back
+          // to /account.html (with ?canceled=1 appended on the cancel flow).
           window.location.href = data.url;
         } else {
           setStatus(data.message || `Could not open billing portal (${res.status}).`, "error");
@@ -2354,6 +2427,53 @@
         setStatus("Network error. Please try again.", "error");
         btn.disabled = false;
         btn.textContent = originalLabel;
+      }
+    }
+
+    // Thin wrapper so the cancel link's ``click`` handler has a stable
+    // reference we can attach without closing over ``flow``.
+    function handleCancelSubscription() {
+      return handleOpenBillingPortal("cancel");
+    }
+
+    // Shows a confirmation banner above the billing card when Stripe
+    // redirects back with ?canceled=1, then:
+    //   1. Strips ?canceled=1 from the URL so a future refresh doesn't
+    //      re-show the banner.
+    //   2. Re-fetches billing after ~3s so the
+    //      ``customer.subscription.updated`` webhook has time to land
+    //      and flip the card from ACTIVE → CANCELING.
+    // Idempotent — safe to call on every page load.
+    function maybeShowPostCancelBanner() {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("canceled") !== "1") return;
+
+        const wrap = $("billing-card-wrap");
+        const user = _currentSession?.user;
+
+        // Clear the query param before anything else so refresh won't
+        // keep re-firing the banner + refetch loop.
+        url.searchParams.delete("canceled");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+
+        const banner = document.createElement("div");
+        banner.className = "billing-canceled-banner";
+        banner.innerHTML = `
+          <strong>Cancellation received</strong>
+          Your subscription will remain active until the end of your current billing period.
+          We're finalising the details — this card will update in a moment.`;
+        if (wrap && wrap.parentNode) {
+          wrap.parentNode.insertBefore(banner, wrap);
+        }
+
+        // Webhook is async; 3s is typically plenty but not guaranteed.
+        // Re-fetch once; the banner itself sticks around until navigation.
+        if (user) {
+          setTimeout(() => { loadBilling(user); }, 3000);
+        }
+      } catch (err) {
+        console.error("maybeShowPostCancelBanner error:", err);
       }
     }
 
