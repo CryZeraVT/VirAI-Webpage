@@ -47,7 +47,7 @@ RLS: enabled. Users can SELECT their own rows (`email = auth.email()`).
 | `period_start` | timestamptz | now() | Resets every 30 days |
 | `period_end` | timestamptz | now()+30d | Auto-reset by RPC |
 | `tokens_used` | bigint | 0 | Usage in current period |
-| `base_limit` | bigint | 2,000,000 | Upserted per-call by `ai-proxy` from `system_config.tier_limits[tier]`. Column default is legacy (pre-2026-04-18); runtime value is whatever the active `tier_limits` row says (currently 3M for standard). |
+| `base_limit` | bigint | 2,000,000 ⚠ dead default | Upserted per-call by `ai-proxy` from `system_config.tier_limits[tier]`. **The `2000000` column default is dead code as of 2026-04-18** — no live code path inserts without supplying `p_base_limit` via `increment_token_quota`, so the default would only fire if someone ran a raw `INSERT`. Runtime value is always whatever the active `tier_limits` row says (currently 3M for standard). Documented on the column via `COMMENT ON COLUMN`. Safe to change to `3000000` or drop the default in a future migration — not doing it now to avoid Tier 3 churn for zero behavioural change. |
 | `boost_tokens_remaining` | bigint | 0 | **Permanent boost pool** — does NOT reset on period rollover |
 | `updated_at` | timestamptz | now() | |
 
