@@ -3133,17 +3133,31 @@
       const changesLines = [];
       if (currentStd !== sVal) changesLines.push(`  • Standard: ${currentStd ?? "—"} → ${sVal} (${formatTokensReadable(sVal)})`);
       if (currentTst !== tVal) changesLines.push(`  • Test:     ${currentTst ?? "—"} → ${tVal} (${formatTokensReadable(tVal)})`);
-      if (changesLines.length === 0) {
+
+      // No config change AND no propagation requested → nothing to do.
+      // If propagation IS requested without config change, the admin is
+      // explicitly asking us to force-backfill existing rows that may be
+      // stale (e.g. pre-centralization customers still on the old default);
+      // honor that instead of blocking.
+      if (changesLines.length === 0 && !applyExisting) {
         statusEl.textContent  = "No changes to save.";
         statusEl.style.color  = "#6b7280";
         return;
       }
 
+      const headerLine = changesLines.length === 0
+        ? `  • Config values unchanged (Standard: ${sVal}, Test: ${tVal})`
+        : changesLines.join("\n");
+
       const propagationLine = applyExisting
-        ? `\n\n⚠ Apply-to-existing is ON: ${totalActive} active customer row(s) in token_quotas will be backfilled immediately.`
+        ? `\n\n⚠ Apply-to-existing is ON: ${totalActive} active customer row(s) in token_quotas will be backfilled to match the current config immediately. Rows already at the target value are skipped.`
         : `\n\nApply-to-existing is OFF: changes apply to new purchases and to existing customers on their next AI call.`;
 
-      const confirmMsg = `Save new tier limits?\n\n${changesLines.join("\n")}${propagationLine}\n\nContinue?`;
+      const titleLine = changesLines.length === 0
+        ? "Force-propagate current tier limits to existing customers?"
+        : "Save new tier limits?";
+
+      const confirmMsg = `${titleLine}\n\n${headerLine}${propagationLine}\n\nContinue?`;
       if (!confirm(confirmMsg)) return;
 
       btn.dataset.saving = "1";
