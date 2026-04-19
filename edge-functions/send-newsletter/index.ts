@@ -46,10 +46,25 @@ function inlineStyles(html: string): string {
   return o;
 }
 
-function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string): string {
+// Footer variants:
+//   - "subscriber" → standard mailing-list footer with tokenised
+//     one-click unsubscribe link. Requires a non-empty token.
+//   - "beta"       → transactional-style footer for active beta
+//     testers who are NOT on the mailing list. No token available,
+//     so no one-click unsubscribe. Copy reads as a product-comms
+//     message ("you're getting this because you're a beta tester")
+//     with a contact-to-opt-out line. Under CAN-SPAM, product
+//     communications to active users are transactional and don't
+//     require a one-click opt-out, but we still provide the manual
+//     path to be good citizens.
+type FooterVariant = "subscriber" | "beta";
+
+function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string | null, variant: FooterVariant = "subscriber"): string {
   const styledBody = inlineStyles(bodyHtml);
-  // Link goes directly to edge function — it processes the token server-side and redirects to unsubscribe.html?status=ok
-  const unsubscribeUrl = `${supabaseUrl}/functions/v1/unsubscribe?token=${unsubscribeToken}`;
+  // Token unsubscribe URL only used for "subscriber" variant.
+  const unsubscribeUrl = unsubscribeToken
+    ? `${supabaseUrl}/functions/v1/unsubscribe?token=${unsubscribeToken}`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -125,6 +140,7 @@ function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string):
   <!-- ══ FOOTER ══ -->
   <tr>
     <td style="padding:18px 44px;text-align:center;">
+      ${variant === "subscriber" ? `
       <p style="margin:0 0 4px;font-size:0.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
         You're getting this because you signed up at
         <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">${SITE_URL}</a>
@@ -136,6 +152,17 @@ function buildHtml(subject: string, bodyHtml: string, unsubscribeToken: string):
         Don't want these emails?
         <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
       </p>
+      ` : `
+      <p style="margin:0 0 4px;font-size:0.78rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
+        You're receiving this because you're an active <strong style="color:#7c3aed;">AiRi beta tester</strong>.
+      </p>
+      <p style="margin:0 0 6px;font-size:0.74rem;color:#9ca3af;font-family:'Segoe UI',Arial,sans-serif;">
+        &copy; ${new Date().getFullYear()} AiRi &mdash; A <strong style="color:#7c3aed;">VirForge</strong> Product
+      </p>
+      <p style="margin:0;font-size:0.72rem;color:#6b7280;font-family:'Segoe UI',Arial,sans-serif;">
+        Don't want beta update emails? Reply to this message or contact us directly and we'll remove you.
+      </p>
+      `}
     </td>
   </tr>
 
@@ -175,7 +202,21 @@ serve(async (req) => {
   const { data: profile } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
   if (!profile?.is_admin) return jsonResponse({ error: "Admin access required" }, 403);
 
+  // ── Parse body ──────────────────────────────────────────────────────
+  // Body shape:
+  //   { subject, body, body_html, audiences?, dry_run? }
+  //
+  // ``audiences`` is an optional array: ["subscribers"] | ["beta_testers"]
+  //   | ["subscribers", "beta_testers"]. Omitted → defaults to
+  //   ["subscribers"] so legacy callers stay working.
+  //
+  // ``dry_run`` returns recipient counts without sending a single email.
+  //   Used by admin.html to live-update the "Total recipients" badge
+  //   as checkboxes are toggled. Still admin-gated — we don't leak
+  //   subscriber counts to non-admins.
   let subject: string, bodyHtml: string, bodyText: string;
+  let audiences: string[] = ["subscribers"];
+  let dryRun = false;
   try {
     const payload = await req.json();
     subject  = String(payload.subject  ?? "").trim();
@@ -185,23 +226,137 @@ serve(async (req) => {
     bodyHtml = rawHtml && rawHtml !== "<p><br></p>"
       ? rawHtml
       : bodyText.split("\n").map(l => l.trim() ? `<p>${l}</p>` : "<p><br></p>").join("");
+    if (Array.isArray(payload.audiences) && payload.audiences.length > 0) {
+      audiences = payload.audiences
+        .map((a: unknown) => String(a ?? "").trim().toLowerCase())
+        .filter((a: string) => a === "subscribers" || a === "beta_testers");
+    }
+    dryRun = payload.dry_run === true;
   } catch { return jsonResponse({ error: "Invalid JSON" }, 400); }
-  if (!subject || (!bodyText && !bodyHtml)) return jsonResponse({ error: "subject and body are required" }, 400);
 
-  const { data: subscribers, error: subError } = await supabase
-    .from("mailing_list").select("email, name, unsubscribe_token").eq("subscribed", true);
-  if (subError) return jsonResponse({ error: subError.message }, 500);
-  if (!subscribers || subscribers.length === 0) return jsonResponse({ sent: 0, total: 0, message: "No active subscribers" });
+  if (audiences.length === 0) {
+    return jsonResponse({ error: "At least one audience (\"subscribers\" or \"beta_testers\") is required." }, 400);
+  }
+  if (!dryRun && (!subject || (!bodyText && !bodyHtml))) {
+    return jsonResponse({ error: "subject and body are required" }, 400);
+  }
+
+  // ── Fetch both audience pools ───────────────────────────────────────
+  // For dry_run we always fetch both so the admin UI can render all
+  // three pre-computed counts (subs only, beta only, both deduped)
+  // from a single call without flipping checkboxes = flipping API trips.
+  // For real sends we only fetch what was requested.
+  const wantSubscribers = dryRun || audiences.includes("subscribers");
+  const wantBeta        = dryRun || audiences.includes("beta_testers");
+
+  type Recipient = { email: string; name: string | null; unsubscribe_token: string | null };
+  let subscribers: Recipient[] = [];
+  let betaTesters: Recipient[] = [];
+
+  if (wantSubscribers) {
+    const { data, error } = await supabase
+      .from("mailing_list")
+      .select("email, name, unsubscribe_token")
+      .eq("subscribed", true);
+    if (error) return jsonResponse({ error: error.message }, 500);
+    subscribers = (data ?? []).filter(r => r.email).map(r => ({
+      email: String(r.email).trim(),
+      name:  r.name ?? null,
+      unsubscribe_token: r.unsubscribe_token ?? null,
+    }));
+  }
+
+  if (wantBeta) {
+    // Active beta licenses = people currently using AiRi on a beta tier.
+    // NOT the beta_signups waitlist — those are reached via the
+    // approval-email flow instead. We only read ``email``; no PII beyond
+    // what was already available via the unrelated mailing_list query.
+    const { data, error } = await supabase
+      .from("licenses")
+      .select("email")
+      .eq("tier", "beta")
+      .eq("status", "active")
+      .not("email", "is", null);
+    if (error) return jsonResponse({ error: error.message }, 500);
+    // One person may hold multiple beta licenses over time — dedupe
+    // within the pool before even looking at mailing_list overlap.
+    const seen = new Set<string>();
+    for (const row of data ?? []) {
+      const emailRaw = String(row.email ?? "").trim();
+      if (!emailRaw) continue;
+      const key = emailRaw.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      betaTesters.push({ email: emailRaw, name: null, unsubscribe_token: null });
+    }
+  }
+
+  // ── Dry-run: just report counts ─────────────────────────────────────
+  if (dryRun) {
+    const subSet  = new Set(subscribers.map(r => r.email.toLowerCase()));
+    const betaSet = new Set(betaTesters.map(r => r.email.toLowerCase()));
+    let overlap = 0;
+    for (const e of betaSet) { if (subSet.has(e)) overlap++; }
+    const bothDeduped = subSet.size + betaSet.size - overlap;
+    return jsonResponse({
+      dry_run: true,
+      counts: {
+        subscribers:     subSet.size,
+        beta_testers:    betaSet.size,
+        overlap,
+        both_deduped:    bothDeduped,
+      },
+    });
+  }
+
+  // ── Build deduped send list ─────────────────────────────────────────
+  // Key = lowercased email. When someone is in BOTH pools we prefer the
+  // subscriber row because it has an unsubscribe token → legally
+  // stronger footer, and respects their stated "I want marketing" intent
+  // over the weaker "they're a beta tester" default.
+  type Send = Recipient & { variant: FooterVariant };
+  const byEmail = new Map<string, Send>();
+
+  if (audiences.includes("subscribers")) {
+    for (const r of subscribers) {
+      const key = r.email.toLowerCase();
+      if (!byEmail.has(key)) {
+        byEmail.set(key, { ...r, variant: "subscriber" });
+      }
+    }
+  }
+  if (audiences.includes("beta_testers")) {
+    for (const r of betaTesters) {
+      const key = r.email.toLowerCase();
+      if (!byEmail.has(key)) {
+        byEmail.set(key, { ...r, variant: "beta" });
+      }
+    }
+  }
+
+  const recipients = Array.from(byEmail.values());
+  if (recipients.length === 0) {
+    return jsonResponse({ sent: 0, total: 0, message: "No recipients for the selected audience." });
+  }
 
   let sent = 0;
   const errors: string[] = [];
 
-  for (const sub of subscribers) {
-    const html = buildHtml(subject, bodyHtml, sub.unsubscribe_token ?? "");
-    const result = await sendResendEmail(sub.email, subject, html, bodyText);
+  for (const r of recipients) {
+    const html = buildHtml(subject, bodyHtml, r.unsubscribe_token, r.variant);
+    const result = await sendResendEmail(r.email, subject, html, bodyText);
     if (result.ok) sent++;
-    else errors.push(`${sub.email}: ${result.error}`);
+    else errors.push(`${r.email}: ${result.error}`);
   }
 
-  return jsonResponse({ sent, total: subscribers.length, errors: errors.length ? errors : undefined });
+  return jsonResponse({
+    sent,
+    total: recipients.length,
+    audiences,
+    breakdown: {
+      subscribers:  recipients.filter(r => r.variant === "subscriber").length,
+      beta_testers: recipients.filter(r => r.variant === "beta").length,
+    },
+    errors: errors.length ? errors : undefined,
+  });
 });

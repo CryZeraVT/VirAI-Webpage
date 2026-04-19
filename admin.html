@@ -1003,7 +1003,7 @@
             <div class="tab-header-row">
               <div>
                 <h3>📧 Newsletter</h3>
-                <p>Send updates to everyone subscribed through the "Stay in the Know" form.</p>
+                <p>Send updates to mailing-list subscribers, active beta testers, or both.</p>
               </div>
               <button id="refresh-newsletter" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;white-space:nowrap;">🔄 Refresh</button>
             </div>
@@ -1012,6 +1012,31 @@
           <!-- Compose -->
           <div class="admin-section">
             <div class="admin-section-title">📝 Compose Email Blast</div>
+
+            <!-- Recipients audience picker. Newsletter Subscribers is
+                 default-ON (matches pre-2026-04-18 behavior). Beta
+                 Testers is default-OFF — admin must opt-in so this
+                 feature doesn't surprise-email beta users with a
+                 marketing blast they never subscribed to. -->
+            <div class="form-group" style="margin-bottom:14px;">
+              <label style="display:block;margin-bottom:8px;">Recipients</label>
+              <div id="nl-audience-box" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                <label style="display:flex;align-items:center;gap:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.3);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:0.88rem;color:#e2e8f0;user-select:none;">
+                  <input type="checkbox" id="nl-aud-subs" checked style="accent-color:#7c3aed;cursor:pointer;">
+                  Newsletter Subscribers
+                  <span id="nl-count-subs" style="background:rgba(167,139,250,0.18);color:#a78bfa;border-radius:999px;padding:1px 9px;font-size:0.72em;font-weight:700;">—</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:0.88rem;color:#e2e8f0;user-select:none;">
+                  <input type="checkbox" id="nl-aud-beta" style="accent-color:#06b6d4;cursor:pointer;">
+                  Beta Testers
+                  <span id="nl-count-beta" style="background:rgba(103,232,249,0.18);color:#67e8f9;border-radius:999px;padding:1px 9px;font-size:0.72em;font-weight:700;">—</span>
+                </label>
+                <span style="flex:1;text-align:right;color:#9ca3af;font-size:0.82rem;">
+                  Total recipients: <strong id="nl-total-count" style="color:#e2e8f0;">—</strong>
+                </span>
+              </div>
+            </div>
+
             <div class="form-group" style="margin-bottom:14px;">
               <label>Subject</label>
               <input id="nl-subject" type="text" class="form-input" placeholder="e.g. AiRi Update — New features are here!">
@@ -1034,12 +1059,12 @@
                 👁 Preview Email
               </button>
               <button id="nl-send-btn" class="btn" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:700;padding:10px 28px;">
-                📤 Send to All Subscribers
+                📤 Send to Subscribers
               </button>
               <span id="nl-status" style="font-size:0.88rem;"></span>
             </div>
             <p style="margin-top:12px;font-size:0.78rem;color:#4b5563;">
-              ⚠️ This will email <strong id="nl-sub-count">—</strong> subscribed address(es). Double-check before sending.
+              ⚠️ This will email <strong id="nl-sub-count">—</strong> address(es). Double-check before sending.
             </p>
           </div>
 
@@ -2654,12 +2679,21 @@
     document.getElementById("refresh-signups").addEventListener("click", loadBetaSignups);
 
     // ── Newsletter ────────────────────────────────────────────────────────────
+    // Audience counts are held here so checkbox toggles can recompute
+    // the "Total recipients" badge without a round-trip per click.
+    // Refreshed by loadAudienceCounts() (dry_run against send-newsletter).
+    let _nlAudienceCounts = { subscribers: 0, beta_testers: 0, overlap: 0, both_deduped: 0 };
+
     async function loadNewsletterSubscribers() {
       const listEl  = document.getElementById("newsletter-list");
-      const countEl = document.getElementById("nl-sub-count");
       const badgeEl = document.getElementById("nl-total-badge");
       const navBadge = document.getElementById("newsletter-badge");
       listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#6b7280;">Loading...</div>`;
+
+      // Kick off beta-count lookup in parallel with the subscriber query.
+      // Uses the send-newsletter dry_run so we don't need new RLS rules
+      // or a second edge function — same admin guard, just read-only.
+      loadAudienceCounts().catch(err => console.warn("Audience count lookup failed:", err));
 
       const { data, error } = await supabase
         .from("mailing_list")
@@ -2672,7 +2706,6 @@
       const subscribed   = data.filter(r => r.subscribed !== false);
       const unsubscribed = data.filter(r => r.subscribed === false);
 
-      countEl.textContent = subscribed.length;
       badgeEl.textContent = `${data.length} total`;
       navBadge.textContent = subscribed.length;
       navBadge.style.display = subscribed.length ? "inline-block" : "none";
@@ -2711,26 +2744,119 @@
       else loadNewsletterSubscribers();
     }
 
-    async function sendNewsletter() {
-      const subject  = document.getElementById("nl-subject").value.trim();
-      const bodyHtml = nlQuill.root.innerHTML;
-      const bodyText = nlQuill.getText().trim();
-      const statusEl = document.getElementById("nl-status");
-      const btn      = document.getElementById("nl-send-btn");
+    // Reads current checkbox state and returns the audiences array that
+    // gets passed to send-newsletter. Empty array = send button should
+    // be disabled / ignored.
+    function getSelectedAudiences() {
+      const out = [];
+      if (document.getElementById("nl-aud-subs")?.checked) out.push("subscribers");
+      if (document.getElementById("nl-aud-beta")?.checked) out.push("beta_testers");
+      return out;
+    }
 
-      if (!subject)  { statusEl.textContent = "❌ Subject is required."; statusEl.style.color = "#ef4444"; return; }
+    // Pulls both pool counts + overlap from send-newsletter in dry_run
+    // mode. One round-trip gives us everything we need to update the
+    // total-recipients badge locally on any checkbox toggle without
+    // further server trips. Admin-gated same as the real send.
+    async function loadAudienceCounts() {
+      try {
+        const { data, error } = await supabase.functions.invoke("send-newsletter", {
+          body: { dry_run: true, audiences: ["subscribers", "beta_testers"] },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const c = data?.counts || {};
+        _nlAudienceCounts = {
+          subscribers:  Number(c.subscribers)  || 0,
+          beta_testers: Number(c.beta_testers) || 0,
+          overlap:      Number(c.overlap)      || 0,
+          both_deduped: Number(c.both_deduped) || 0,
+        };
+      } catch (err) {
+        console.warn("Failed to load audience counts:", err);
+        // Fall back to zero rather than leaving "—" forever; the real
+        // send will still work, we just can't predict the count.
+        _nlAudienceCounts = { subscribers: 0, beta_testers: 0, overlap: 0, both_deduped: 0 };
+      } finally {
+        const subsBadge = document.getElementById("nl-count-subs");
+        const betaBadge = document.getElementById("nl-count-beta");
+        if (subsBadge) subsBadge.textContent = _nlAudienceCounts.subscribers;
+        if (betaBadge) betaBadge.textContent = _nlAudienceCounts.beta_testers;
+        recomputeTotalRecipients();
+      }
+    }
+
+    // Derives: total recipient count (deduped), send button label, send
+    // button enabled/disabled state, and the confirmation-line count.
+    // Called on initial load and on every checkbox toggle.
+    function recomputeTotalRecipients() {
+      const aud  = getSelectedAudiences();
+      const subs = _nlAudienceCounts.subscribers;
+      const beta = _nlAudienceCounts.beta_testers;
+      const both = _nlAudienceCounts.both_deduped;
+
+      let total = 0;
+      let label = "📤 Send";
+      if (aud.length === 0) {
+        total = 0;
+        label = "📤 Select at least one audience";
+      } else if (aud.length === 2) {
+        total = both;
+        label = "📤 Send to Everyone";
+      } else if (aud[0] === "subscribers") {
+        total = subs;
+        label = "📤 Send to Subscribers";
+      } else if (aud[0] === "beta_testers") {
+        total = beta;
+        label = "📤 Send to Beta Testers";
+      }
+
+      const totalEl = document.getElementById("nl-total-count");
+      const subCountEl = document.getElementById("nl-sub-count");
+      const btn = document.getElementById("nl-send-btn");
+      if (totalEl)    totalEl.textContent = total;
+      if (subCountEl) subCountEl.textContent = total;
+      if (btn) {
+        btn.disabled = aud.length === 0 || btn.dataset.sending === "1";
+        if (btn.dataset.sending !== "1") btn.textContent = label;
+      }
+    }
+
+    async function sendNewsletter() {
+      const subject   = document.getElementById("nl-subject").value.trim();
+      const bodyHtml  = nlQuill.root.innerHTML;
+      const bodyText  = nlQuill.getText().trim();
+      const statusEl  = document.getElementById("nl-status");
+      const btn       = document.getElementById("nl-send-btn");
+      const audiences = getSelectedAudiences();
+
+      if (audiences.length === 0) {
+        statusEl.textContent = "❌ Select at least one recipient audience.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+      if (!subject)  { statusEl.textContent = "❌ Subject is required.";      statusEl.style.color = "#ef4444"; return; }
       if (!bodyText) { statusEl.textContent = "❌ Message body is required."; statusEl.style.color = "#ef4444"; return; }
 
-      const count = parseInt(document.getElementById("nl-sub-count").textContent) || 0;
-      if (!confirm(`Send "${subject}" to ${count} subscriber(s)?`)) return;
+      // Human-readable audience label for the confirm dialog — matches
+      // the send-button label so there's no "wait what did I click?".
+      let audLabel;
+      if (audiences.length === 2) audLabel = "everyone (subscribers + beta testers)";
+      else if (audiences[0] === "subscribers") audLabel = "newsletter subscribers";
+      else audLabel = "beta testers";
 
+      const count = parseInt(document.getElementById("nl-sub-count").textContent) || 0;
+      if (!confirm(`Send "${subject}" to ${count} recipient(s) (${audLabel})?`)) return;
+
+      const originalLabel = btn.textContent;
+      btn.dataset.sending = "1";
       btn.disabled = true;
       btn.textContent = "📤 Sending...";
       statusEl.textContent = "";
 
       try {
         const { data: result, error: invokeErr } = await supabase.functions.invoke("send-newsletter", {
-          body: { subject, body_html: bodyHtml, body: bodyText },
+          body: { subject, body_html: bodyHtml, body: bodyText, audiences },
         });
 
         if (invokeErr) throw invokeErr;
@@ -2741,7 +2867,7 @@
         const errs  = result?.errors ?? [];
 
         if (result?.message) {
-          // e.g. "No active subscribers"
+          // e.g. "No recipients for the selected audience."
           statusEl.textContent = `⚠️ ${result.message}`;
           statusEl.style.color = "#f59e0b";
         } else if (sent === 0 && errs.length > 0) {
@@ -2751,22 +2877,36 @@
           statusEl.textContent = `⚠️ Sent ${sent}/${total}. ${errs.length} failed: ${errs[0]}`;
           statusEl.style.color = "#f59e0b";
         } else {
-          statusEl.textContent = `✅ Sent to ${sent} subscriber(s)!`;
+          // Breakdown line helps the admin confirm the dedupe did what
+          // they expected — e.g. "Sent to 12 (10 subscribers, 3 beta
+          // testers, 1 overlap deduped)"
+          const b = result?.breakdown;
+          const bTxt = (b && (b.subscribers != null || b.beta_testers != null))
+            ? ` (${b.subscribers ?? 0} subs, ${b.beta_testers ?? 0} beta)`
+            : "";
+          statusEl.textContent = `✅ Sent to ${sent} recipient(s)${bTxt}!`;
           statusEl.style.color = "#22c55e";
           document.getElementById("nl-subject").value = "";
           nlQuill.setContents([]);
+          // Refresh counts — a stale license/mailing_list change could
+          // have happened during the send.
+          loadAudienceCounts().catch(() => {});
         }
       } catch (err) {
         statusEl.textContent = "❌ " + (err.message || "Send failed.");
         statusEl.style.color = "#ef4444";
       } finally {
+        btn.dataset.sending = "";
         btn.disabled = false;
-        btn.textContent = "📤 Send to All Subscribers";
+        btn.textContent = originalLabel;
+        recomputeTotalRecipients();
       }
     }
 
     document.getElementById("nl-send-btn").addEventListener("click", sendNewsletter);
     document.getElementById("refresh-newsletter").addEventListener("click", loadNewsletterSubscribers);
+    document.getElementById("nl-aud-subs")?.addEventListener("change", recomputeTotalRecipients);
+    document.getElementById("nl-aud-beta")?.addEventListener("change", recomputeTotalRecipients);
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {

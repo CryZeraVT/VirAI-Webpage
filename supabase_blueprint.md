@@ -173,7 +173,7 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 | `mailing-list-signup` | Mailing list form handler |
 | `send-beta-approval` | Sends beta approval email |
 | `send-password-reset` | Sends password reset email |
-| `send-newsletter` | Admin: sends newsletter to all subscribed users (v18) — per-subscriber HTML with tokenised unsubscribe link |
+| `send-newsletter` | Admin: sends newsletter email blast to selectable audiences. Body takes `{ subject, body, body_html, audiences?, dry_run? }`. `audiences` is an array of `"subscribers"` (default, reads `mailing_list` where `subscribed=true`) and/or `"beta_testers"` (reads `licenses` where `tier='beta' AND status='active'`). Recipients are deduped by lowercase email; subscriber footer (tokenised unsubscribe link) wins over beta footer (contact-to-opt-out) when the same email is in both pools. `dry_run: true` returns `{ counts: { subscribers, beta_testers, overlap, both_deduped } }` without sending — used by admin.html to live-update the recipient badge. Legacy zero-audience callers still work (default to subscribers). |
 | `unsubscribe` | GET `?token=xxx` → token-based unsubscribe (email links); POST with JWT → auth-based unsubscribe (account page) |
 
 ---
