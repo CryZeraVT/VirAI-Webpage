@@ -146,15 +146,17 @@ RLS: enabled. Policies:
 
 ## RPCs (Functions)
 
-### `increment_token_quota(p_license_key, p_tokens, p_license_active?)`
+### `increment_token_quota(p_license_key text, p_tokens bigint, p_license_active boolean DEFAULT true, p_base_limit bigint DEFAULT 2000000)`
 Returns `jsonb`: `{ allowed, using_boost, tokens_used, boost_remaining, base_limit, quota_percent }`
 
 **Logic:**
-1. Upsert row if new license
+1. **Upsert row with tier-correct `base_limit`:** `INSERT (license_key, base_limit) VALUES (…, p_base_limit) ON CONFLICT DO UPDATE SET base_limit = p_base_limit`. This is how tier config changes propagate to existing customers lazily on their next call.
 2. If `period_end` passed + license active → reset `tokens_used=0`, new 30-day window
 3. Try to fit tokens in base pool
 4. If base overflows → drain from boost pool
 5. If both exhausted → record usage, `allowed=false`
+
+> **Fix 2026-04-18:** A legacy 3-arg overload (without `p_base_limit`) was dropped. It was left behind when the 4-arg version was introduced, and PostgREST/supabase-js overload resolution was occasionally routing calls to it — meaning `tokens_used` was incremented correctly but `base_limit` was never updated from the tier config. Any 3-arg callers now resolve to the 4-arg version's default (`p_base_limit = 2000000`), which matches the historical hardcoded behavior, so there's no regression. The sole authoritative signature now is the one above.
 
 ### `handle_new_user()`
 Trigger function — creates `profiles` row on new auth user signup.
