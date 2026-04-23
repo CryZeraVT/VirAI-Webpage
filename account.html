@@ -324,6 +324,66 @@
     }
     .empty-state .empty-icon { font-size: 2rem; margin-bottom: 8px; }
 
+    /* ── Buy AiRi CTA (shown in licenses section when user has no licenses) ── */
+    .buy-cta {
+      text-align: center;
+      padding: 28px 24px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(217,70,239,0.06));
+      border: 1px solid rgba(124,58,237,0.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .buy-cta::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(167,139,250,0.55), transparent);
+    }
+    .buy-cta-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #a78bfa, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .buy-cta-sub {
+      font-size: 0.88rem;
+      color: #a1a1aa;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    .buy-cta-sub strong { color: #a78bfa; font-weight: 600; }
+    .buy-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 26px;
+      border-radius: 11px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      box-shadow: 0 4px 22px rgba(124,58,237,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .buy-cta-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(124,58,237,0.5);
+    }
+    .buy-cta-support {
+      margin-top: 14px;
+      font-size: 0.78rem;
+      color: #71717a;
+    }
+    .buy-cta-support a { color: #a78bfa; text-decoration: none; }
+    .buy-cta-support a:hover { text-decoration: underline; }
+
     .text-link {
       background: none;
       border: none;
@@ -1728,10 +1788,25 @@
 
         if (!data || data.length === 0) {
           keysList.innerHTML = `
-            <div class="empty-state">
-              <div class="empty-icon">🔍</div>
-              No licenses found for <strong style="color:#a78bfa">${user.email}</strong>.<br>
-              <span style="font-size:0.8rem;">Contact support if you believe this is an error.</span>
+            <div class="buy-cta">
+              <div class="buy-cta-title">Ready to bring AiRi to your stream?</div>
+              <div class="buy-cta-sub">
+                No license yet for <strong>${user.email}</strong>.<br>
+                Grab AiRi and your license key is issued instantly.
+              </div>
+              <a href="buy.html" class="buy-cta-btn">
+                Buy AiRi
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+              <div class="buy-cta-support">
+                Already purchased? <a href="mailto:support@viriflowsocial.com">Contact support</a>
+                &mdash; your license may be on a different email.
+              </div>
             </div>`;
           return;
         }
