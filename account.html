@@ -1791,12 +1791,31 @@
         }
         const data = await licenseRes.json();
 
-        if (!data || data.length === 0) {
+        // Hide dead licenses (canceled subs, expired admin time-boxed keys)
+        // from the display. They're not actionable — copy-key is meaningless,
+        // and reactivation requires a fresh purchase (which mints a new key)
+        // rather than resurrecting the dead row. The Billing tab surfaces the
+        // cancellation state separately, so we don't lose confirmation UX by
+        // hiding here. `data` remains the full list for any future logic;
+        // only the rendered subset is trimmed.
+        const visible = Array.isArray(data)
+          ? data.filter(row => {
+              if (row.status === "inactive") return false;
+              if (row.expires_at && new Date(row.expires_at) < new Date()) return false;
+              return true;
+            })
+          : [];
+
+        if (visible.length === 0) {
+          const hadHistory = Array.isArray(data) && data.length > 0;
+          const intro = hadHistory
+            ? `Your AiRi subscription on <strong>${user.email}</strong> has ended.`
+            : `No license yet for <strong>${user.email}</strong>.`;
           keysList.innerHTML = `
             <div class="buy-cta">
               <div class="buy-cta-title">Ready to bring AiRi to your stream?</div>
               <div class="buy-cta-sub">
-                No license yet for <strong>${user.email}</strong>.<br>
+                ${intro}<br>
                 Grab AiRi and your license key is issued instantly.
               </div>
               <a href="buy.html" class="buy-cta-btn">
@@ -1817,9 +1836,9 @@
         }
 
       // Load quota data for active licenses (non-blocking)
-      loadQuota(data).catch(console.warn);
+      loadQuota(visible).catch(console.warn);
 
-      keysList.innerHTML = data.map((row) => {
+      keysList.innerHTML = visible.map((row) => {
         const isActive = row.status === "active";
         const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
         const isCanceling = isActive && !!row.cancel_at_period_end;

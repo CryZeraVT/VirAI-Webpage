@@ -23,6 +23,86 @@
 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+        function showAlreadySubscribed() {
+            // Halt the redirect and swap the card to a clear "you're already
+            // subscribed" message. The spinner would otherwise imply something
+            // is still loading, which is a UX lie once we've decided to block.
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.display = 'none';
+            document.getElementById('status-title').textContent = 'You already have an active subscription';
+            document.getElementById('status-msg').innerHTML =
+                'Your account is already on the AiRi Standard plan. ' +
+                'Manage your subscription, view invoices, or cancel from your ' +
+                '<a href="account.html" style="color:#a78bfa;text-decoration:underline;">account page</a>.';
+        }
+
+        async function hasActivePaidSubscription(user, token) {
+            // Returns true only when BOTH sides agree:
+            //   - licenses row: tier=standard, status=active for this email
+            //   - purchases row: matching license_key with a real stripe_subscription_id
+            // The purchases cross-check is load-bearing: admin-minted "standard"
+            // keys (no purchase row) must NOT trigger the block, otherwise we'd
+            // lock admins out of buying via their own accounts for testing.
+            // On any failure we return false (permissive) — a transient RLS or
+            // network blip should never block a paying customer from checkout.
+            try {
+                const licParams = new URLSearchParams({
+                    select: 'license_key,status,tier',
+                    email:  `ilike.${user.email}`,
+                    tier:   'eq.standard',
+                    status: 'eq.active',
+                });
+                const purParams = new URLSearchParams({
+                    select: 'license_key,stripe_subscription_id',
+                    email:  `ilike.${user.email}`,
+                    stripe_subscription_id: 'not.is.null',
+                });
+                const [licRes, purRes] = await Promise.all([
+                    fetch(`${SUPABASE_URL}/rest/v1/licenses?${licParams.toString()}`, {
+                        headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`${SUPABASE_URL}/rest/v1/purchases?${purParams.toString()}`, {
+                        headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}` },
+                    }),
+                ]);
+                if (!licRes.ok || !purRes.ok) return false;
+                const licenses  = await licRes.json();
+                const purchases = await purRes.json();
+                if (!Array.isArray(licenses) || licenses.length === 0) return false;
+                const realSubKeys = new Set(
+                    (Array.isArray(purchases) ? purchases : [])
+                        .filter(p => p && p.stripe_subscription_id)
+                        .map(p => p.license_key)
+                );
+                return licenses.some(l => realSubKeys.has(l.license_key));
+            } catch (e) {
+                console.warn('Duplicate-sub check skipped:', e);
+                return false;
+            }
+        }
+
+        async function isAdmin(user, token) {
+            // Profile admin flag matches the same signal account.html uses for
+            // the "Admin" button. Fail-open: on any error we return false so the
+            // normal sub check still applies. Admins bypass the block entirely
+            // because they need to test purchase flows against their own email.
+            try {
+                const params = new URLSearchParams({
+                    select: 'is_admin',
+                    id:     `eq.${user.id}`,
+                });
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?${params.toString()}`, {
+                    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}` },
+                });
+                if (!res.ok) return false;
+                const rows = await res.json();
+                return !!(Array.isArray(rows) && rows[0] && rows[0].is_admin);
+            } catch (e) {
+                console.warn('Admin check skipped:', e);
+                return false;
+            }
+        }
+
         async function init() {
             const { data: { session } } = await client.auth.getSession();
 
@@ -36,9 +116,21 @@
                 return;
             }
 
-            // Logged in — proceed to Stripe. Promo codes are entered on
-            // Stripe's hosted checkout page (allow_promotion_codes=true on
-            // the Payment Link), so no prompt is needed here.
+            const user  = session.user;
+            const token = session.access_token;
+
+            // Pre-flight: block duplicate subscriptions for non-admins. Admins
+            // are explicitly exempt so they can maintain multiple licenses for
+            // testing / support / internal accounts.
+            const admin = await isAdmin(user, token);
+            if (!admin) {
+                const already = await hasActivePaidSubscription(user, token);
+                if (already) { showAlreadySubscribed(); return; }
+            }
+
+            // Logged in and clear to buy — proceed to Stripe. Promo codes are
+            // entered on Stripe's hosted checkout page (allow_promotion_codes
+            // is set on the Payment Link), so no prompt is needed here.
             document.getElementById('status-title').textContent = 'Redirecting to Stripe...';
             document.getElementById('status-msg').textContent   = 'You are being transferred to our secure payment processor.';
             setTimeout(() => {
