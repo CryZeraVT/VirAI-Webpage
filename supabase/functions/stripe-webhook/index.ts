@@ -63,8 +63,17 @@ serve(async (req) => {
 
     const licenseKey = purchase?.license_key ?? "";
     if (licenseKey) {
-      const periodEndIso = sub.current_period_end
-        ? new Date(sub.current_period_end * 1000).toISOString()
+      // Stripe moved current_period_end from Subscription to SubscriptionItem
+      // in API version 2024-09-30.acacia. The SDK version pin here only
+      // affects outbound calls; inbound event shape is controlled by the
+      // Dashboard webhook endpoint's API version. Read both locations so
+      // a silent Dashboard upgrade doesn't null this column.
+      const periodEndUnix =
+        (sub as unknown as { current_period_end?: number }).current_period_end ??
+        sub.items?.data?.[0]?.current_period_end ??
+        null;
+      const periodEndIso = periodEndUnix
+        ? new Date(periodEndUnix * 1000).toISOString()
         : null;
 
       const { error } = await supabase
@@ -189,7 +198,25 @@ serve(async (req) => {
     const downloadToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // Create license (active)
+    // Pre-populate current_period_end on the initial license row so the
+    // account page can show "renews on X" / "access ends X" immediately,
+    // without waiting for the first customer.subscription.updated event
+    // (which can be hours away). Defensive on both SubObject and SubItem
+    // locations for the period_end field — see notes in the updated handler.
+    let initialPeriodEndIso: string | null = null;
+    if (stripeSubscriptionId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        const unix =
+          (sub as unknown as { current_period_end?: number }).current_period_end ??
+          sub.items?.data?.[0]?.current_period_end ??
+          null;
+        if (unix) initialPeriodEndIso = new Date(unix * 1000).toISOString();
+      } catch (e) {
+        console.error("Initial period_end fetch failed (non-fatal):", e);
+      }
+    }
+
     const { error: licenseError } = await supabase
       .from("licenses")
       .insert({
@@ -197,6 +224,7 @@ serve(async (req) => {
         email: email || null,
         status: "active",
         tier: "standard",
+        current_period_end: initialPeriodEndIso,
       });
 
     if (licenseError) {
