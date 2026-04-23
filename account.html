@@ -290,9 +290,10 @@
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .badge-active   { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-    .badge-inactive { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-    .badge-expired  { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+    .badge-active    { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-inactive  { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-expired   { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+    .badge-canceling { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 
     .license-meta {
       margin-top: 8px;
@@ -1764,7 +1765,11 @@
         }
 
         const licenseParams = new URLSearchParams({
-          select: "license_key,status,expires_at,created_at",
+          // tier + subscription-state fields are needed to render the card's
+          // date line correctly: a Standard-tier sub with null expires_at is
+          // NOT "No expiry" — it's a monthly recurrence whose next boundary
+          // lives in current_period_end.
+          select: "license_key,status,tier,expires_at,current_period_end,cancel_at_period_end,canceled_at,created_at",
           email: `ilike.${user.email}`,
           order: "created_at.desc",
         });
@@ -1817,12 +1822,46 @@
       keysList.innerHTML = data.map((row) => {
         const isActive = row.status === "active";
         const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
-        const badgeClass = isExpired ? "badge-expired" : isActive ? "badge-active" : "badge-inactive";
-        const badgeLabel = isExpired ? "EXPIRED" : row.status.toUpperCase();
+        const isCanceling = isActive && !!row.cancel_at_period_end;
+        // Canceling override: show an amber-ish CANCELING badge instead of
+        // the plain ACTIVE pill so users don't miss that their access is
+        // scheduled to stop. Falls back cleanly to the existing badge
+        // classes when the CSS doesn't define .badge-canceling.
+        const badgeClass = isExpired
+          ? "badge-expired"
+          : isCanceling
+            ? "badge-canceling"
+            : isActive
+              ? "badge-active"
+              : "badge-inactive";
+        const badgeLabel = isExpired
+          ? "EXPIRED"
+          : isCanceling
+            ? "CANCELING"
+            : row.status.toUpperCase();
 
-        const expires = row.expires_at
-          ? new Date(row.expires_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
-          : "No expiry";
+        // Build the date line. Priority:
+        //   1. Legacy hard-expiry (admin keys, lifetime-with-expiry): "Expires DATE"
+        //   2. Subscription with pending cancel: "Ends DATE"
+        //   3. Subscription with active renewal: "Renews DATE"
+        //   4. No date info at all: "Lifetime license"
+        // We check expires_at first because when BOTH fields are set, the
+        // hard-expiry is the authoritative cutoff (e.g. an admin-issued
+        // time-bombed key shouldn't masquerade as a recurring sub).
+        const fmtDate = (iso) => new Date(iso).toLocaleDateString(
+          "en-US", { year: "numeric", month: "short", day: "numeric" }
+        );
+        let dateLine;
+        if (row.expires_at) {
+          dateLine = `📅 Expires ${fmtDate(row.expires_at)}`;
+        } else if (isCanceling && row.current_period_end) {
+          dateLine = `📅 Ends ${fmtDate(row.current_period_end)}`;
+        } else if (isActive && row.current_period_end) {
+          dateLine = `🔄 Renews ${fmtDate(row.current_period_end)}`;
+        } else {
+          dateLine = `♾️ Lifetime license`;
+        }
+
         const created = row.created_at
           ? new Date(row.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
           : "";
@@ -1838,7 +1877,7 @@
               <span class="license-status-badge ${badgeClass}">${badgeLabel}</span>
             </div>
             <div class="license-meta">
-              <span>📅 Expires ${expires}</span>
+              <span>${dateLine}</span>
               ${created ? `<span>🗓 Issued ${created}</span>` : ""}
               <span>💻 1-PC License</span>
             </div>
