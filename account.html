@@ -1844,10 +1844,15 @@
         //   1. Legacy hard-expiry (admin keys, lifetime-with-expiry): "Expires DATE"
         //   2. Subscription with pending cancel: "Ends DATE"
         //   3. Subscription with active renewal: "Renews DATE"
-        //   4. No date info at all: "Lifetime license"
+        //   4. Subscription already terminated (immediate cancel or post-period): "Ended DATE"
+        //   5. No date info at all: genuine "Lifetime license"
         // We check expires_at first because when BOTH fields are set, the
         // hard-expiry is the authoritative cutoff (e.g. an admin-issued
         // time-bombed key shouldn't masquerade as a recurring sub).
+        // For branch 4 we prefer canceled_at (the actual shutoff moment)
+        // over current_period_end, because on immediate cancellation Stripe
+        // still reports the scheduled period end, which would be a misleading
+        // future date for a user whose access was cut immediately.
         const fmtDate = (iso) => new Date(iso).toLocaleDateString(
           "en-US", { year: "numeric", month: "short", day: "numeric" }
         );
@@ -1858,6 +1863,10 @@
           dateLine = `📅 Ends ${fmtDate(row.current_period_end)}`;
         } else if (isActive && row.current_period_end) {
           dateLine = `🔄 Renews ${fmtDate(row.current_period_end)}`;
+        } else if (row.canceled_at) {
+          dateLine = `🛑 Ended ${fmtDate(row.canceled_at)}`;
+        } else if (!isActive && row.current_period_end) {
+          dateLine = `🛑 Ended ${fmtDate(row.current_period_end)}`;
         } else {
           dateLine = `♾️ Lifetime license`;
         }
@@ -2375,20 +2384,42 @@
       }
 
       try {
-        const params = new URLSearchParams({
+        const licenseParams = new URLSearchParams({
           select: "license_key,status,tier,cancel_at_period_end,current_period_end,canceled_at",
           email: `ilike.${user.email}`,
           order: "created_at.desc",
         });
-        const res = await withTimeout(
-          fetch(`${SUPABASE_URL}/rest/v1/licenses?${params.toString()}`, {
-            headers: {
-              "apikey": SUPABASE_ANON_KEY,
-              "Authorization": `Bearer ${token}`,
-            },
-          }),
-          8000, "Billing query timed out"
-        );
+        // Fetch purchases in parallel so we can verify each "standard" license
+        // is actually backed by a real Stripe subscription. Without this check,
+        // legacy/admin keys that happen to carry tier="standard" but have no
+        // purchase row (or a null stripe_subscription_id) leak into the
+        // billing panel and mis-render as an ACTIVE recurring plan. See the
+        // diagnosis for VERI-ADMIN-TEST-0001 masquerading as a real sub.
+        const purchaseParams = new URLSearchParams({
+          select: "license_key,stripe_subscription_id",
+          email: `ilike.${user.email}`,
+        });
+
+        const [res, pRes] = await Promise.all([
+          withTimeout(
+            fetch(`${SUPABASE_URL}/rest/v1/licenses?${licenseParams.toString()}`, {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": `Bearer ${token}`,
+              },
+            }),
+            8000, "Billing query timed out"
+          ),
+          withTimeout(
+            fetch(`${SUPABASE_URL}/rest/v1/purchases?${purchaseParams.toString()}`, {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": `Bearer ${token}`,
+              },
+            }),
+            8000, "Purchases query timed out"
+          ).catch(() => null),
+        ]);
 
         if (!res.ok) {
           wrap.innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;color:#f87171;">Could not load billing (${res.status}).</div>`;
@@ -2396,8 +2427,29 @@
         }
 
         const licenses = await res.json();
+
+        // Build the set of license_keys that have a real Stripe subscription
+        // recorded on the purchases side. If the purchases query failed (e.g.
+        // RLS transient), we fall back to the old behavior (tier-only filter)
+        // rather than blanking the panel — don't want a network hiccup to
+        // hide a legitimate active sub from a paying user.
+        let subKeys = null;
+        if (pRes && pRes.ok) {
+          try {
+            const purchases = await pRes.json();
+            subKeys = new Set(
+              (Array.isArray(purchases) ? purchases : [])
+                .filter(p => p && p.stripe_subscription_id)
+                .map(p => p.license_key)
+            );
+          } catch { subKeys = null; }
+        }
+
         const paid = Array.isArray(licenses)
-          ? licenses.filter(l => l.tier === "standard")
+          ? licenses.filter(l =>
+              l.tier === "standard" &&
+              (subKeys === null || subKeys.has(l.license_key))
+            )
           : [];
 
         // No paid subscription found at all (beta-only or brand-new account)
