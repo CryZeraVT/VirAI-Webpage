@@ -87,7 +87,7 @@ serve(async (req) => {
 
   const { data, error } = await supabase
     .from("licenses")
-    .select("license_key,status,expires_at,machine_id,tos_version,tos_accepted_at")
+    .select("license_key,status,expires_at,current_period_end,cancel_at_period_end,canceled_at,machine_id,tos_version,tos_accepted_at")
     .eq("license_key", licenseKey)
     .single();
 
@@ -142,10 +142,22 @@ serve(async (req) => {
     tosBodySha = "";
   }
 
+  // Prefer the subscription period end (written by stripe-webhook on every
+  // customer.subscription.updated) over the legacy hard-expiry column.
+  // Old app builds only read `expires_at`, so we collapse the two into that
+  // field — this heals already-deployed binaries without requiring a client
+  // update. Newer app builds read the canonical `current_period_end` /
+  // `cancel_at_period_end` fields directly.
+  const effectiveExpiresAt = data.current_period_end ?? data.expires_at ?? null;
+
   return jsonResponse({
     valid: true,
     message: "License activated.",
-    expires_at: data.expires_at ?? null,
+    expires_at: effectiveExpiresAt,
+    // ── Subscription fields (new — older app builds will ignore these) ──
+    current_period_end:   data.current_period_end ?? null,
+    cancel_at_period_end: !!data.cancel_at_period_end,
+    canceled_at:          data.canceled_at ?? null,
     // ── Terms of Service fields (new — older app builds will ignore these) ──
     tos_current_version:  tosCurrentVersion,
     tos_accepted_version: data.tos_version ?? null,
