@@ -3,77 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete your purchase — AiRi</title>
+    <title>Redirecting to Payment...</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .promo-card {
-            max-width: 420px;
-            margin: 0 auto;
-            padding: 24px;
-            border-radius: 16px;
-            background: rgba(15, 5, 30, 0.85);
-            border: 1px solid rgba(124,58,237,0.25);
-            text-align: center;
-        }
-        .promo-card h3 { margin: 0 0 6px; font-size: 1.1rem; }
-        .promo-card p  { margin: 0 0 16px; font-size: 0.88rem; color: #a1a1aa; }
-        .promo-input {
-            width: 100%;
-            padding: 11px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(124,58,237,0.35);
-            background: rgba(8,6,15,0.7);
-            color: #f4f4f5;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            letter-spacing: 2px;
-            text-align: center;
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            outline: none;
-        }
-        .promo-input:focus { border-color: #a78bfa; }
-        .promo-actions { display: flex; gap: 10px; }
-        .promo-btn {
-            flex: 1;
-            padding: 11px 14px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 0.92rem;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.15s;
-        }
-        .promo-btn.primary { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; }
-        .promo-btn.ghost   { background: transparent; color: #a1a1aa; border: 1px solid rgba(255,255,255,0.12); }
-        .promo-btn:disabled { opacity: 0.6; cursor: wait; }
-        .promo-error { color: #f87171; font-size: 0.82rem; margin-top: 8px; min-height: 1em; }
-    </style>
 </head>
 <body>
     <div class="container">
-        <div class="status-box" id="status-box">
+        <div class="status-box">
             <div class="spinner"></div>
             <h2 id="status-title">Checking your account...</h2>
             <p id="status-msg">Please wait a moment.</p>
-        </div>
-
-        <div class="promo-card" id="promo-card" style="display:none;">
-            <h3>Have a promo code?</h3>
-            <p>Enter it below, or skip to continue to secure checkout.</p>
-            <input id="promo-input"
-                   class="promo-input"
-                   type="text"
-                   maxlength="32"
-                   autocomplete="off"
-                   spellcheck="false"
-                   placeholder="PROMOCODE">
-            <div class="promo-actions">
-                <button class="promo-btn ghost"   id="promo-skip">Skip</button>
-                <button class="promo-btn primary" id="promo-apply">Apply &amp; Continue</button>
-            </div>
-            <div class="promo-error" id="promo-error"></div>
         </div>
     </div>
 
@@ -84,64 +23,27 @@
 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-        const PROMO_RE = /^[A-Z0-9_-]{1,32}$/;
-
-        function sanitizePromo(raw) {
-            return (raw || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 32);
-        }
-
-        function buildStripeUrl(code) {
-            if (!code) return STRIPE_LINK;
-            const sep = STRIPE_LINK.includes('?') ? '&' : '?';
-            return `${STRIPE_LINK}${sep}prefilled_promo_code=${encodeURIComponent(code)}`;
-        }
-
-        function redirectToStripe(code) {
-            window.location.href = buildStripeUrl(code);
-        }
-
-        function showPromoCard() {
-            document.getElementById('status-box').style.display = 'none';
-            const card = document.getElementById('promo-card');
-            card.style.display = 'block';
-            const input = document.getElementById('promo-input');
-            input.focus();
-
-            document.getElementById('promo-skip').addEventListener('click', () => redirectToStripe(null));
-
-            document.getElementById('promo-apply').addEventListener('click', () => {
-                const err = document.getElementById('promo-error');
-                const code = sanitizePromo(input.value);
-                if (!code) {
-                    err.textContent = 'Enter a code, or click Skip.';
-                    return;
-                }
-                if (!PROMO_RE.test(code)) {
-                    err.textContent = 'Codes can only contain letters, numbers, - and _.';
-                    return;
-                }
-                err.textContent = '';
-                document.getElementById('promo-apply').disabled = true;
-                document.getElementById('promo-skip').disabled  = true;
-                redirectToStripe(code);
-            });
-
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') document.getElementById('promo-apply').click();
-            });
-        }
-
         async function init() {
             const { data: { session } } = await client.auth.getSession();
 
             if (!session) {
+                // Not logged in — send to account page with return flag
                 document.getElementById('status-title').textContent = 'Account required';
                 document.getElementById('status-msg').textContent   = 'Please sign in or create a free account first. Redirecting...';
-                setTimeout(() => { window.location.href = 'account.html?redirect=buy'; }, 1500);
+                setTimeout(() => {
+                    window.location.href = 'account.html?redirect=buy';
+                }, 1500);
                 return;
             }
 
-            showPromoCard();
+            // Logged in — proceed to Stripe. Promo codes are entered on
+            // Stripe's hosted checkout page (allow_promotion_codes=true on
+            // the Payment Link), so no prompt is needed here.
+            document.getElementById('status-title').textContent = 'Redirecting to Stripe...';
+            document.getElementById('status-msg').textContent   = 'You are being transferred to our secure payment processor.';
+            setTimeout(() => {
+                window.location.href = STRIPE_LINK;
+            }, 800);
         }
 
         init();
