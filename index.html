@@ -1196,7 +1196,7 @@
           </p>
           <div class="hero-btns reveal reveal-delay-3">
             <a href="beta.html" class="btn btn-primary">Sign up to our Creator Program</a>
-            <a id="latest-download-btn" href="https://www.viritts.com/buy.html" class="btn btn-ghost">Purchase Beta</a>
+            <a id="latest-download-btn" href="https://www.viritts.com/buy.html" class="btn btn-ghost">Purchase AiRi</a>
           </div>
         </div>
 
@@ -1964,8 +1964,7 @@ document.querySelectorAll('.bento-card').forEach(card => {
     });
     const data = await r.json();
     if (data && data.length > 0) {
-      const btn = document.getElementById('latest-download-btn');
-      if (btn) btn.textContent = `Download v${data[0].version}`;
+      // btn text intentionally static — Purchase AiRi
     }
   } catch (_) {}
 })();
