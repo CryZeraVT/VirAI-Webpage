@@ -1,5 +1,5 @@
 # Supabase Blueprint — AiRi / viritts.com
-> Last mapped: April 18, 2026. Update before schema changes.
+> Last mapped: May 12, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -84,6 +84,7 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
   - `proxy_ai_provider` — prod AI config (provider, model, params)
   - `ai_api_keys` — provider API keys object
   - `tier_limits` — per-tier AI token allocation (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Added 2026-04-18. Written exclusively via `update_tier_limits()` RPC (admin-gated, validated, audited). Read by `admin.html` (via `get_tier_limits()`) and by `ai-proxy` / `get-quota` edge functions (direct table read, 60s in-memory cache).
+  - `beta_renewal_config` — beta auto-renewal settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 30}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` edge function (direct table read, 60s in-memory cache). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
 
 ---
 
@@ -178,6 +179,12 @@ Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE
 
 > **Propagation semantics:** With `p_apply_to_existing = false`, changes reach existing customers lazily via `ai-proxy` → `increment_token_quota` on their next AI call (the RPC `ON CONFLICT DO UPDATE SET base_limit = p_base_limit` upserts the per-call tier value). New purchases get the new limit on their first call. With `true`, every active customer's row is backfilled immediately — use when a decrease might otherwise let existing customers exceed the new cap within the current period.
 
+### `get_beta_renewal_config()`
+`SECURITY DEFINER` SQL function. Returns `jsonb` — the current `system_config.beta_renewal_config` row (`{grace_days, renewal_days}`), or the safe default `{"grace_days": 3, "renewal_days": 30}` if the row is missing. EXECUTE granted to `authenticated`, revoked from `anon`. Used by `admin.html` Beta Auto-Renewal section. Added 2026-05-12.
+
+### `update_beta_renewal_config(p_config jsonb)`
+`SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Validates: `grace_days` and `renewal_days` must be integers between 1 and 365. On success: upserts `system_config.beta_renewal_config`, writes an audit row to `system_config_audit`. Returns `{success, new_config}`. EXECUTE granted to `authenticated`. Added 2026-05-12.
+
 ### `count_active_by_tier()`
 `SECURITY DEFINER` SQL helper. Returns `jsonb` of `{tier: active_count}` from `licenses` where `status = 'active' AND tier IS NOT NULL`. Used by the Tier Limits admin UI to show "N active" badges and to size the confirmation dialog. EXECUTE granted to `authenticated`. Added 2026-04-18.
 
@@ -201,7 +208,7 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 | `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage). Uses the same cached `system_config.tier_limits` read as `ai-proxy` for the fallback when no `token_quotas` row exists yet (new customer pre-first-call). |
 | `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). |
 | `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |
-| `validate-license` | Validates license key for app activation |
+| `validate-license` | Validates license key for app activation. Also auto-renews **beta** licenses that are used within `beta_renewal_config.grace_days` of expiry — pushes `expires_at` forward by `renewal_days` days and returns `beta_renewed: true`. Config cached 60 s. Updated 2026-05-12. |
 | `reset-license` | Clears `machine_id` to allow new PC binding |
 | `admin-users` | Admin: list/manage users |
 | `beta-signup` | Handles beta waitlist form submission |

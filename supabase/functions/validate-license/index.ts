@@ -13,6 +13,42 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// ── Beta renewal config cache ─────────────────────────────────────────────────
+// Reads system_config.beta_renewal_config (grace_days, renewal_days).
+// Cached for 60s — same TTL pattern as TOS version below.
+interface BetaRenewalConfig { grace_days: number; renewal_days: number; }
+const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 30 };
+let _cachedBetaRenewal: BetaRenewalConfig | null = null;
+let _cachedBetaRenewalAt = 0;
+const BETA_RENEWAL_CACHE_TTL_MS = 60_000;
+
+async function getBetaRenewalConfig(): Promise<BetaRenewalConfig> {
+  const now = Date.now();
+  if (_cachedBetaRenewal && now - _cachedBetaRenewalAt < BETA_RENEWAL_CACHE_TTL_MS) {
+    return _cachedBetaRenewal;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("system_config")
+      .select("value")
+      .eq("key", "beta_renewal_config")
+      .maybeSingle();
+    if (error || !data?.value) return BETA_RENEWAL_DEFAULT;
+    const cfg = data.value as { grace_days?: unknown; renewal_days?: unknown };
+    const result: BetaRenewalConfig = {
+      grace_days:   Number(cfg.grace_days   ?? BETA_RENEWAL_DEFAULT.grace_days),
+      renewal_days: Number(cfg.renewal_days ?? BETA_RENEWAL_DEFAULT.renewal_days),
+    };
+    if (!Number.isFinite(result.grace_days)   || result.grace_days   < 1) result.grace_days   = BETA_RENEWAL_DEFAULT.grace_days;
+    if (!Number.isFinite(result.renewal_days) || result.renewal_days < 1) result.renewal_days = BETA_RENEWAL_DEFAULT.renewal_days;
+    _cachedBetaRenewal   = result;
+    _cachedBetaRenewalAt = now;
+    return result;
+  } catch {
+    return BETA_RENEWAL_DEFAULT;
+  }
+}
+
 // Read the current in-app ToS version from site_settings.
 // Cached for the lifetime of the isolate (edge fn cold-starts) for minor perf.
 let _cachedTosVersion: string | null = null;
@@ -87,7 +123,7 @@ serve(async (req) => {
 
   const { data, error } = await supabase
     .from("licenses")
-    .select("license_key,status,expires_at,current_period_end,cancel_at_period_end,canceled_at,machine_id,tos_version,tos_accepted_at")
+    .select("license_key,status,expires_at,current_period_end,cancel_at_period_end,canceled_at,machine_id,tier,tos_version,tos_accepted_at")
     .eq("license_key", licenseKey)
     .single();
 
@@ -119,6 +155,27 @@ serve(async (req) => {
   };
   if (!data.machine_id && machineId) {
     updates.machine_id = machineId;
+  }
+
+  // ── Beta auto-renewal ──────────────────────────────────────────────────────
+  // If the license is beta tier, has a finite expiry, and the user is active
+  // within the configured grace window, push the expiry forward by renewal_days.
+  // Non-fatal: a config read failure must never block a valid license check.
+  let betaRenewed = false;
+  if (data.tier === "beta" && data.expires_at) {
+    try {
+      const renewalCfg   = await getBetaRenewalConfig();
+      const expiresAtMs  = new Date(data.expires_at).getTime();
+      const graceMs      = renewalCfg.grace_days * 24 * 60 * 60 * 1000;
+      const msUntilExpiry = expiresAtMs - Date.now();
+      if (msUntilExpiry <= graceMs) {
+        const newExpiry = new Date(Date.now() + renewalCfg.renewal_days * 24 * 60 * 60 * 1000);
+        updates.expires_at = newExpiry.toISOString();
+        betaRenewed = true;
+      }
+    } catch {
+      // Non-fatal — do not block validation
+    }
   }
 
   await supabase.from("licenses").update(updates).eq("license_key", licenseKey);
@@ -153,11 +210,13 @@ serve(async (req) => {
   return jsonResponse({
     valid: true,
     message: "License activated.",
-    expires_at: effectiveExpiresAt,
+    expires_at: betaRenewed ? updates.expires_at! : effectiveExpiresAt,
     // ── Subscription fields (new — older app builds will ignore these) ──
     current_period_end:   data.current_period_end ?? null,
     cancel_at_period_end: !!data.cancel_at_period_end,
     canceled_at:          data.canceled_at ?? null,
+    // ── Beta auto-renewal (older app builds will ignore this) ──
+    beta_renewed:         betaRenewed,
     // ── Terms of Service fields (new — older app builds will ignore these) ──
     tos_current_version:  tosCurrentVersion,
     tos_accepted_version: data.tos_version ?? null,
