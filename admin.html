@@ -2560,20 +2560,14 @@
           const expiresAt = btn.getAttribute("data-expires");
           const tier      = btn.getAttribute("data-tier");
 
-          // Decide whether to extend expires_at:
-          // extend if it's expired (past), within 7 days, or null (treat as needing reset).
+          // Always extend expires_at — this is a deliberate manual admin action.
           const now = Date.now();
-          const expMs = expiresAt ? new Date(expiresAt).getTime() : null;
-          const needsExtension = !expMs || (expMs - now) < 7 * 24 * 60 * 60 * 1000;
           const newExpiry = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
-          const expiryLine = needsExtension
-            ? `  • expires_at → +30 days from today (${new Date(newExpiry).toLocaleDateString()})`
-            : `  • expires_at unchanged (still valid)`;
+          const currentExpiry = expiresAt ? new Date(expiresAt).toLocaleDateString() : "none";
 
-          if (!confirm(`Reactivate license for ${email}?\n\n  • status → active\n${expiryLine}\n\nContinue?`)) return;
+          if (!confirm(`Reactivate license for ${email}?\n\n  • status → active\n  • expires_at → +30 days from today (${new Date(newExpiry).toLocaleDateString()})\n  • previous expiry: ${currentExpiry}\n\nContinue?`)) return;
 
-          const updates = { status: "active" };
-          if (needsExtension) updates.expires_at = newExpiry;
+          const updates = { status: "active", expires_at: newExpiry };
 
           btn.disabled = true;
           btn.textContent = "...";
