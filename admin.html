@@ -2561,11 +2561,23 @@
           const tier      = btn.getAttribute("data-tier");
 
           // Always extend expires_at — this is a deliberate manual admin action.
+          // Use the same renewal_days configured in beta_renewal_config so
+          // manual reactivation and auto-renewal stay in sync.
+          btn.disabled = true;
+          btn.textContent = "...";
+          let renewalDays = 30;
+          try {
+            const { data: rCfg } = await supabase.rpc("get_beta_renewal_config");
+            if (rCfg && rCfg.renewal_days > 0) renewalDays = rCfg.renewal_days;
+          } catch (_) { /* fallback to 30 */ }
+          btn.disabled = false;
+          btn.textContent = "🔄 Reactivate";
+
           const now = Date.now();
-          const newExpiry = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+          const newExpiry = new Date(now + renewalDays * 24 * 60 * 60 * 1000).toISOString();
           const currentExpiry = expiresAt ? new Date(expiresAt).toLocaleDateString() : "none";
 
-          if (!confirm(`Reactivate license for ${email}?\n\n  • status → active\n  • expires_at → +30 days from today (${new Date(newExpiry).toLocaleDateString()})\n  • previous expiry: ${currentExpiry}\n\nContinue?`)) return;
+          if (!confirm(`Reactivate license for ${email}?\n\n  • status → active\n  • expires_at → +${renewalDays} days from today (${new Date(newExpiry).toLocaleDateString()})\n  • previous expiry: ${currentExpiry}\n\nContinue?`)) return;
 
           const updates = { status: "active", expires_at: newExpiry };
 
