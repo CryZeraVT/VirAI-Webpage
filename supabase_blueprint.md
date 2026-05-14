@@ -1,5 +1,5 @@
 # Supabase Blueprint — AiRi / viritts.com
-> Last mapped: May 12, 2026. Update before schema changes.
+> Last mapped: May 13, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -106,7 +106,7 @@ Indexed on `(config_key, changed_at DESC)`. RLS: enabled. Admins (`profiles.is_a
 
 ### `model_pricing`
 - `provider`, `model`, `input_cost_per_million`, `output_cost_per_million`
-- 20 rows
+- 21 rows. Added 2026-05-13: `grok / grok-4.3` → $1.25/$2.50 per million tokens (xAI official pricing).
 
 ---
 
@@ -204,7 +204,7 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 
 | Function | Purpose |
 |---|---|
-| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota. Reads tier→token limits from `system_config.tier_limits` (60s in-memory cache, falls back to `{standard: 3M, test: 50k}` if missing/malformed). Passes the resolved limit to `increment_token_quota` as `p_base_limit`, which upserts it onto `token_quotas.base_limit`. |
+| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota. Reads tier→token limits from `system_config.tier_limits` (60s in-memory cache, falls back to `{standard: 3M, test: 50k}` if missing/malformed). Passes the resolved limit to `increment_token_quota` as `p_base_limit`, which upserts it onto `token_quotas.base_limit`. **Updated 2026-05-13 (v18):** Reads `reasoning_effort` from the active config row and forwards it to xAI chat completions when the model is classified as reasoning (`grok-4.x` without `non-reasoning`). Values: `none / low (default) / medium / high`. Configurable in `admin.html` AI Engine tab. |
 | `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage). Uses the same cached `system_config.tier_limits` read as `ai-proxy` for the fallback when no `token_quotas` row exists yet (new customer pre-first-call). |
 | `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). |
 | `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |

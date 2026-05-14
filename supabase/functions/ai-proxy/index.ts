@@ -168,6 +168,7 @@ serve(async (req) => {
     provider?: string; model?: string;
     temperature?: number; max_tokens?: number; max_completion_tokens?: number;
     top_p?: number; frequency_penalty?: number; presence_penalty?: number;
+    reasoning_effort?: string;
   };
   const cfg = (aiConfig?.value ?? {}) as AiCfg;
 
@@ -196,6 +197,9 @@ serve(async (req) => {
 
   if (reasoning) {
     aiPayload["max_completion_tokens"] = cfg.max_completion_tokens ?? 2000;
+    if (provider === "grok") {
+      aiPayload["reasoning_effort"] = cfg.reasoning_effort ?? "low";
+    }
   } else if (provider === "grok") {
     aiPayload["temperature"] = cfg.temperature ?? 0.9;
     aiPayload["max_tokens"]  = requestMaxTokens ?? cfg.max_tokens ?? 300;

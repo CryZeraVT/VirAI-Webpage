@@ -598,60 +598,10 @@
         <div class="tab-content" id="tab-ai-engine">
           <div class="tab-header">
             <h3>🤖 AI Engine</h3>
-            <p>Two independent configs — changing one never affects the other. Legacy = existing testers (<code style="color:#a78bfa;">api_mode: builtin</code>). New Prod = new users (<code style="color:#06b6d4;">api_mode: proxy</code>).</p>
+            <p>Prod config for all users (<code style="color:#06b6d4;">api_mode: proxy</code>). Changes propagate within 60 seconds via edge-function cache.</p>
           </div>
 
-          <!-- ── LEGACY CONFIG ─────────────────────────────────────────────── -->
-          <div class="admin-section" style="border-color:rgba(167,139,250,0.3);">
-            <div class="admin-section-title" style="color:#a78bfa;">🏛️ Legacy Config <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— builtin_ai_provider · existing testers</span></div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Provider</label>
-                <select id="leg-provider" class="form-input">
-                  <option value="openai">OpenAI</option>
-                  <option value="grok">Grok (X.AI)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Model</label>
-                <input id="leg-model" type="text" placeholder="e.g. gpt-4o-mini" class="form-input">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Temperature <span id="leg-temp-display" style="color:#a78bfa;font-weight:700;">0.9</span></label>
-                <input id="leg-temperature" type="range" min="0" max="2" step="0.05" value="0.9" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-temp-display').textContent=parseFloat(this.value).toFixed(2)">
-              </div>
-              <div class="form-group">
-                <label>Max Tokens</label>
-                <input id="leg-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Top P <span id="leg-topp-display" style="color:#a78bfa;font-weight:700;">1.0</span></label>
-                <input id="leg-top-p" type="range" min="0" max="1" step="0.05" value="1.0" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-topp-display').textContent=parseFloat(this.value).toFixed(2)">
-              </div>
-              <div class="form-group">
-                <label>Freq Penalty <span id="leg-freqp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
-                <input id="leg-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
-              </div>
-              <div class="form-group">
-                <label>Presence Penalty <span id="leg-presp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
-                <input id="leg-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('leg-presp-display').textContent=parseFloat(this.value).toFixed(2)">
-              </div>
-            </div>
-            <div class="form-group" style="max-width:240px;">
-              <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
-              <input id="leg-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
-              <button id="save-legacy-config" class="btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);padding:10px 24px;">💾 Save Legacy Config</button>
-              <span id="legacy-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
-            </div>
-          </div>
-
-          <!-- ── NEW PROD CONFIG ───────────────────────────────────────────── -->
+          <!-- ── PROD CONFIG ───────────────────────────────────────────────── -->
           <div class="admin-section" style="border-color:rgba(6,182,212,0.3);">
             <div class="admin-section-title" style="color:#06b6d4;">🚀 New Prod Config <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— proxy_ai_provider · new users</span></div>
             <div class="form-row">
@@ -691,9 +641,20 @@
                 <input id="prod-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('prod-presp-display').textContent=parseFloat(this.value).toFixed(2)">
               </div>
             </div>
-            <div class="form-group" style="max-width:240px;">
-              <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
-              <input id="prod-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+            <div class="form-row" style="align-items:flex-start;">
+              <div class="form-group" style="max-width:240px;">
+                <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
+                <input id="prod-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+              </div>
+              <div class="form-group" style="max-width:240px;">
+                <label>Reasoning Effort <span style="color:#4b5563;font-weight:400;">(grok-4.x only)</span></label>
+                <select id="prod-reasoning-effort" class="form-input">
+                  <option value="none">none — disabled, instant</option>
+                  <option value="low" selected>low — fast, default</option>
+                  <option value="medium">medium — complex analysis</option>
+                  <option value="high">high — deep reasoning</option>
+                </select>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
               <button id="save-prod-config" class="btn" style="background:linear-gradient(135deg,#0891b2,#06b6d4);padding:10px 24px;">💾 Save New Prod Config</button>
@@ -1331,7 +1292,7 @@
     const statusEl = document.getElementById("admin-status");
     const contentEl = document.getElementById("admin-content");
     const listEl = document.getElementById("announcements-list");
-    // AI Engine tab uses prefix-based selectors (leg-* / prod-*); no shared refs needed
+    // AI Engine tab uses prod-* prefix selectors; no shared refs needed
     const r2AccountIdEl = document.getElementById("r2-account-id");
     const r2AccessKeyEl = document.getElementById("r2-access-key");
     const r2SecretKeyEl = document.getElementById("r2-secret-key");
@@ -2081,6 +2042,7 @@
       if (v.frequency_penalty     != null) { s(`${prefix}-frequency-penalty`).value   = v.frequency_penalty;   syncSlider(`${prefix}-frequency-penalty`,   `${prefix}-freqp-display`); }
       if (v.presence_penalty      != null) { s(`${prefix}-presence-penalty`).value    = v.presence_penalty;    syncSlider(`${prefix}-presence-penalty`,    `${prefix}-presp-display`); }
       if (v.max_completion_tokens != null)   s(`${prefix}-max-completion-tokens`).value = v.max_completion_tokens;
+      if (v.reasoning_effort      != null)   s(`${prefix}-reasoning-effort`).value       = v.reasoning_effort;
     }
 
     function readAiValues(prefix) {
@@ -2094,17 +2056,15 @@
         frequency_penalty:    parseFloat(g(`${prefix}-frequency-penalty`).value),
         presence_penalty:     parseFloat(g(`${prefix}-presence-penalty`).value),
         max_completion_tokens: parseInt(g(`${prefix}-max-completion-tokens`).value, 10),
+        reasoning_effort:      g(`${prefix}-reasoning-effort`).value,
       };
     }
 
     async function loadAIConfig() {
       try {
-        const [legRes, prodRes] = await Promise.all([
-          supabase.from("system_config").select("value").eq("key", "builtin_ai_provider").maybeSingle(),
-          supabase.from("system_config").select("value").eq("key", "proxy_ai_provider").maybeSingle(),
-        ]);
-        if (legRes.data?.value)  applyAiValues(legRes.data.value,  "leg");
-        if (prodRes.data?.value) applyAiValues(prodRes.data.value, "prod");
+        const { data: prodData } = await supabase
+          .from("system_config").select("value").eq("key", "proxy_ai_provider").maybeSingle();
+        if (prodData?.value) applyAiValues(prodData.value, "prod");
       } catch (err) {
         console.error("Unexpected error in loadAIConfig:", err);
       }
@@ -2346,9 +2306,6 @@
       }
     });
 
-    document.getElementById("save-legacy-config").addEventListener("click", () =>
-      saveAiConfig("builtin_ai_provider", "leg", "legacy-config-status")
-    );
     document.getElementById("save-prod-config").addEventListener("click", () =>
       saveAiConfig("proxy_ai_provider", "prod", "prod-config-status")
     );
