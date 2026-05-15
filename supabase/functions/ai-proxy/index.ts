@@ -14,14 +14,16 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 const supabaseUrl    = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const ALLOWED_CONFIG_KEYS = ["builtin_ai_provider", "proxy_ai_provider"] as const;
+const ALLOWED_CONFIG_KEYS = ["builtin_ai_provider", "proxy_ai_provider", "studio_ai_provider"] as const;
 type ConfigKey = typeof ALLOWED_CONFIG_KEYS[number];
 
 // Safe fallback used if system_config is missing/malformed. Must stay in
 // sync with the DB seed in the tier_limits_system_config migration.
 const TIER_LIMITS_FALLBACK: Record<string, number> = {
   standard: 3_000_000,
+  studio:   6_000_000,
   test:     50_000,
+  // beta: no entry — beta bypasses quota enforcement entirely
 };
 
 // In-memory cache: process-local, refreshed every 60s. Edge Function
@@ -130,6 +132,15 @@ serve(async (req) => {
   const tierLimits = await getTierLimits(supabase);
   const tierLimit  = tierLimits[tier] ?? tierLimits.standard ?? TIER_LIMITS_FALLBACK.standard;
 
+  // ── Tier → config key mapping ─────────────────────────────────────────
+  // standard / test  → proxy_ai_provider (Gemini)
+  // studio / beta    → studio_ai_provider (Grok)
+  // The client-supplied config_key is only honoured for legacy builtin path.
+  const effectiveConfigKey: ConfigKey =
+    (tier === "studio" || tier === "beta") ? "studio_ai_provider" :
+    configKey === "builtin_ai_provider"    ? "builtin_ai_provider" :
+    "proxy_ai_provider";
+
   // ── Quota pre-check (non-beta tiers only) ────────────────────────────
   if (!isBeta) {
     const { data: quota } = await supabase
@@ -161,7 +172,7 @@ serve(async (req) => {
   const { data: aiConfig } = await supabase
     .from("system_config")
     .select("value")
-    .eq("key", configKey)
+    .eq("key", effectiveConfigKey)
     .maybeSingle();
 
   type AiCfg = {
@@ -187,54 +198,113 @@ serve(async (req) => {
   if (!apiKey)
     return jsonResponse({ error: `No API key configured for provider: ${provider}` }, 503);
 
-  // ── Build AI payload ─────────────────────────────────────────────────
-  let apiUrl: string;
-  if (provider === "openai")    apiUrl = "https://api.openai.com/v1/chat/completions";
-  else if (provider === "grok") apiUrl = "https://api.x.ai/v1/chat/completions";
-  else return jsonResponse({ error: `Unknown provider: ${provider}` }, 400);
+  // ── Build AI payload and call provider ───────────────────────────────
+  let promptTokens     = 0;
+  let completionTokens = 0;
+  let responseContent  = "";
 
-  const aiPayload: Record<string, unknown> = { model, messages };
+  if (provider === "gemini") {
+    // ── Gemini: REST generateContent ────────────────────────────────────
+    const geminiModel = model || "gemini-2.5-flash";
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 
-  if (reasoning) {
-    aiPayload["max_completion_tokens"] = cfg.max_completion_tokens ?? 2000;
-    if (provider === "grok") {
-      aiPayload["reasoning_effort"] = cfg.reasoning_effort ?? "low";
+    // Split system message from conversation turns
+    const systemParts: Array<{ text: string }> = [];
+    const convMessages = messages as Array<{ role: string; content: string }>;
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+    for (const msg of convMessages) {
+      if (msg.role === "system") {
+        systemParts.push({ text: msg.content });
+      } else {
+        contents.push({ role: msg.role === "assistant" ? "model" : "user", parts: [{ text: msg.content }] });
+      }
     }
-  } else if (provider === "grok") {
-    aiPayload["temperature"] = cfg.temperature ?? 0.9;
-    aiPayload["max_tokens"]  = requestMaxTokens ?? cfg.max_tokens ?? 300;
-    aiPayload["top_p"]       = cfg.top_p       ?? 0.95;
+
+    const maxOut = requestMaxTokens ?? cfg.max_tokens ?? 300;
+    const geminiPayload: Record<string, unknown> = {
+      contents,
+      generationConfig: {
+        temperature:     cfg.temperature ?? 0.9,
+        topP:            cfg.top_p       ?? 0.95,
+        maxOutputTokens: Math.max(maxOut, 2048),
+      },
+    };
+    if (systemParts.length > 0) {
+      geminiPayload["systemInstruction"] = { parts: systemParts };
+    }
+
+    const geminiRes = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(geminiPayload),
+    });
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      return jsonResponse({ error: `Gemini error (${geminiRes.status}): ${errText}`, tier }, geminiRes.status);
+    }
+
+    const geminiData = await geminiRes.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+    };
+
+    responseContent  = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    promptTokens     = geminiData.usageMetadata?.promptTokenCount     ?? 0;
+    completionTokens = geminiData.usageMetadata?.candidatesTokenCount ?? 0;
+
   } else {
-    aiPayload["temperature"]       = cfg.temperature       ?? 0.9;
-    aiPayload["max_tokens"]        = requestMaxTokens ?? cfg.max_tokens ?? 300;
-    aiPayload["top_p"]             = cfg.top_p             ?? 1.0;
-    aiPayload["frequency_penalty"] = cfg.frequency_penalty ?? 0.3;
-    aiPayload["presence_penalty"]  = cfg.presence_penalty  ?? 0.3;
+    // ── OpenAI-compatible: OpenAI or Grok ───────────────────────────────
+    let apiUrl: string;
+    if (provider === "openai")    apiUrl = "https://api.openai.com/v1/chat/completions";
+    else if (provider === "grok") apiUrl = "https://api.x.ai/v1/chat/completions";
+    else return jsonResponse({ error: `Unknown provider: ${provider}`, tier }, 400);
+
+    const aiPayload: Record<string, unknown> = { model, messages };
+
+    if (reasoning) {
+      aiPayload["max_completion_tokens"] = cfg.max_completion_tokens ?? 2000;
+      if (provider === "grok") {
+        aiPayload["reasoning_effort"] = cfg.reasoning_effort ?? "low";
+      }
+    } else if (provider === "grok") {
+      aiPayload["temperature"] = cfg.temperature ?? 0.9;
+      aiPayload["max_tokens"]  = requestMaxTokens ?? cfg.max_tokens ?? 300;
+      aiPayload["top_p"]       = cfg.top_p       ?? 0.95;
+    } else {
+      aiPayload["temperature"]       = cfg.temperature       ?? 0.9;
+      aiPayload["max_tokens"]        = requestMaxTokens ?? cfg.max_tokens ?? 300;
+      aiPayload["top_p"]             = cfg.top_p             ?? 1.0;
+      aiPayload["frequency_penalty"] = cfg.frequency_penalty ?? 0.3;
+      aiPayload["presence_penalty"]  = cfg.presence_penalty  ?? 0.3;
+    }
+
+    const aiRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify(aiPayload),
+    });
+
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      return jsonResponse({ error: `AI provider error (${aiRes.status}): ${errText}`, tier }, aiRes.status);
+    }
+
+    const aiData = await aiRes.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?:   { prompt_tokens: number; completion_tokens: number };
+    };
+
+    responseContent  = aiData.choices?.[0]?.message?.content ?? "";
+    promptTokens     = aiData.usage?.prompt_tokens    ?? 0;
+    completionTokens = aiData.usage?.completion_tokens ?? 0;
   }
-
-  // ── Call provider ────────────────────────────────────────────────────
-  const aiRes = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify(aiPayload),
-  });
-
-  if (!aiRes.ok) {
-    const errText = await aiRes.text();
-    return jsonResponse({ error: `AI provider error (${aiRes.status}): ${errText}` }, aiRes.status);
-  }
-
-  const aiData = await aiRes.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
-    usage?:   { prompt_tokens: number; completion_tokens: number };
-  };
 
   // ── Track usage (always, for analytics) ──────────────────────────────
-  const promptTokens     = aiData.usage?.prompt_tokens ?? 0;
-  const completionTokens = aiData.usage?.completion_tokens ?? 0;
-  const totalTokens      = promptTokens + completionTokens;
+  const totalTokens = promptTokens + completionTokens;
 
-  if (aiData.usage) {
+  if (totalTokens > 0) {
     const { data: pricing } = await supabase
       .from("model_pricing")
       .select("input_cost_per_million, output_cost_per_million")
@@ -283,9 +353,11 @@ serve(async (req) => {
   }
 
   return jsonResponse({
-    content:    aiData.choices?.[0]?.message?.content ?? "",
-    usage:      aiData.usage ?? null,
-    model, provider, reasoning, config_key: configKey,
+    content: responseContent,
+    usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens },
+    model, provider, reasoning,
+    config_key: effectiveConfigKey,
+    tier,
     ...quotaInfo,
   });
 });

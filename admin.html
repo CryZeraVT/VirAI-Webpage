@@ -610,6 +610,7 @@
                 <select id="prod-provider" class="form-input">
                   <option value="openai">OpenAI</option>
                   <option value="grok">Grok (X.AI)</option>
+                  <option value="gemini">Gemini (Google)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -659,6 +660,68 @@
             <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
               <button id="save-prod-config" class="btn" style="background:linear-gradient(135deg,#0891b2,#06b6d4);padding:10px 24px;">💾 Save New Prod Config</button>
               <span id="prod-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
+            </div>
+          </div>
+
+          <!-- ── STUDIO CONFIG ─────────────────────────────────────────────────── -->
+          <div class="admin-section" style="border-color:rgba(167,139,250,0.3);margin-top:24px;">
+            <div class="admin-section-title" style="color:#a78bfa;">🎬 Studio Config <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— studio_ai_provider · studio + beta tiers</span></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Provider</label>
+                <select id="studio-provider" class="form-input">
+                  <option value="openai">OpenAI</option>
+                  <option value="grok">Grok (X.AI)</option>
+                  <option value="gemini">Gemini (Google)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Model</label>
+                <input id="studio-model" type="text" placeholder="e.g. grok-4-latest" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Temperature <span id="studio-temp-display" style="color:#a78bfa;font-weight:700;">0.9</span></label>
+                <input id="studio-temperature" type="range" min="0" max="2" step="0.05" value="0.9" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('studio-temp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Max Tokens</label>
+                <input id="studio-max-tokens" type="number" min="50" max="4096" value="300" class="form-input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Top P <span id="studio-topp-display" style="color:#a78bfa;font-weight:700;">1.0</span></label>
+                <input id="studio-top-p" type="range" min="0" max="1" step="0.05" value="1.0" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('studio-topp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Freq Penalty <span id="studio-freqp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="studio-frequency-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('studio-freqp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+              <div class="form-group">
+                <label>Presence Penalty <span id="studio-presp-display" style="color:#a78bfa;font-weight:700;">0.3</span></label>
+                <input id="studio-presence-penalty" type="range" min="-2" max="2" step="0.05" value="0.3" class="form-input" style="padding:6px 0;cursor:pointer;" oninput="document.getElementById('studio-presp-display').textContent=parseFloat(this.value).toFixed(2)">
+              </div>
+            </div>
+            <div class="form-row" style="align-items:flex-start;">
+              <div class="form-group" style="max-width:240px;">
+                <label>Max Completion Tokens <span style="color:#4b5563;font-weight:400;">(reasoning models)</span></label>
+                <input id="studio-max-completion-tokens" type="number" min="200" max="32000" value="2000" class="form-input">
+              </div>
+              <div class="form-group" style="max-width:240px;">
+                <label>Reasoning Effort <span style="color:#4b5563;font-weight:400;">(grok-4.x only)</span></label>
+                <select id="studio-reasoning-effort" class="form-input">
+                  <option value="none">none — disabled, instant</option>
+                  <option value="low" selected>low — fast, default</option>
+                  <option value="medium">medium — complex analysis</option>
+                  <option value="high">high — deep reasoning</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+              <button id="save-studio-config" class="btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);padding:10px 24px;">💾 Save Studio Config</button>
+              <span id="studio-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
             </div>
           </div>
         </div>
@@ -798,7 +861,19 @@
                 <input id="apikey-grok" type="password" placeholder="xai-..." class="form-input" autocomplete="off">
                 <button type="button" id="toggle-grok-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
               </div>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Grok</strong>.</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Grok</strong>. Routes to Studio tier users.</p>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Gemini (Google)</div>
+            <div class="form-group">
+              <label>API Key</label>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <input id="apikey-gemini" type="password" placeholder="AIza..." class="form-input" autocomplete="off">
+                <button type="button" id="toggle-gemini-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
+              </div>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Gemini</strong>. Routes to Standard tier users.</p>
             </div>
           </div>
 
@@ -2065,6 +2140,10 @@
         const { data: prodData } = await supabase
           .from("system_config").select("value").eq("key", "proxy_ai_provider").maybeSingle();
         if (prodData?.value) applyAiValues(prodData.value, "prod");
+
+        const { data: studioData } = await supabase
+          .from("system_config").select("value").eq("key", "studio_ai_provider").maybeSingle();
+        if (studioData?.value) applyAiValues(studioData.value, "studio");
       } catch (err) {
         console.error("Unexpected error in loadAIConfig:", err);
       }
@@ -2308,6 +2387,10 @@
 
     document.getElementById("save-prod-config").addEventListener("click", () =>
       saveAiConfig("proxy_ai_provider", "prod", "prod-config-status")
+    );
+
+    document.getElementById("save-studio-config").addEventListener("click", () =>
+      saveAiConfig("studio_ai_provider", "studio", "studio-config-status")
     );
 
     document.getElementById("generate-license").addEventListener("click", async () => {
@@ -3523,8 +3606,9 @@
 
       if (!error && data?.value) {
         const keys = data.value;
-        if (keys.openai) document.getElementById("apikey-openai").value = keys.openai;
-        if (keys.grok)   document.getElementById("apikey-grok").value   = keys.grok;
+        if (keys.openai)  document.getElementById("apikey-openai").value  = keys.openai;
+        if (keys.grok)    document.getElementById("apikey-grok").value    = keys.grok;
+        if (keys.gemini)  document.getElementById("apikey-gemini").value  = keys.gemini;
       }
 
       // Set proxy URL display
@@ -3534,10 +3618,11 @@
 
     document.getElementById("save-api-keys").addEventListener("click", async () => {
       const statusEl = document.getElementById("api-keys-status");
-      const openaiKey = document.getElementById("apikey-openai").value.trim();
-      const grokKey   = document.getElementById("apikey-grok").value.trim();
+      const openaiKey  = document.getElementById("apikey-openai").value.trim();
+      const grokKey    = document.getElementById("apikey-grok").value.trim();
+      const geminiKey  = document.getElementById("apikey-gemini").value.trim();
 
-      if (!openaiKey && !grokKey) {
+      if (!openaiKey && !grokKey && !geminiKey) {
         statusEl.textContent = "Enter at least one API key.";
         statusEl.style.color = "#ef4444";
         return;
@@ -3556,8 +3641,9 @@
       const currentKeys = (existing?.value || {});
       const merged = {
         ...currentKeys,
-        ...(openaiKey ? { openai: openaiKey } : {}),
-        ...(grokKey   ? { grok: grokKey }     : {}),
+        ...(openaiKey  ? { openai:  openaiKey  } : {}),
+        ...(grokKey    ? { grok:    grokKey    } : {}),
+        ...(geminiKey  ? { gemini:  geminiKey  } : {}),
       };
 
       const { error } = await supabase
@@ -3583,8 +3669,9 @@
         document.getElementById(btnId).textContent = isHidden ? "🙈 Hide" : "👁 Show";
       });
     }
-    wireKeyToggle("apikey-openai", "toggle-openai-key");
-    wireKeyToggle("apikey-grok",   "toggle-grok-key");
+    wireKeyToggle("apikey-openai",  "toggle-openai-key");
+    wireKeyToggle("apikey-grok",    "toggle-grok-key");
+    wireKeyToggle("apikey-gemini",  "toggle-gemini-key");
 
     document.getElementById("copy-proxy-url").addEventListener("click", () => {
       const url = document.getElementById("proxy-url-display").textContent;
