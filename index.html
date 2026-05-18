@@ -226,88 +226,59 @@
     .hero-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
-      align-items: center;
+      gap: 64px; align-items: center;
     }
-
-    /* Text — right column, z-index above image */
+    
     .hero-content {
-      grid-column: 2;
       position: relative;
       z-index: 3;
-      padding-left: 48px;
     }
 
-    /* ─── THE ANGLED SCREEN ───
-       Positioned absolutely behind everything.
-       Starts from left edge, extends across center.
-       Angled like the sketch parallelogram.
-       Ghosted on the right side where text overlaps. */
-    .hero-visual {
-      position: absolute;
-      top: 50%;
-      left: -2%;
-      transform: translateY(-50%);
-      width: 68%;
-      height: 82vh;
+    /* Hero image */
+    .hero-visual { position: relative; }
+    .hero-tilt-wrap {
+      transform-style: preserve-3d;
+      transition: transform 0.08s linear;
+      will-change: transform;
+      position: relative;
+      /* Angle it like the Quibi phone — slight perspective tilt */
+      transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
+      margin-right: -60px;
       z-index: 1;
+    }
+    .hero-screenshot {
+      width: 100%; border-radius: 14px;
+      box-shadow:
+        0 0 0 1px rgba(124,58,237,0.25),
+        0 40px 80px rgba(0,0,0,0.7),
+        0 0 80px rgba(124,58,237,0.1);
+      display: block; cursor: zoom-in;
+    }
+    .hero-glow {
+      position: absolute;
+      bottom: -60px; left: 50%; transform: translateX(-50%);
+      width: 80%; height: 120px;
+      background: var(--primary);
+      filter: blur(80px);
+      opacity: 0.25;
+      border-radius: 50%;
       pointer-events: none;
     }
-
-    .hero-tilt-wrap {
-      width: 100%;
-      height: 100%;
-      /* The parallelogram angle from the sketch */
-      transform: perspective(1600px) rotateY(14deg) rotateX(2deg) skewY(-1deg);
-      transform-origin: left center;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.8);
-    }
-
-    .hero-screenshot {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: top left;
-      border-radius: 0;
-      box-shadow: none;
-      display: block;
-      cursor: default;
-      /* Left portion bright, right portion (behind text) ghosted */
-      mask-image: linear-gradient(90deg,
-        rgba(0,0,0,0.95) 0%,
-        rgba(0,0,0,0.9)  45%,
-        rgba(0,0,0,0.25) 70%,
-        rgba(0,0,0,0.08) 85%,
-        transparent      100%
-      );
-      -webkit-mask-image: linear-gradient(90deg,
-        rgba(0,0,0,0.95) 0%,
-        rgba(0,0,0,0.9)  45%,
-        rgba(0,0,0,0.25) 70%,
-        rgba(0,0,0,0.08) 85%,
-        transparent      100%
-      );
-    }
-
-    .hero-glow { display: none; }
 
     /* Mascot — top right corner of the screen */
     .hero-mascot {
       position: absolute;
-      top: -55px;
-      right: -20px;
-      width: 140px;
-      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.7));
-      animation: float-mascot 6s ease-in-out infinite;
+      right: -40px; top: -60px;
+      width: 130px;
+      filter: drop-shadow(0 0 20px rgba(217,70,239,0.4));
+      animation: float-mascot 5s ease-in-out infinite;
       pointer-events: none;
       z-index: 4;
     }
 
     @keyframes float-mascot {
-      0%,100% { transform: translateY(0) rotate(-1deg); }
-      50%      { transform: translateY(-14px) rotate(1deg); }
+      0%,100% { transform: translateY(0) rotate(-2deg); }
+      50%      { transform: translateY(-18px) rotate(2deg); }
     }
 
     /* Chat bubbles near the bright left portion */
@@ -426,34 +397,6 @@
       transform: translateY(-2px);
     }
 
-    /* Hero right — large angled screenshot */
-    .hero-visual {
-      position: relative;
-    }
-
-    .hero-tilt-wrap {
-      transform-style: preserve-3d;
-      transition: transform 0.08s linear;
-      will-change: transform;
-      position: relative;
-      /* Angle it like the Quibi phone — slight perspective tilt */
-      transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
-      margin-right: -60px;
-      z-index: 1;
-    }
-
-    .hero-screenshot {
-      width: 100%;
-      border-radius: 12px;
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.06),
-        -20px 40px 80px rgba(0,0,0,0.8),
-        20px 0 60px rgba(124,58,237,0.08);
-      display: block; cursor: zoom-in;
-    }
-
-    /* Remove glow blob */
-    .hero-glow { display: none; }
 
     .hero-mascot {
       position: absolute;
@@ -1322,10 +1265,7 @@
     <div class="container">
       <div class="hero-grid">
 
-        <!-- Empty left column — screen lives here as absolute -->
-        <div></div>
-
-        <!-- Text — RIGHT column, above the screen -->
+        <!-- Text — LEFT column -->
         <div class="hero-content">
           <div class="hero-eyebrow reveal">
             <span class="hero-eyebrow-dot"></span>
@@ -1357,19 +1297,20 @@
           </div>
         </div>
 
-      </div>
-    </div>
+        <!-- Screenshot — RIGHT column -->
+        <div class="hero-visual reveal reveal-delay-2">
+          <div class="hero-tilt-wrap" id="hero-tilt">
+            <img src="images/UI.png" alt="AiRi Dashboard" class="hero-screenshot" id="hero-ss">
+            <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
+          </div>
+          <div class="hero-glow"></div>
+          <!-- Chat bubbles near AiRi mascot -->
+          <div class="cb-wrap" style="top:-30px;right:80px"><div class="chat-bubble"></div></div>
+          <div class="cb-wrap" style="top:30px;right:-10px"><div class="chat-bubble"></div></div>
+          <div class="cb-wrap" style="top:90px;right:60px"><div class="chat-bubble"></div></div>
+        </div>
 
-    <!-- Angled screen — absolutely behind everything, starts left, fades right -->
-    <div class="hero-visual">
-      <div class="hero-tilt-wrap" id="hero-tilt">
-        <img src="images/UI.png" alt="AiRi Dashboard" class="hero-screenshot" id="hero-ss">
       </div>
-      <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
-      <div class="cb-wrap" style="top:15%;left:60%;"><div class="chat-bubble"></div></div>
-      <div class="cb-wrap" style="top:35%;left:55%;"><div class="chat-bubble"></div></div>
-      <div class="cb-wrap" style="top:55%;left:62%;"><div class="chat-bubble"></div></div>
-    </div>
 
   </section>
 
