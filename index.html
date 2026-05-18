@@ -263,17 +263,29 @@
     
     .terminal-header {
       display: flex;
-      gap: 6px;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 0.75rem;
+      color: #aaa;
     }
-    .terminal-dot {
-      width: 10px; height: 10px; border-radius: 50%;
+    .terminal-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .td-red { background: #ff5f56; }
-    .td-yellow { background: #ffbd2e; }
-    .td-green { background: #27c93f; }
+    .terminal-controls {
+      display: flex;
+      gap: 16px;
+      color: #666;
+    }
+    .win-control {
+      cursor: default;
+    }
+    .win-close { font-size: 0.8rem; }
     
     .terminal-body {
       color: #10b981; /* hacker green */
@@ -1368,9 +1380,15 @@
           <!-- Live Behind-the-Scenes Code Window -->
           <div class="hero-terminal" id="hero-terminal">
             <div class="terminal-header">
-              <div class="terminal-dot td-red"></div>
-              <div class="terminal-dot td-yellow"></div>
-              <div class="terminal-dot td-green"></div>
+              <div class="terminal-title">
+                <img src="images/logo.png" alt="AiRi" style="width:12px;height:12px;border-radius:2px;opacity:0.8;">
+                C:\VirForge\AiRi\Core.exe
+              </div>
+              <div class="terminal-controls">
+                <span class="win-control">─</span>
+                <span class="win-control" style="font-size:10px;margin-top:1px;">◻</span>
+                <span class="win-control win-close">✕</span>
+              </div>
             </div>
             <div class="terminal-body">
               <div class="terminal-line tl-1">[AiRi_CORE] Booting neural pathways... OK</div>
