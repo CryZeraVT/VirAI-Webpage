@@ -2633,11 +2633,26 @@ buildTestersCarousel();
     let msgIdx = 0, RAF;
 
     // Mouse parallax
+    const heroTilt = document.getElementById('hero-tilt');
+    const heroGlow = document.querySelector('.hero-glow');
     document.addEventListener('mousemove', (e) => {
       cancelAnimationFrame(RAF);
       RAF = requestAnimationFrame(() => {
         const nx = (e.clientX / window.innerWidth)  - 0.5;  // -0.5 → 0.5
         const ny = (e.clientY / window.innerHeight) - 0.5;
+        
+        // Tilt the main dashboard image dynamically based on mouse
+        if (heroTilt) {
+          const rotY = -6 + (nx * 12); // base -6deg, tilt +/- 6deg
+          const rotX = 2 - (ny * 10);  // base 2deg, tilt +/- 5deg
+          heroTilt.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
+        }
+        
+        // Move the glow to follow the mouse slightly
+        if (heroGlow) {
+           heroGlow.style.transform = `translate(calc(-50% + ${nx * 80}px), ${ny * 40}px)`;
+        }
+
         cbWraps.forEach((w, i) => {
           const dx  = nx * depths[i] * 2;
           const dy  = ny * Math.abs(depths[i]);
