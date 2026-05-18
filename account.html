@@ -1818,7 +1818,7 @@
                 ${intro}<br>
                 Grab AiRi and your license key is issued instantly.
               </div>
-              <a href="buy.html" class="buy-cta-btn">
+              <a href="index.html#pricing" class="buy-cta-btn">
                 Buy AiRi
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2.5"
@@ -2041,12 +2041,25 @@
         }
         if (session?.user) {
           // Check URL param first, then localStorage (survives email confirmation round-trip)
-          const urlParam = new URLSearchParams(window.location.search).get("redirect");
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlParam = urlParams.get("redirect");
+          const tierParam = urlParams.get("tier");
+          
+          if (urlParam) {
+              localStorage.setItem("post_auth_redirect", urlParam);
+              if (tierParam) localStorage.setItem("post_auth_tier", tierParam);
+          }
+          
           const storedRedirect = localStorage.getItem("post_auth_redirect");
+          const storedTier = localStorage.getItem("post_auth_tier");
+          
           const redirectTarget = urlParam || storedRedirect;
+          const targetTier = tierParam || storedTier || 'standard';
+
           if (redirectTarget === "buy" && event === "SIGNED_IN") {
             localStorage.removeItem("post_auth_redirect");
-            window.location.href = "buy.html";
+            localStorage.removeItem("post_auth_tier");
+            window.location.href = `buy.html?tier=${targetTier}`;
             return;
           }
           await enterSignedIn(session.user, event);

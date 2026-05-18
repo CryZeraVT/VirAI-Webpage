@@ -194,6 +194,19 @@ serve(async (req) => {
     const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
     const stripeSubscriptionId = typeof session.subscription === "string" ? session.subscription : null;
 
+    let tier = "standard";
+    try {
+        const sessionWithLineItems = await stripe.checkout.sessions.retrieve(sessionId, {
+            expand: ['line_items']
+        });
+        const price = sessionWithLineItems.line_items?.data?.[0]?.price;
+        if (price && price.unit_amount && price.unit_amount >= 2000) {
+            tier = "studio";
+        }
+    } catch (e) {
+        console.error("Failed to fetch line items for tier detection:", e);
+    }
+
     const licenseKey = generateLicenseKey();
     const downloadToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -223,7 +236,7 @@ serve(async (req) => {
         license_key: licenseKey,
         email: email || null,
         status: "active",
-        tier: "standard",
+        tier: tier,
         current_period_end: initialPeriodEndIso,
       });
 

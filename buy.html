@@ -19,7 +19,16 @@
     <script>
         const SUPABASE_URL  = 'https://rgigtqpesabuyaumibaj.supabase.co';
         const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
-        const STRIPE_LINK   = 'https://buy.stripe.com/3cI6oIb6H02w6fQ1ck2Ry00';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedTier = urlParams.get('tier') === 'studio' ? 'studio' : 'standard';
+        const tierName = requestedTier === 'studio' ? 'AiRi Studio' : 'AiRi Standard';
+
+        const STRIPE_LINKS = {
+            'standard': 'https://buy.stripe.com/bJe7sMa2D5mQ8nYdZ62Ry01',
+            'studio': 'https://buy.stripe.com/00w7sMeiT7uYbAa08g2Ry02'
+        };
+        const STRIPE_LINK = STRIPE_LINKS[requestedTier];
 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -31,14 +40,14 @@
             if (spinner) spinner.style.display = 'none';
             document.getElementById('status-title').textContent = 'You already have an active subscription';
             document.getElementById('status-msg').innerHTML =
-                'Your account is already on the AiRi Standard plan. ' +
+                `Your account is already on the ${tierName} plan. ` +
                 'Manage your subscription, view invoices, or cancel from your ' +
                 '<a href="account.html" style="color:#a78bfa;text-decoration:underline;">account page</a>.';
         }
 
         async function hasActivePaidSubscription(user, token) {
             // Returns true only when BOTH sides agree:
-            //   - licenses row: tier=standard, status=active for this email
+            //   - licenses row: tier=<requestedTier>, status=active for this email
             //   - purchases row: matching license_key with a real stripe_subscription_id
             // The purchases cross-check is load-bearing: admin-minted "standard"
             // keys (no purchase row) must NOT trigger the block, otherwise we'd
@@ -49,7 +58,7 @@
                 const licParams = new URLSearchParams({
                     select: 'license_key,status,tier',
                     email:  `ilike.${user.email}`,
-                    tier:   'eq.standard',
+                    tier:   `eq.${requestedTier}`,
                     status: 'eq.active',
                 });
                 const purParams = new URLSearchParams({
@@ -111,7 +120,7 @@
                 document.getElementById('status-title').textContent = 'Account required';
                 document.getElementById('status-msg').textContent   = 'Please sign in or create a free account first. Redirecting...';
                 setTimeout(() => {
-                    window.location.href = 'account.html?redirect=buy';
+                    window.location.href = `account.html?redirect=buy&tier=${requestedTier}`;
                 }, 1500);
                 return;
             }

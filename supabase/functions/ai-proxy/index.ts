@@ -184,7 +184,13 @@ serve(async (req) => {
   const cfg = (aiConfig?.value ?? {}) as AiCfg;
 
   const provider  = (cfg.provider ?? "openai").toLowerCase();
-  const model     = cfg.model ?? "gpt-4o-mini";
+  // Provider-aware fallback — never send an OpenAI model name to Grok or Gemini.
+  const MODEL_DEFAULTS: Record<string, string> = {
+    openai: "gpt-4o-mini",
+    grok:   "grok-3",
+    gemini: "gemini-2.5-flash",
+  };
+  const model     = (cfg.model && cfg.model.trim()) ? cfg.model.trim() : (MODEL_DEFAULTS[provider] ?? "gpt-4o-mini");
   const reasoning = isReasoningModel(provider, model);
 
   // ── Read API keys ────────────────────────────────────────────────────
