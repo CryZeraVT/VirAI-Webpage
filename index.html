@@ -236,6 +236,72 @@
 
     /* Hero image */
     .hero-visual { position: relative; }
+    
+    /* Terminal Behind the Scenes */
+    .hero-terminal {
+      position: absolute;
+      top: -20px;
+      right: -80px;
+      width: 80%;
+      height: 90%;
+      background: rgba(10, 10, 15, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      z-index: 0;
+      padding: 16px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--primary);
+      overflow: hidden;
+      transform: perspective(1200px) rotateY(-8deg) rotateX(1deg) translateZ(-40px);
+      box-shadow: -20px 20px 60px rgba(0,0,0,0.6);
+      opacity: 0.8;
+      pointer-events: none;
+      transition: transform 0.08s linear;
+    }
+    
+    .terminal-header {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .terminal-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .td-red { background: #ff5f56; }
+    .td-yellow { background: #ffbd2e; }
+    .td-green { background: #27c93f; }
+    
+    .terminal-body {
+      color: #10b981; /* hacker green */
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .terminal-line {
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 2px solid transparent;
+      width: 0;
+    }
+    
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 100% }
+    }
+    
+    .tl-1 { animation: typing 1s steps(40, end) forwards; width: 100%; }
+    .tl-2 { animation: typing 1.5s steps(40, end) forwards 1s; }
+    .tl-3 { animation: typing 1.2s steps(40, end) forwards 2.5s; }
+    .tl-4 { animation: typing 0.8s steps(40, end) forwards 3.7s; }
+    .tl-5 { animation: typing 2s steps(40, end) forwards 4.5s; color: #a78bfa; }
+    .tl-6 { animation: typing 1s steps(40, end) forwards 6.5s; }
+    .tl-7 { animation: typing 1.5s steps(40, end) forwards 7.5s; }
+
     .hero-tilt-wrap {
       transform-style: preserve-3d;
       transition: transform 0.08s linear;
@@ -1299,6 +1365,24 @@
 
         <!-- Screenshot — RIGHT column -->
         <div class="hero-visual reveal reveal-delay-2">
+          <!-- Live Behind-the-Scenes Code Window -->
+          <div class="hero-terminal" id="hero-terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot td-red"></div>
+              <div class="terminal-dot td-yellow"></div>
+              <div class="terminal-dot td-green"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="terminal-line tl-1">[AiRi_CORE] Booting neural pathways... OK</div>
+              <div class="terminal-line tl-2">[TWITCH_WS] Connected to channel wss://...</div>
+              <div class="terminal-line tl-3">[EVENT] User 'mooncat_' joined chat.</div>
+              <div class="terminal-line tl-4">[ANALYZE] Context: Viewer is a sub, likes puns.</div>
+              <div class="terminal-line tl-5">> "Oh hey mooncat! Did you bring snacks?"</div>
+              <div class="terminal-line tl-6">[TTS] Generating audio... OK</div>
+              <div class="terminal-line tl-7">[STREAM_OBS] Emote trigger 'PogChamp' dispatched.</div>
+            </div>
+          </div>
+          
           <div class="hero-tilt-wrap" id="hero-tilt">
             <img src="images/UI.png" alt="AiRi Dashboard" class="hero-screenshot" id="hero-ss">
             <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
@@ -2635,6 +2719,8 @@ buildTestersCarousel();
     // Mouse parallax
     const heroTilt = document.getElementById('hero-tilt');
     const heroGlow = document.querySelector('.hero-glow');
+    const heroTerminal = document.getElementById('hero-terminal');
+    
     document.addEventListener('mousemove', (e) => {
       cancelAnimationFrame(RAF);
       RAF = requestAnimationFrame(() => {
@@ -2646,6 +2732,13 @@ buildTestersCarousel();
           const rotY = -6 + (nx * 12); // base -6deg, tilt +/- 6deg
           const rotX = 2 - (ny * 10);  // base 2deg, tilt +/- 5deg
           heroTilt.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
+        }
+        
+        // Move the terminal in an opposite/exaggerated tilt to create deep 3D depth
+        if (heroTerminal) {
+          const rotY = -8 + (nx * 8); 
+          const rotX = 1 - (ny * 6);  
+          heroTerminal.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg) translateZ(-40px) translate(${nx * -20}px, ${ny * -20}px)`;
         }
         
         // Move the glow to follow the mouse slightly
