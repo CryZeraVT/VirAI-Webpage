@@ -24,10 +24,10 @@
         const requestedTier = urlParams.get('tier') === 'studio' ? 'studio' : 'standard';
         const tierName = requestedTier === 'studio' ? 'AiRi Studio' : 'AiRi Standard';
 
-        const STRIPE_LINKS = {
-            'standard': 'https://buy.stripe.com/bJe7sMa2D5mQ8nYdZ62Ry01',
-            'studio': 'https://buy.stripe.com/00w7sMeiT7uYbAa08g2Ry02'
-        };
+          const STRIPE_LINKS = {
+            'standard': 'https://buy.stripe.com/aFafZi0s36qUeMmdZ62Ry03',
+            'studio': 'https://buy.stripe.com/5kQeVeb6HcPibAa4ow2Ry04'
+          };
         const STRIPE_LINK = STRIPE_LINKS[requestedTier];
 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
