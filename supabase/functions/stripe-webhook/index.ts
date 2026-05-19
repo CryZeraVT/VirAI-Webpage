@@ -189,7 +189,11 @@ serve(async (req) => {
     }
 
     // ── New license purchase (subscription / one-time) ──────────────────────
-    const email = session.customer_details?.email || session.customer_email || "";
+    // The account email is securely passed in client_reference_id from buy.html.
+    // We fall back to the Stripe checkout email if it's missing (e.g., direct link use).
+    const checkoutEmail = session.customer_details?.email || session.customer_email || "";
+    const email = session.client_reference_id || checkoutEmail;
+    
     const sessionId = session.id;
     const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
     const stripeSubscriptionId = typeof session.subscription === "string" ? session.subscription : null;
