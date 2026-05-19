@@ -140,10 +140,20 @@
             // Logged in and clear to buy — proceed to Stripe. Promo codes are
             // entered on Stripe's hosted checkout page (allow_promotion_codes
             // is set on the Payment Link), so no prompt is needed here.
+            // We pass prefilled_email and client_reference_id so Stripe automatically
+            // ties the checkout session to the currently logged-in account.
             document.getElementById('status-title').textContent = 'Redirecting to Stripe...';
             document.getElementById('status-msg').textContent   = 'You are being transferred to our secure payment processor.';
+            
+            // Build the final Stripe URL with the user's email attached.
+            // We pass it as BOTH prefilled_email (to make checkout fast) 
+            // AND client_reference_id (as a tamper-proof link back to the account).
+            const finalStripeUrl = new URL(STRIPE_LINK);
+            finalStripeUrl.searchParams.set('prefilled_email', user.email);
+            finalStripeUrl.searchParams.set('client_reference_id', user.email);
+            
             setTimeout(() => {
-                window.location.href = STRIPE_LINK;
+                window.location.href = finalStripeUrl.toString();
             }, 800);
         }
 
