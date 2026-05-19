@@ -2482,7 +2482,7 @@
 
         const paid = Array.isArray(licenses)
           ? licenses.filter(l =>
-              l.tier === "standard" &&
+              (l.tier === "standard" || l.tier === "studio") &&
               (subKeys === null || subKeys.has(l.license_key))
             )
           : [];
@@ -2509,6 +2509,8 @@
         const periodEndFmt = periodEnd
           ? periodEnd.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
           : null;
+        
+        const planName = active.tier === "studio" ? "Studio" : "Standard";
 
         // CASE: Active and pending cancellation at period end → warning banner + still let them undo via portal
         if (isActive && pendingEnd) {
@@ -2522,7 +2524,7 @@
             <div class="billing-card ending">
               <div class="billing-status-text">
                 <strong>Plan <span class="badge-billing-ending">CANCELING</span></strong>
-                Standard plan — access ends ${periodEndFmt || "at period end"}.
+                ${planName} plan — access ends ${periodEndFmt || "at period end"}.
               </div>
               <button id="manage-billing-btn" class="btn btn-stripe">
                 Reactivate / Manage →
@@ -2541,7 +2543,7 @@
             <div class="billing-card">
               <div class="billing-status-text">
                 <strong>Plan <span class="badge-billing-active">ACTIVE</span></strong>
-                Standard plan — ${periodEndFmt ? `renews ${periodEndFmt}` : "recurring subscription"}.
+                ${planName} plan — ${periodEndFmt ? `renews ${periodEndFmt}` : "recurring subscription"}.
               </div>
               <div class="billing-action-col">
                 <button id="manage-billing-btn" class="btn btn-stripe">
