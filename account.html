@@ -2133,8 +2133,11 @@
       }
 
       // Persist redirect intent so it survives the email confirmation round-trip
-      const pendingRedirect = new URLSearchParams(window.location.search).get("redirect");
+      const urlParams = new URLSearchParams(window.location.search);
+      const pendingRedirect = urlParams.get("redirect");
+      const pendingTier = urlParams.get("tier");
       if (pendingRedirect) localStorage.setItem("post_auth_redirect", pendingRedirect);
+      if (pendingTier) localStorage.setItem("post_auth_tier", pendingTier);
 
       // Stash the accepted version so we can record it after email confirm round-trip
       // (session may not exist yet if email-confirm is enabled).
