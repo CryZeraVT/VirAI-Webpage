@@ -44,6 +44,12 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid signature" }, 400);
   }
 
+  // Debug logging
+  await supabase.from("webhook_logs").insert({
+    event_type: event.type,
+    event_data: event.data.object
+  });
+
   // ── Subscription updated (user toggled cancel_at_period_end in the portal, etc.) ──
   // Fired on every subscription state change. We track:
   //   - cancel_at_period_end : true when user has scheduled cancellation,
@@ -76,10 +82,16 @@ serve(async (req) => {
         ? new Date(periodEndUnix * 1000).toISOString()
         : null;
 
+      // Determine if subscription is pending cancellation.
+      // Stripe has two ways of representing this depending on how it was canceled:
+      // 1. cancel_at_period_end = true
+      // 2. cancel_at = <timestamp> (often matching current_period_end)
+      const isCanceling = !!sub.cancel_at_period_end || sub.cancel_at !== null;
+
       const { error } = await supabase
         .from("licenses")
         .update({
-          cancel_at_period_end: !!sub.cancel_at_period_end,
+          cancel_at_period_end: isCanceling,
           current_period_end: periodEndIso,
         })
         .eq("license_key", licenseKey);
@@ -88,7 +100,7 @@ serve(async (req) => {
         console.error("Failed to update subscription state:", error);
       } else {
         console.log(
-          `Subscription state updated: ${licenseKey} cancel_at_period_end=${sub.cancel_at_period_end} period_end=${periodEndIso}`
+          `Subscription state updated: ${licenseKey} cancel_at_period_end=${isCanceling} period_end=${periodEndIso}`
         );
       }
     } else {

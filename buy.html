@@ -3,16 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting to Payment...</title>
+    <title>Redirecting to Payment | AiRi Open Beta</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="beta-ribbon.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-    <div class="container">
+<body class="has-beta-ribbon">
+    <div class="beta-ribbon" role="status" aria-label="Open beta notice">
+      <div class="beta-ribbon-inner">
+        <span class="beta-ribbon-pill">OPEN BETA</span>
+        <span class="beta-ribbon-text">Purchasing is temporarily closed. Join the open beta.</span>
+        <span class="beta-ribbon-links">
+          <a href="beta.html">Join beta</a>
+          <a href="account.html">Account</a>
+        </span>
+      </div>
+    </div>
+    <div class="container" style="padding-top: calc(var(--beta-ribbon-h, 42px) + 24px);">
         <div class="status-box">
             <div class="spinner"></div>
             <h2 id="status-title">Checking your account...</h2>
-            <p id="status-msg">Please wait a moment.</p>
+            <p id="status-msg">Hang tight. Open beta: features will change.</p>
         </div>
     </div>
 
@@ -20,6 +31,9 @@
         const SUPABASE_URL  = 'https://rgigtqpesabuyaumibaj.supabase.co';
         const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0';
         
+        // Flip to true when public checkout should reopen.
+        const PURCHASING_OPEN = false;
+
         const urlParams = new URLSearchParams(window.location.search);
         const requestedTier = urlParams.get('tier') === 'studio' ? 'studio' : 'standard';
         const tierName = requestedTier === 'studio' ? 'AiRi Studio' : 'AiRi Standard';
@@ -31,6 +45,17 @@
         const STRIPE_LINK = STRIPE_LINKS[requestedTier];
 
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+        function showPurchasingClosed() {
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.display = 'none';
+            document.getElementById('status-title').textContent = 'Purchasing temporarily closed';
+            document.getElementById('status-msg').innerHTML =
+                'New AiRi checkouts are paused right now. ' +
+                'Apply for <a href="beta.html" style="color:#a78bfa;text-decoration:underline;">Open Beta</a> ' +
+                'or manage an existing plan from your ' +
+                '<a href="account.html" style="color:#a78bfa;text-decoration:underline;">account</a>.';
+        }
 
         function showAlreadySubscribed() {
             // Halt the redirect and swap the card to a clear "you're already
@@ -113,6 +138,11 @@
         }
 
         async function init() {
+            if (!PURCHASING_OPEN) {
+                showPurchasingClosed();
+                return;
+            }
+
             const { data: { session } } = await client.auth.getSession();
 
             if (!session) {

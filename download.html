@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="images/logo.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Downloading AiRi...</title>
+  <title>Downloading AiRi Open Beta</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="beta-ribbon.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -177,7 +178,18 @@
     }
   </style>
 </head>
-<body>
+<body class="has-beta-ribbon">
+
+  <div class="beta-ribbon" role="status" aria-label="Open beta notice">
+    <div class="beta-ribbon-inner">
+      <span class="beta-ribbon-pill">OPEN BETA</span>
+      <span class="beta-ribbon-text">Expect bugs. Features will change. Feedback welcome.</span>
+      <span class="beta-ribbon-links">
+        <a href="beta.html">Join beta</a>
+        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+      </span>
+    </div>
+  </div>
 
   <nav class="nav">
     <a href="index.html" class="nav-logo">
@@ -208,7 +220,7 @@
         </div>
         <a id="manual-dl-btn" href="#" class="btn-dl" download>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download AiRi Installer
+          Download AiRi Beta Installer
         </a>
         <div class="hint">
           Having issues? Re-download anytime from <a href="account.html">your account</a>.

@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="images/logo.png"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Join the Beta — AiRi by VirForge Software</title>
-  <meta name="description" content="Apply for early access to AiRi — the AI co-host for streamers. Limited beta spots available.">
+  <title>Join the Open Beta | AiRi by VirForge Software</title>
+  <meta name="description" content="Apply for the AiRi Open Beta. AI co-host for streamers. Expect bugs. Features will change. Spots are limited.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="beta-ribbon.css">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -143,7 +144,15 @@
       transition: border-color 0.2s, background 0.2s;
     }
     .perk-item:hover { border-color: var(--border-p); background: var(--card-hover); }
-    .perk-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .perk-icon {
+      flex-shrink: 0; width: 22px; height: 22px;
+      color: #c4b5fd; display: flex; align-items: center; justify-content: center;
+    }
+    .airi-ico {
+      width: 18px; height: 18px; display: block;
+      fill: none; stroke: currentColor; stroke-width: 1.7;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
 
     /* ── Form Card ── */
     .beta-card {
@@ -199,6 +208,74 @@
       background-color: rgba(255,255,255,0.04);
     }
     .form-group select option { background: #100d1c; color: var(--text); }
+
+    .beta-terms {
+      border: 1px solid var(--border-p);
+      background: rgba(124, 58, 237, 0.06);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .beta-terms-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .beta-terms-list {
+      margin: 0;
+      padding-left: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: var(--text);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .beta-terms-list li::marker { color: var(--accent); }
+    .beta-terms-platform {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      vertical-align: middle;
+    }
+    .beta-terms-ico {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .beta-terms-ico.twitch { color: #9146ff; }
+    .beta-terms-ico.youtube { color: #ff0033; }
+    .beta-terms-warn {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      background: rgba(239, 68, 68, 0.08);
+      color: #fecaca;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+    .beta-terms-agree {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.875rem;
+      color: var(--text);
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .beta-terms-agree input {
+      margin-top: 3px;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
 
     .beta-submit { margin-top: 4px; width: 100%; justify-content: center; }
     .beta-note {
@@ -261,8 +338,27 @@
   </style>
 </head>
 
-<body>
+<body class="has-beta-ribbon">
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <symbol id="i-boost" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l0-6z"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 10h8"/><path d="M8 13h5"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M12 10v11"/><path d="M3 14h18"/><path d="M12 10c-2.5 0-4-1.5-4-3.2S9.5 4 12 6.5C14.5 4 16 5 16 6.8S14.5 10 12 10z"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h3l2-5 3 10 2-6 2 3h6"/></symbol>
+    <symbol id="i-twitch" viewBox="0 0 24 24"><path fill="currentColor" d="M4.25 2L2 6.25v13.5h4.5V22l2.25-2.25h3.75L19.5 13V2H4.25zm13.5 10.125L14.625 15H11.25l-2.25 2.25V15H5.625V3.75h12.125v8.375zM14.625 6.75h-1.875v5.25H14.625V6.75zm-4.5 0H8.25v5.25h1.875V6.75z"/></symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8zM9.75 15.5v-7l6.2 3.5-6.2 3.5z"/></symbol>
+  </svg>
   <canvas id="bg-canvas"></canvas>
+
+  <div class="beta-ribbon" role="status" aria-label="Open beta notice">
+    <div class="beta-ribbon-inner">
+      <span class="beta-ribbon-pill">OPEN BETA</span>
+      <span class="beta-ribbon-text">Expect bugs. Features will change. Feedback welcome.</span>
+      <span class="beta-ribbon-links">
+        <a href="beta.html">Join beta</a>
+        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+      </span>
+    </div>
+  </div>
 
   <div class="wrap">
 
@@ -275,7 +371,6 @@
         <a href="index.html#features">Features</a>
         <a href="index.html#about">About</a>
         <a href="changelog.html">What's New</a>
-        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
         <a href="account.html" class="nav-cta">Login / Download</a>
       </div>
     </nav>
@@ -283,18 +378,18 @@
     <section class="beta-section">
       <div class="container">
         <div class="beta-inner">
-          <div class="section-eyebrow reveal">Early Access</div>
-          <h1 class="section-title reveal reveal-delay-1">Join the AiRi Beta</h1>
+          <div class="section-eyebrow reveal">Open Beta</div>
+          <h1 class="section-title reveal reveal-delay-1">Join the AiRi Open Beta</h1>
           <p class="beta-sub reveal reveal-delay-2">
-            We're looking for streamers to help shape AiRi before public launch.<br>
-            Sign up below and we'll be in touch when your spot is ready.
+            Looking for streamers to break AiRi (nicely) before a wider launch.<br>
+            Sign up below. We'll email you when a spot opens.
           </p>
 
           <div class="beta-perks reveal reveal-delay-2">
-            <div class="perk-item"><span class="perk-icon">⚡</span><span>Early access to all features</span></div>
-            <div class="perk-item"><span class="perk-icon">💬</span><span>Direct line to the dev team</span></div>
-            <div class="perk-item"><span class="perk-icon">🎁</span><span>Free during the beta period</span></div>
-            <div class="perk-item"><span class="perk-icon">⭐</span><span>Influence the roadmap</span></div>
+            <div class="perk-item"><span class="perk-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-boost"/></svg></span><span>Early access to everything shipping</span></div>
+            <div class="perk-item"><span class="perk-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-chat"/></svg></span><span>Talk to the person building it</span></div>
+            <div class="perk-item"><span class="perk-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-gift"/></svg></span><span>Free while you're in beta</span></div>
+            <div class="perk-item"><span class="perk-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-pulse"/></svg></span><span>Help decide what ships next</span></div>
           </div>
         </div>
 
@@ -335,6 +430,35 @@
             <div class="form-group">
               <label for="beta-message">Why do you want to try AiRi? (optional)</label>
               <textarea id="beta-message" name="message" placeholder="Tell us about your stream and what you're looking for..."></textarea>
+            </div>
+
+            <div class="beta-terms" role="group" aria-labelledby="beta-terms-title">
+              <div class="beta-terms-title" id="beta-terms-title">Terms for testing with AiRi</div>
+              <ul class="beta-terms-list">
+                <li>Must be in our Discord as a tester.</li>
+                <li>Must stream with AiRi at least once a week.</li>
+                <li>If you need to take a break, inform us in Discord.</li>
+                <li>
+                  <span class="beta-terms-platform">
+                    <svg class="beta-terms-ico twitch" aria-hidden="true"><use href="#i-twitch"/></svg>
+                    <span><strong>Twitch</strong> — Must show our provided Twitch Panel art.</span>
+                  </span>
+                </li>
+                <li>
+                  <span class="beta-terms-platform">
+                    <svg class="beta-terms-ico youtube" aria-hidden="true"><use href="#i-youtube"/></svg>
+                    <span><strong>YouTube</strong> — Must paste the provided text with link into the description of your YouTube stream.</span>
+                  </span>
+                </li>
+              </ul>
+              <p class="beta-terms-warn">
+                Breaking any of these rules may result in removal from the beta program without the ability to rejoin.
+                Rejoining is solely at the discretion of the team.
+              </p>
+              <label class="beta-terms-agree" for="beta-terms-check">
+                <input type="checkbox" id="beta-terms-check" name="accepted_testing_terms" required>
+                <span>I agree to these testing terms *</span>
+              </label>
             </div>
 
             <button type="submit" class="btn btn-primary beta-submit">Apply for Beta Access</button>
@@ -448,6 +572,9 @@
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         showStatus('Please enter a valid email address.', 'error'); return;
       }
+      if (!document.getElementById('beta-terms-check').checked) {
+        showStatus('Please agree to the testing terms to continue.', 'error'); return;
+      }
 
       showStatus('Submitting your application...', 'loading');
       form.querySelector('button').disabled = true;
@@ -456,7 +583,14 @@
         const res  = await fetch(`${SUPABASE_URL}/functions/v1/beta-signup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-          body: JSON.stringify({ name, email, twitch_username: twitch, content_type: content, message }),
+          body: JSON.stringify({
+            name,
+            email,
+            twitch_username: twitch,
+            content_type: content,
+            message,
+            accepted_testing_terms: true,
+          }),
         });
         const data = await res.json();
 
@@ -464,7 +598,7 @@
           if (data.account_created) {
             showStatus("You're on the list! Check your email for an account setup link to create your password.", 'success');
           } else if (data.account_exists) {
-            showStatus("You're on the list! We found your account already — you can sign in now from the Account page.", 'success');
+            showStatus("You're on the list! We found your account already. Sign in from the Account page.", 'success');
           } else {
             showStatus("You're on the list! We'll be in touch soon. If needed, create/sign in from the Account page.", 'success');
           }

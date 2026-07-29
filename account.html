@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="images/logo.png"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account — AiRi by VirForge Software</title>
+  <title>Account | AiRi Open Beta by VirForge Software</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="beta-ribbon.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; font-size: 16px; }
@@ -925,8 +926,19 @@
     }
   </style>
 </head>
-<body>
+<body class="has-beta-ribbon">
   <canvas id="bg-canvas"></canvas>
+
+  <div class="beta-ribbon" role="status" aria-label="Open beta notice">
+    <div class="beta-ribbon-inner">
+      <span class="beta-ribbon-pill">OPEN BETA</span>
+      <span class="beta-ribbon-text">Expect bugs. Features will change. Feedback welcome.</span>
+      <span class="beta-ribbon-links">
+        <a href="beta.html">Join beta</a>
+        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+      </span>
+    </div>
+  </div>
 
   <div class="wrap">
     <nav class="nav">
@@ -938,7 +950,6 @@
         <a href="index.html#features">Features</a>
         <a href="index.html#about">About</a>
         <a href="changelog.html">What's New</a>
-        <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
         <a href="account.html" class="nav-cta">Account</a>
       </div>
     </nav>
@@ -1097,9 +1108,8 @@
             <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
               <p style="margin:0 0 6px;font-size:0.92rem;font-weight:700;color:#e2e8f0;">Manage Your Paid Subscription</p>
               <p style="margin:0;font-size:0.85rem;color:#9ca3af;line-height:1.6;">
-                View your current plan and manage billing through Stripe's secure portal —
-                update payment methods, download invoices, or cancel your subscription.
-                Cancellations take effect at the end of your current billing period (no refunds).
+                View your plan and manage billing in Stripe's portal: update payment methods,
+                download invoices, or cancel. Cancellations take effect at the end of your billing period (no refunds).
               </p>
             </div>
 
@@ -1384,7 +1394,7 @@
           checkEl.disabled = false;
           if (labelEl) labelEl.classList.remove("disabled");
           if (statusEl) {
-            statusEl.textContent = "Ready — tick the box below";
+            statusEl.textContent = "Ready. Tick the box below.";
             statusEl.classList.add("ready");
           }
           syncButton();
@@ -1604,7 +1614,7 @@
           try {
             await recordTosAcceptance();
             closeTosGate();
-            setStatus("Thanks — Terms accepted.", "success");
+            setStatus("Thanks. Terms accepted.", "success");
             // Resume the normal signed-in bootstrap now that the gate is cleared.
             if (_currentUser) {
               try { await loadKeys(_currentUser); } catch (e) { console.warn(e); }
@@ -1813,13 +1823,13 @@
             : `No license yet for <strong>${user.email}</strong>.`;
           keysList.innerHTML = `
             <div class="buy-cta">
-              <div class="buy-cta-title">Ready to bring AiRi to your stream?</div>
+              <div class="buy-cta-title">Purchasing temporarily closed</div>
               <div class="buy-cta-sub">
                 ${intro}<br>
-                Grab AiRi and your license key is issued instantly.
+                New checkouts are paused. Join the open beta while we reopen billing.
               </div>
-              <a href="index.html#pricing" class="buy-cta-btn">
-                Buy AiRi
+              <a href="beta.html" class="buy-cta-btn">
+                Apply for Open Beta
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2.5"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -2263,7 +2273,7 @@
               <span class="quota-tier-badge ${tierClass}">${tierLabel}</span>
             </div>
             <div class="quota-unlimited">
-              <span>∞</span><span>Unlimited — Beta Access</span>
+              <span>∞</span><span>Unlimited · Beta Access</span>
             </div>
           </div>`;
       }
@@ -2283,9 +2293,9 @@
       const boostPanel = _boostPaymentsEnabled ? `
         <div class="boost-panel" id="boost-panel-${licenseKey.replace(/[^A-Z0-9]/g, '')}">
           <h4>Need more tokens?</h4>
-          <p>2,000,000 token boost — one-time add-on, never expires.</p>
+          <p>2,000,000 token boost. One-time add-on. Never expires.</p>
           <button class="btn btn-boost buy-boost-btn" data-key="${licenseKey}">
-            Buy Token Boost — $5
+            Buy Token Boost · $5
           </button>
         </div>` : "";
 
@@ -2364,7 +2374,7 @@
             if (!res.ok || !data.url) {
               setStatus(data.error || "Could not create checkout session. Try again.", "error");
               btn.disabled = false;
-              btn.textContent = "Buy Token Boost — $5";
+              btn.textContent = "Buy Token Boost · $5";
               return;
             }
             window.location.href = data.url;
@@ -2372,7 +2382,7 @@
             console.error("Boost checkout error:", err);
             setStatus("Network error. Please try again.", "error");
             btn.disabled = false;
-            btn.textContent = "Buy Token Boost — $5";
+            btn.textContent = "Buy Token Boost · $5";
           }
         });
       });

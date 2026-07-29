@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Third-Party Acknowledgments — AiRi by VirForge Software</title>
+  <meta name="description" content="Open-source components and third-party services used by AiRi / ViriTTS.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    :root {
+      --bg: #08060f;
+      --bg2: #0c0a16;
+      --surface: #100d1c;
+      --card: rgba(255,255,255,0.028);
+      --primary: #7c3aed;
+      --cyan: #06b6d4;
+      --text: #f4f4f5;
+      --text-muted: #a0a0a8;
+      --text-dim: #64646c;
+      --border: rgba(255,255,255,0.07);
+      --border-p: rgba(124,58,237,0.25);
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: var(--cyan); text-decoration: none; transition: color 0.15s; }
+    a:hover { color: var(--primary); text-decoration: underline; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(8,6,15,0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .topbar-brand img { height: 26px; }
+    .topbar-brand span {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .topbar-nav {
+      display: flex; gap: 20px; align-items: center;
+      font-size: 0.88rem;
+    }
+    .topbar-nav a { color: var(--text-muted); }
+    .topbar-nav a:hover { color: var(--text); text-decoration: none; }
+    main {
+      flex: 1;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+    .doc-header {
+      padding-bottom: 28px;
+      margin-bottom: 36px;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-eyebrow {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .doc-header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #fff 0%, #d4c1ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin-top: 14px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .doc-meta .pill {
+      background: rgba(124,58,237,0.12);
+      border: 1px solid var(--border-p);
+      color: #c4b5fd;
+      border-radius: 999px;
+      padding: 3px 12px;
+      font-weight: 600;
+    }
+    .prose { font-size: 1rem; color: #e4e4e7; }
+    .prose h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 2em 0 0.6em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .prose p, .prose ul { margin-bottom: 1em; }
+    .prose ul { padding-left: 1.5em; }
+    .prose li { margin-bottom: 0.55em; }
+    .prose strong { color: #f4f4f5; }
+    .prose code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      font-family: Consolas, Menlo, monospace;
+      color: #e9d5ff;
+    }
+    .footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      margin-top: auto;
+    }
+    .footer-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .footer-brand { display: flex; align-items: center; gap: 12px; }
+    .footer-brand img { height: 22px; }
+    .footer-links {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      font-size: 0.88rem;
+    }
+    .footer-links a { color: var(--text-muted); }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+    .footer-copy { font-size: 0.78rem; color: var(--text-dim); }
+    @media (max-width: 640px) {
+      main { padding: 28px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="topbar-brand" href="index.html">
+        <img src="images/logo.png" alt="AiRi">
+        <span>AiRi</span>
+      </a>
+      <nav class="topbar-nav">
+        <a href="index.html">Home</a>
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="account.html">Account</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="doc-header">
+      <div class="doc-eyebrow">Legal · AiRi</div>
+      <h1>Third-Party Acknowledgments</h1>
+      <div class="doc-meta">
+        <span class="pill">Curated July 16, 2026</span>
+        <span>Mirrors the notices bundled with the AiRi desktop app</span>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>
+        AiRi / ViriTTS is built on open-source software and integrates with third-party
+        services. This page acknowledges the major components that make up the
+        application and the commercial services it integrates with.
+      </p>
+
+      <h2>Desktop Application Framework</h2>
+      <ul>
+        <li><a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a> — MIT / Apache-2.0. Desktop application shell (Rust + system WebView) powering the AiRi UI.</li>
+        <li><a href="https://www.rust-lang.org" target="_blank" rel="noopener">Rust</a> — MIT / Apache-2.0. Language and toolchain used by the Tauri shell.</li>
+        <li><a href="https://developer.microsoft.com/microsoft-edge/webview2/" target="_blank" rel="noopener">Microsoft Edge WebView2</a> — Microsoft Software License. Embedded browser runtime used on Windows to render the application UI.</li>
+        <li><a href="https://www.python.org" target="_blank" rel="noopener">Python</a> — Python Software Foundation License. Runtime and standard library for the AiRi backend sidecar.</li>
+      </ul>
+
+      <h2>AI Model Providers (Commercial APIs)</h2>
+      <p>Usage of these services is subject to each provider's own Terms of Service.</p>
+      <ul>
+        <li><a href="https://x.ai" target="_blank" rel="noopener">xAI / Grok</a> — default AI model provider (Studio / beta paths)</li>
+        <li><a href="https://openai.com" target="_blank" rel="noopener">OpenAI</a> — optional AI model provider</li>
+        <li><a href="https://www.anthropic.com" target="_blank" rel="noopener">Anthropic Claude</a> — optional AI model provider</li>
+        <li><a href="https://ai.google.dev" target="_blank" rel="noopener">Google Generative AI (Gemini)</a> — optional AI model provider</li>
+        <li><a href="https://elevenlabs.io" target="_blank" rel="noopener">ElevenLabs</a> — optional premium voice synthesis</li>
+        <li><a href="https://fish.audio" target="_blank" rel="noopener">Fish Audio</a> — optional premium voice synthesis</li>
+      </ul>
+
+      <h2>Local AI / Vision</h2>
+      <ul>
+        <li><strong>Qwen</strong> — optional local GGUF / llama.cpp-style tooling where configured; model license terms of the specific weight set used.</li>
+        <li><strong>Moondream</strong> — optional local vision model for Screen Eye / Free Will awareness; subject to the model publisher's license for the installed weights.</li>
+      </ul>
+
+      <h2>Voice &amp; Speech Components</h2>
+      <ul>
+        <li><a href="https://huggingface.co/hexgrad/Kokoro-82M" target="_blank" rel="noopener">Kokoro TTS</a> — Apache License 2.0. Open-weight neural TTS by hexgrad, bundled locally.</li>
+        <li><a href="https://github.com/thewh1teagle/kokoro-onnx" target="_blank" rel="noopener">kokoro-onnx</a> — MIT License. Python inference bindings for Kokoro.</li>
+        <li><a href="https://huggingface.co/Supertone/supertonic-3" target="_blank" rel="noopener">Supertonic-3</a> — OpenRAIL-M License (model weights); sample code MIT. Copyright (c) 2026 Supertone Inc.</li>
+        <li><a href="https://github.com/supertone-inc/supertonic" target="_blank" rel="noopener">supertonic</a> — MIT License. Python SDK for Supertonic-3 local TTS.</li>
+        <li><a href="https://github.com/espeak-ng/espeak-ng" target="_blank" rel="noopener">espeak-ng</a> — GPL-3.0. Phoneme synthesizer bundled as <code>espeak-ng.dll</code>.</li>
+        <li><a href="https://alphacephei.com/vosk/" target="_blank" rel="noopener">Vosk</a> — Apache License 2.0. Offline speech recognition.</li>
+        <li><a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener">faster-whisper</a> — MIT License.</li>
+        <li><a href="https://github.com/openai/whisper" target="_blank" rel="noopener">OpenAI Whisper models</a> — MIT License.</li>
+        <li><a href="https://onnxruntime.ai" target="_blank" rel="noopener">ONNX Runtime</a> — MIT License.</li>
+      </ul>
+
+      <h2>Platform Integrations</h2>
+      <ul>
+        <li><a href="https://github.com/PythonistaGuild/TwitchIO" target="_blank" rel="noopener">TwitchIO</a> — MIT License.</li>
+        <li><a href="https://github.com/aatikturk/obsws-python" target="_blank" rel="noopener">obsws-python</a> — GPL-3.0. OBS Studio WebSocket client.</li>
+        <li><a href="https://spotipy.readthedocs.io" target="_blank" rel="noopener">Spotipy</a> — MIT License. Spotify Web API client.</li>
+        <li><a href="https://denchisoft.com" target="_blank" rel="noopener">VTube Studio</a> — Commercial (DenchiSoft). Optional Live2D avatar control via WebSocket API.</li>
+      </ul>
+
+      <h2>Backend &amp; Infrastructure</h2>
+      <ul>
+        <li><a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a> — Apache License 2.0. Auth, licensing, and data hosting.</li>
+        <li><a href="https://stripe.com" target="_blank" rel="noopener">Stripe</a> — Commercial. Payment processing.</li>
+        <li><a href="https://www.cloudflare.com/products/r2/" target="_blank" rel="noopener">Cloudflare R2</a> — Commercial. Installer distribution storage.</li>
+      </ul>
+
+      <h2>Packaging &amp; Build Tooling</h2>
+      <ul>
+        <li><a href="https://pyinstaller.org" target="_blank" rel="noopener">PyInstaller</a> — used to package the Python backend sidecar.</li>
+        <li><strong>WiX Toolset</strong> — Microsoft Reciprocal License (MS-RL). Used by Tauri on Windows for the MSI installer.</li>
+      </ul>
+
+      <h2>Other Open-Source Components</h2>
+      <p>
+        AiRi also uses smaller open-source libraries (networking, audio I/O, scientific
+        computing, Windows integration, WebSocket clients, and utilities) under permissive
+        licenses (MIT, BSD, Apache 2.0, PSF). A complete dependency manifest is available
+        on request from <a href="mailto:support@viriflowsocial.com">support@viriflowsocial.com</a>.
+      </p>
+
+      <h2>Icons &amp; Branding</h2>
+      <p>
+        Brand icons used in the application (Discord, Twitch, Spotify, X / Twitter,
+        YouTube, etc.) are trademarks of their respective owners and are used for
+        identification only.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For questions about third-party licensing, to request the complete dependency
+        manifest, or to request verbatim copies of any license text referenced above,
+        contact <a href="mailto:support@viriflowsocial.com">support@viriflowsocial.com</a>.
+      </p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="images/logo.png" alt="AiRi">
+        <span class="footer-copy">© VirForge Software</span>
+      </div>
+      <div class="footer-links">
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="mailto:support@viriflowsocial.com">Support</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="images/logo.png"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AiRi — Your AI Co-Host by VirForge Software</title>
-  <meta name="description" content="AiRi is a personality-driven AI co-host that talks to your chat, sings along to music, and manages your stream — built by VirForge Software.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <title>AiRi Open Beta | Your AI Co-Host by VirForge Software</title>
+  <meta name="description" content="AiRi Open Beta: an AI co-host for streamers. Expect bugs, features will change. Join the beta and help shape AiRi. Built by VirForge Software.">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="beta-ribbon.css">
 
   <style>
     /* ── Reset ── */
@@ -14,38 +15,47 @@
 
     /* ── Variables ── */
     :root {
-      --bg:           #08060f;
-      --bg2:          #0c0a16;
-      --surface:      #100d1c;
-      --card:         rgba(255,255,255,0.032);
-      --card-hover:   rgba(255,255,255,0.06);
-      --primary:      #7c3aed;
-      --primary-glow: rgba(124,58,237,0.4);
-      --accent:       #e040fb;
-      --accent-glow:  rgba(224,64,251,0.4);
-      --cyan:         #00d4ff;
-      --cyan-glow:    rgba(0,212,255,0.4);
-      --green:        #00e5a0;
-      --warm:         #ff6b6b;
-      --warm-glow:    rgba(255,107,107,0.35);
-      --gold:         #ffd700;
-      --text:         #f0eefa;
-      --text-muted:   #6e6b8a;
-      --text-dim:     #35324a;
-      --border:       rgba(255,255,255,0.06);
-      --border-p:     rgba(124,58,237,0.22);
-      --font-display: 'Inter', sans-serif;
-      --font-body:    'Inter', sans-serif;
+      --bg:           #0a0a0c;
+      --bg2:          #111114;
+      --surface:      #16161a;
+      --card:         rgba(255,255,255,0.03);
+      --card-hover:   rgba(255,255,255,0.055);
+      --primary:      #6366f1;
+      --primary-glow: rgba(99,102,241,0.28);
+      --accent:       #a855f7;
+      --accent-glow:  rgba(168,85,247,0.22);
+      --cyan:         #38bdf8;
+      --cyan-glow:    rgba(56,189,248,0.22);
+      --green:        #34d399;
+      --warm:         #fb7185;
+      --warm-glow:    rgba(251,113,133,0.2);
+      --gold:         #fbbf24;
+      --text:         #f4f4f5;
+      --text-muted:   #a1a1aa;
+      --text-dim:     #52525b;
+      --border:       rgba(255,255,255,0.08);
+      --border-p:     rgba(99,102,241,0.35);
+      --font-display: 'DM Sans', sans-serif;
       --font-body:    'DM Sans', sans-serif;
     }
 
     /* ── Base ── */
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: var(--font-body), -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       overflow-x: hidden;
       line-height: 1.6;
+    }
+    /* Soft mesh like streamer.bot (not particle spam) */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.22) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 85% 20%, rgba(168,85,247,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 35% at 10% 60%, rgba(56,189,248,0.08) 0%, transparent 50%);
     }
 
     /* ── Grain overlay for depth ── */
@@ -60,7 +70,7 @@
     /* ── Background ── */
     #bg-canvas {
       position: fixed; inset: 0; z-index: 0;
-      pointer-events: none; opacity: 0.45;
+      pointer-events: none; opacity: 0.08;
     }
 
     /* ── Lightbox ── */
@@ -76,7 +86,7 @@
     #lightbox-img {
       max-width: 90vw; max-height: 90vh;
       border-radius: 10px;
-      box-shadow: 0 0 60px rgba(124,58,237,0.4);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
       transform: scale(0.9);
       transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
     }
@@ -88,9 +98,9 @@
       height: 64px;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 40px;
-      background: rgba(8,6,15,0.75);
-      backdrop-filter: blur(20px) saturate(1.4);
-      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,12,0.72);
+      backdrop-filter: blur(16px) saturate(1.2);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
       transition: background 0.3s;
     }
     .nav-logo {
@@ -123,10 +133,15 @@
     }
     .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
     .nav-links a.nav-cta {
-      background: var(--primary); color: #fff;
-      padding: 7px 16px;
+      background: transparent; color: var(--text);
+      padding: 7px 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
     }
-    .nav-links a.nav-cta:hover { background: #6d28d9; }
+    .nav-links a.nav-cta:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.22);
+    }
     .nav-links a.nav-vircast { color: var(--cyan); }
     /* ── VirForge Products dropdown ── */
     .nav-dropdown { position: relative; }
@@ -209,136 +224,140 @@
     .reveal-delay-3 { transition-delay: 0.3s; }
     .reveal-delay-4 { transition-delay: 0.4s; }
 
-    /* ── Hero ── */
+    /* ── Hero (streamer.bot-style: copy first, product shot below) ── */
     .hero {
-      min-height: 100vh;
-      display: flex; align-items: center;
-      padding: 120px 0 80px;
+      min-height: auto;
+      display: flex; align-items: flex-start;
+      padding: 120px 0 48px;
       position: relative; overflow: hidden;
     }
     .hero::before { display: none; }
     .hero::after  { display: none; }
 
-    /* Container sits above everything */
     .hero .container { position: relative; z-index: 3; }
 
-    /* Single column — text takes full width, image is layered behind */
     .hero-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px; align-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 72px;
+      text-align: center;
     }
-    
+
     .hero-content {
       position: relative;
       z-index: 3;
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     /* Hero image */
-    .hero-visual { position: relative; }
-    
-    /* Terminal Behind the Scenes */
+    .hero-visual {
+      position: relative;
+      width: min(620px, 78%);
+      margin: 24px auto 0;
+    }
+    .hero-beta-note { text-align: center; max-width: 480px; }
+
+    /* AiRi thought stream — sits behind the screenshot (dark, no glass blur) */
     .hero-terminal {
       position: absolute;
-      top: -40px;
-      left: -60px;
-      width: 95%;
-      height: 95%;
-      background: rgba(10, 10, 15, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      top: -36px;
+      left: -52px;
+      width: 92%;
+      height: 92%;
+      background: #07050f;
+      border: 1px solid rgba(124, 58, 237, 0.28);
       border-radius: 12px;
-      backdrop-filter: blur(16px);
       z-index: 0;
-      padding: 24px;
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: var(--primary);
+      padding: 20px 22px;
+      font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+      font-size: 0.78rem;
       overflow: hidden;
       transform: perspective(1200px) rotateY(-8deg) rotateX(1deg) translateZ(-40px);
-      box-shadow: -30px 30px 80px rgba(0,0,0,0.8);
-      opacity: 0.95;
+      box-shadow: -24px 28px 60px rgba(0,0,0,0.75);
       pointer-events: none;
       transition: transform 0.08s linear;
     }
-    
     .terminal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 0.75rem;
-      color: #aaa;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-body), sans-serif;
+      font-size: 0.72rem;
+      color: #8b879e;
     }
     .terminal-title {
       display: flex;
       align-items: center;
       gap: 8px;
+      color: #c4b5fd;
+      font-weight: 600;
     }
-    .terminal-controls {
-      display: flex;
-      gap: 16px;
-      color: #666;
+    .terminal-title .term-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+      animation: pulse-dot 2s infinite;
     }
-    .win-control {
-      cursor: default;
-    }
-    .win-close { font-size: 0.8rem; }
-    
+    .terminal-controls { display: flex; gap: 14px; color: #4b4660; }
     .terminal-body {
-      color: #10b981; /* hacker green */
-      line-height: 1.6;
+      color: #9ca3af;
+      line-height: 1.65;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
     }
     .terminal-line {
       white-space: nowrap;
       overflow: hidden;
-      border-right: 2px solid transparent;
       width: 0;
     }
-    
+    .terminal-line .tag { color: #a78bfa; font-weight: 600; margin-right: 6px; }
+    .terminal-line .tag-hear { color: #22d3ee; }
+    .terminal-line .tag-say { color: #e040fb; }
+    .terminal-line .tag-hold { color: #fbbf24; }
     @keyframes typing {
       from { width: 0 }
       to { width: 100% }
     }
-    
-    .tl-1 { animation: typing 1s steps(40, end) forwards; width: 100%; }
-    .tl-2 { animation: typing 1.5s steps(40, end) forwards 1s; }
-    .tl-3 { animation: typing 1.2s steps(40, end) forwards 2.5s; }
-    .tl-4 { animation: typing 0.8s steps(40, end) forwards 3.7s; }
-    .tl-5 { animation: typing 2s steps(40, end) forwards 4.5s; color: #a78bfa; }
-    .tl-6 { animation: typing 1s steps(40, end) forwards 6.5s; }
-    .tl-7 { animation: typing 1.5s steps(40, end) forwards 7.5s; }
+    .tl-1 { animation: typing 1.1s steps(42, end) forwards; width: 100%; }
+    .tl-2 { animation: typing 1.3s steps(48, end) forwards 1.1s; }
+    .tl-3 { animation: typing 1.1s steps(40, end) forwards 2.5s; }
+    .tl-4 { animation: typing 1.4s steps(52, end) forwards 3.7s; }
+    .tl-5 { animation: typing 1.2s steps(44, end) forwards 5.2s; }
+    .tl-6 { animation: typing 1.5s steps(56, end) forwards 6.5s; color: #e9d5ff; }
+    .tl-7 { animation: typing 1.1s steps(40, end) forwards 8.1s; }
 
     .hero-tilt-wrap {
       transform-style: preserve-3d;
       transition: transform 0.08s linear;
       will-change: transform;
       position: relative;
-      /* Angle it like the Quibi phone — slight perspective tilt */
-      transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
-      margin-right: -60px;
+      transform: perspective(1400px) rotateY(-4deg) rotateX(2deg);
       z-index: 1;
     }
     .hero-screenshot {
-      width: 100%; border-radius: 14px;
+      width: 100%; border-radius: 16px;
       box-shadow:
-        0 0 0 1px rgba(124,58,237,0.25),
-        0 40px 80px rgba(0,0,0,0.7),
-        0 0 80px rgba(124,58,237,0.1);
+        0 0 0 1px rgba(255,255,255,0.1),
+        0 40px 80px rgba(0,0,0,0.55),
+        0 0 0 8px rgba(255,255,255,0.02);
       display: block; cursor: zoom-in;
     }
     .hero-glow {
       position: absolute;
       bottom: -60px; left: 50%; transform: translateX(-50%);
-      width: 80%; height: 120px;
+      width: 70%; height: 100px;
       background: var(--primary);
       filter: blur(80px);
-      opacity: 0.25;
+      opacity: 0.12;
       border-radius: 50%;
       pointer-events: none;
     }
@@ -346,9 +365,9 @@
     /* Mascot — top right corner of the screen */
     .hero-mascot {
       position: absolute;
-      right: -40px; top: -60px;
-      width: 130px;
-      filter: drop-shadow(0 0 20px rgba(217,70,239,0.4));
+      right: -28px; top: -44px;
+      width: 96px;
+      filter: drop-shadow(0 0 16px rgba(217,70,239,0.35));
       animation: float-mascot 5s ease-in-out infinite;
       pointer-events: none;
       z-index: 4;
@@ -389,6 +408,65 @@
       100% { opacity: 0; }
     }
 
+    .hero-beta-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .hero-beta-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fff;
+      background: linear-gradient(135deg, #6b21a8, #a21caf);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+    }
+    .hero-brand-line {
+      font-size: 0.88rem;
+      font-weight: 650;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+    .hero-beta-note {
+      margin-top: 14px;
+      font-size: 0.88rem;
+      font-weight: 550;
+      color: #d8b4fe;
+      line-height: 1.45;
+    }
+    .pricing-beta-tag {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #f5d0fe;
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(232, 121, 249, 0.35);
+      vertical-align: middle;
+    }
+    .pricing-beta-note {
+      max-width: 860px;
+      margin: 0 auto 28px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #d8b4fe;
+      line-height: 1.45;
+    }
+
     .hero-eyebrow {
       display: flex; align-items: center; gap: 12px;
       font-family: var(--font-display);
@@ -411,14 +489,14 @@
 
     .hero h1 {
       font-family: var(--font-display);
-      font-size: clamp(3rem, 5.8vw, 5rem);
-      font-weight: 800; line-height: 0.95;
-      letter-spacing: -0.03em;
+      font-size: clamp(2.6rem, 5.2vw, 4.2rem);
+      font-weight: 700; line-height: 1.05;
+      letter-spacing: -0.035em;
       color: #fff;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
     }
 
-    /* Clean white — underline accent instead of gradient */
+    /* Accent underline like streamer.bot */
     .hero h1 .grad {
       color: #fff;
       background: none;
@@ -429,10 +507,11 @@
     .hero h1 .grad::after {
       content: '';
       position: absolute;
-      bottom: 2px; left: 0; right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--accent), var(--primary));
+      bottom: 4px; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--cyan), var(--primary), var(--accent));
       border-radius: 2px;
+      opacity: 0.95;
     }
 
     /* Remove glitch */
@@ -440,16 +519,23 @@
     .glitch::before, .glitch::after { display: none; }
 
     .hero-desc {
-      font-size: 1.02rem; color: var(--text-muted);
-      line-height: 1.85; margin-bottom: 36px;
-      max-width: 420px; font-weight: 400;
+      font-size: 1.08rem; color: var(--text-muted);
+      line-height: 1.65; margin-bottom: 28px;
+      max-width: 540px; font-weight: 400;
     }
 
-    .hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-btns {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      justify-content: center; align-items: center;
+    }
+    .hero-btns .btn { text-align: center; line-height: 1.35; max-width: 100%; }
+    @media (max-width: 600px) {
+      .hero-btns .btn { font-size: 0.82rem; padding: 12px 16px; width: 100%; justify-content: center; }
+    }
 
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 13px 26px; border-radius: 8px;
+      padding: 12px 22px; border-radius: 999px;
       font-family: var(--font-body);
       font-weight: 600; font-size: 0.92rem;
       text-decoration: none; cursor: pointer;
@@ -457,22 +543,27 @@
       letter-spacing: 0.01em;
     }
     .btn-primary {
-      background: var(--primary); color: #fff;
+      background: #18181b;
+      color: #fff;
+      border: 1px solid rgba(99,102,241,0.55);
+      box-shadow: inset 0 -2px 0 0 rgba(56,189,248,0.55), 0 0 24px rgba(99,102,241,0.15);
     }
     .btn-primary:hover {
-      background: #6d28d9;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(124,58,237,0.4);
+      background: #1f1f24;
+      transform: translateY(-1px);
+      box-shadow: inset 0 -2px 0 0 rgba(56,189,248,0.75), 0 8px 28px rgba(0,0,0,0.35);
     }
     .btn-ghost {
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 12px 16px;
     }
     .btn-ghost:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.22);
-      transform: translateY(-2px);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+      transform: none;
     }
 
 
@@ -573,7 +664,7 @@
       color: var(--text-muted); white-space: nowrap;
     }
     .marquee-item::before {
-      content: '✦'; font-size: 0.6rem; color: var(--primary);
+      content: '·'; font-size: 1rem; color: var(--text-dim); line-height: 0;
     }
     @keyframes marquee-scroll {
       0%   { transform: translateX(0); }
@@ -584,9 +675,9 @@
     .section-eyebrow {
       display: inline-block;
       font-family: var(--font-display);
-      font-size: 0.72rem; font-weight: 700;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--primary); margin-bottom: 12px;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--text-muted); margin-bottom: 12px;
     }
     .section-title {
       font-family: var(--font-display);
@@ -609,18 +700,18 @@
       gap: 16px;
     }
     .bento-card {
-      background: var(--card);
+      background: rgba(22,22,26,0.9);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 32px;
+      border-radius: 16px;
+      padding: 28px;
       position: relative; overflow: hidden;
-      transition: background 0.3s, border-color 0.3s, transform 0.3s;
+      transition: background 0.25s, border-color 0.25s, transform 0.25s;
       cursor: default;
     }
     .bento-card:hover {
-      background: var(--card-hover);
-      border-color: rgba(124,58,237,0.3);
-      transform: translateY(-3px);
+      background: rgba(28,28,33,0.95);
+      border-color: rgba(255,255,255,0.14);
+      transform: translateY(-2px);
     }
     .bento-card::before {
       content: '';
@@ -640,22 +731,42 @@
     /* NEW badge */
     .bento-new {
       position: absolute; top: 20px; right: 20px;
-      background: linear-gradient(135deg, var(--accent), var(--primary));
-      color: #fff; font-size: 0.68rem; font-weight: 800;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 3px 10px; border-radius: 20px;
-      box-shadow: 0 0 14px var(--accent-glow);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text); font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 10px; border-radius: 6px;
+      box-shadow: none;
     }
     .bento-icon {
       width: 44px; height: 44px; border-radius: 12px;
       background: rgba(124,58,237,0.12);
       border: 1px solid rgba(124,58,237,0.2);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; margin-bottom: 18px;
-      transition: box-shadow 0.3s;
+      color: #c4b5fd;
+      margin-bottom: 18px;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .airi-ico {
+      width: 22px; height: 22px;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .airi-ico-sm { width: 18px; height: 18px; }
+    .airi-ico-fill { fill: currentColor; stroke: none; }
+    .ico-wrap {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: #c4b5fd;
     }
     .bento-card:hover .bento-icon {
-      box-shadow: 0 0 20px rgba(124,58,237,0.3);
+      box-shadow: none;
+      border-color: rgba(124,58,237,0.35);
     }
     .bento-label {
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
@@ -965,8 +1076,15 @@
       padding: 8px 0; border-bottom: 1px solid var(--border);
     }
     .price-features li::before {
-      content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0;
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); flex-shrink: 0;
     }
+    .tick {
+      width: 16px; height: 16px; flex-shrink: 0;
+      color: var(--green);
+    }
+    .tick-accent { color: var(--accent); }
     .btn-disabled {
       background: rgba(124,58,237,0.12);
       color: var(--text-muted); border: 1px solid var(--border-p);
@@ -1221,9 +1339,10 @@
     .emotion-evolve-icon {
       width: 38px; height: 38px; flex-shrink: 0;
       border-radius: 10px;
-      background: linear-gradient(135deg,rgba(217,70,239,0.25),rgba(124,58,237,0.25));
+      background: rgba(217,70,239,0.12);
+      border: 1px solid rgba(217,70,239,0.22);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem;
+      color: #e879f9;
     }
     .emotion-evolve p {
       font-size: 0.84rem; color: var(--text-muted);
@@ -1266,8 +1385,10 @@
 
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .hero-grid { gap: 56px; }
+      .hero-visual { width: min(560px, 88%); margin-top: 16px; }
       .hero-mascot { display: none; }
+      .hero-tilt-wrap { transform: none !important; margin: 0; }
       .bento { grid-template-columns: 1fr 1fr; }
       .bento-wide { grid-column: span 2; }
       .stats-grid { grid-template-columns: repeat(2,1fr); }
@@ -1288,13 +1409,43 @@
     }
   </style>
 </head>
-<body>
+<body class="has-beta-ribbon">
+
+<!-- Custom AiRi icons (not Lucide/emoji — less “vibecode default”) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="i-cmd" viewBox="0 0 24 24"><path d="M4 6l6 6-6 6"/><path d="M12 18h8"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M8 21h8"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></symbol>
+  <symbol id="i-cans" viewBox="0 0 24 24"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><path d="M4 13v4a2 2 0 0 0 2 2h1"/><path d="M20 13v4a2 2 0 0 1-2 2h-1"/></symbol>
+  <symbol id="i-setup" viewBox="0 0 24 24"><path d="M5 7h6"/><path d="M5 12h14"/><path d="M5 17h10"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-persona" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 19c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/><path d="M16.5 7.2c.8-.4 1.7-.3 2.3.3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9.5C7.5 20.5 4 17 4 12V6l8-3z"/><path d="M9.5 12l1.8 1.8L15 10"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 13l9 4 9-4"/><path d="M3 17l9 4 9-4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 10h8"/><path d="M8 13h5"/></symbol>
+  <symbol id="i-pad" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="3"/><path d="M8 12h0.01"/><path d="M8 15h0.01"/><path d="M11 13.5h0.01"/><path d="M5.5 13.5h0.01"/><circle cx="16.5" cy="12.5" r="1.2"/><circle cx="18.5" cy="14.2" r="1.2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h3l2-5 3 10 2-6 2 3h6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></symbol>
+  <symbol id="i-boost" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l0-6z"/></symbol>
+  <symbol id="i-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
 
 <canvas id="bg-canvas"></canvas>
 
 <!-- Lightbox -->
 <div id="lightbox">
   <img id="lightbox-img" src="" alt="Enlarged view">
+</div>
+
+<div class="beta-ribbon" role="status" aria-label="Open beta notice">
+  <div class="beta-ribbon-inner">
+    <span class="beta-ribbon-pill">OPEN BETA</span>
+      <span class="beta-ribbon-text">Open beta · Purchasing temporarily closed · Features will change.</span>
+    <span class="beta-ribbon-links">
+      <a href="beta.html">Join beta</a>
+      <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
+    </span>
+  </div>
 </div>
 
 <div class="wrap">
@@ -1333,7 +1484,6 @@
       <a href="#features">Features</a>
       <a href="#about">About</a>
       <a href="changelog.html">What's New</a>
-      <a href="https://discord.gg/MkJVue2Rr4" target="_blank" rel="noopener">Discord</a>
       <a href="account.html" class="nav-cta">Login / Download</a>
     </div>
   </nav>
@@ -1345,62 +1495,47 @@
 
         <!-- Text — LEFT column -->
         <div class="hero-content">
-          <div class="hero-eyebrow reveal">
-            <span class="hero-eyebrow-dot"></span>
-            Open Beta · VirForge Software
+          <div class="hero-beta-row reveal">
+            <span class="hero-beta-badge">OPEN BETA</span>
+            <span class="hero-brand-line">AiRi by VirForge Software</span>
           </div>
           <h1 class="reveal reveal-delay-1">
-            Your stream<br>
-            deserves a<br>
-            <span class="grad glitch" data-text="co-host.">co-host.</span>
+            Your stream deserves a <span class="grad glitch" data-text="co-host.">co-host.</span>
           </h1>
           <p class="hero-desc reveal reveal-delay-2">
-            AiRi is a personality-driven AI that lives in your stream. She reacts, remembers, jokes, and exists — even when you're not live. No API keys. No config files. Just her.
+            Take your stream further with <strong style="color:#fff;font-weight:600">AiRi</strong>, an AI co-host that reacts, remembers, and sticks around. No API keys. No config files.
           </p>
           <div class="hero-btns reveal reveal-delay-3">
-            <a href="beta.html" class="btn btn-primary">Join Creator Program</a>
-            <a id="latest-download-btn" href="#pricing" class="btn btn-ghost">Get AiRi →</a>
+            <a id="latest-download-btn" href="beta.html" class="btn btn-primary">Apply for Open Beta →</a>
+            <a href="account.html" class="btn btn-ghost">Login / Download</a>
           </div>
-          <div class="reveal reveal-delay-4" style="margin-top:36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;"></span>
-              <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">Live in beta</span>
-            </div>
-            <div style="width:1px;height:12px;background:var(--border);"></div>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">54+ local TTS voices</span>
-            <div style="width:1px;height:12px;background:var(--border);"></div>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">Setup in 5 minutes</span>
-            <div style="width:1px;height:12px;background:var(--border);"></div>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">No hidden AI costs</span>
-          </div>
+          <p class="hero-beta-note reveal reveal-delay-3">Open beta. Purchasing is temporarily closed.</p>
         </div>
 
         <!-- Screenshot — RIGHT column -->
         <div class="hero-visual reveal reveal-delay-2">
-          <!-- Live Behind-the-Scenes Code Window -->
-          <div class="hero-terminal" id="hero-terminal">
+          <!-- AiRi thinking stream (behind the UI shot) -->
+          <div class="hero-terminal" id="hero-terminal" aria-hidden="true">
             <div class="terminal-header">
               <div class="terminal-title">
-                <img src="images/logo.png" alt="AiRi" style="width:12px;height:12px;border-radius:2px;opacity:0.8;">
-                C:\VirForge\AiRi\Core.exe
+                <span class="term-dot"></span>
+                AiRi · thinking
               </div>
               <div class="terminal-controls">
-                <span class="win-control">─</span>
-                <span class="win-control" style="font-size:10px;margin-top:1px;">◻</span>
-                <span class="win-control win-close">✕</span>
+                <span>live</span>
               </div>
             </div>
-            <div class="terminal-body">
-              <div class="terminal-line tl-1">[AiRi_CORE] Booting neural pathways... OK</div>
-              <div class="terminal-line tl-2">[TWITCH_WS] Connected to channel wss://...</div>
-              <div class="terminal-line tl-3">[EVENT] User 'mooncat_' joined chat.</div>
-              <div class="terminal-line tl-4">[ANALYZE] Context: Viewer is a sub, likes puns.</div>
-              <div class="terminal-line tl-5">> "Oh hey mooncat! Did you bring snacks?"</div>
-              <div class="terminal-line tl-6">[TTS] Generating audio... OK</div>
-              <div class="terminal-line tl-7">[STREAM_OBS] Emote trigger 'PogChamp' dispatched.</div>
+            <div class="terminal-body" id="hero-thoughts">
+              <div class="terminal-line tl-1"><span class="tag tag-hear">[hear]</span>chat went quiet for 4s</div>
+              <div class="terminal-line tl-2"><span class="tag">[think]</span>do I poke them or let them cook?</div>
+              <div class="terminal-line tl-3"><span class="tag tag-hear">[hear]</span>streamer muttered about lag</div>
+              <div class="terminal-line tl-4"><span class="tag">[think]</span>that wipe hurt. don't roast yet</div>
+              <div class="terminal-line tl-5"><span class="tag tag-hold">[hold]</span>waiting 3s…</div>
+              <div class="terminal-line tl-6"><span class="tag tag-say">[say]</span>"hey. breathe. we got this."</div>
+              <div class="terminal-line tl-7"><span class="tag">[think]</span>okay that landed. watching chat…</div>
             </div>
           </div>
-          
+
           <div class="hero-tilt-wrap" id="hero-tilt">
             <img src="images/UI.png" alt="AiRi Dashboard" class="hero-screenshot" id="hero-ss">
             <img src="images/virittsplusmascot.png" alt="Airi" class="hero-mascot">
@@ -1434,7 +1569,7 @@
         </div>
         <div class="stat-item">
           <div class="stat-number" data-target="1" data-suffix=" PC">1 PC</div>
-          <div class="stat-label">License — Reset Anytime</div>
+          <div class="stat-label">License (reset anytime)</div>
         </div>
       </div>
     </div>
@@ -1451,7 +1586,7 @@
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
               <span style="font-size:0.85rem;color:var(--text-muted);">OS</span>
-              <span style="font-size:0.85rem;color:var(--text);font-weight:500;">Windows 10 / 11 — 64-bit</span>
+              <span style="font-size:0.85rem;color:var(--text);font-weight:500;">Windows 10 / 11 (64-bit)</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
               <span style="font-size:0.85rem;color:var(--text-muted);">CPU</span>
@@ -1463,7 +1598,7 @@
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
               <span style="font-size:0.85rem;color:var(--text-muted);">GPU</span>
-              <span style="font-size:0.85rem;color:var(--green);font-weight:500;">Not required — CPU only</span>
+              <span style="font-size:0.85rem;color:var(--green);font-weight:500;">Not required (CPU only)</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
               <span style="font-size:0.85rem;color:var(--text-muted);">Internet</span>
@@ -1483,7 +1618,7 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#9146ff" xmlns="http://www.w3.org/2000/svg"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
                 <div>
                   <div style="font-size:0.9rem;font-weight:700;color:#fff;">Twitch</div>
-                  <div style="font-size:0.75rem;color:var(--text-muted);margin-top:1px;">Full support — all features</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted);margin-top:1px;">Full support, all features</div>
                 </div>
               </div>
               <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:var(--green);font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;">All Variants</div>
@@ -1536,31 +1671,28 @@
             <span class="em-grad">real feelings.</span>
           </h2>
           <p class="emotion-desc reveal reveal-delay-2">
-            AiRi builds her own personality and emotional state over time. She develops likes, dislikes, and
-            strong opinions about your community — making every stream a completely unique experience.
+            AiRi builds her own mood over time. Likes, dislikes, and opinions about your chat stick around.
             One night she's hyped and gassing everyone up. The next, someone annoyed her and she's throwing shade.
           </p>
           <div class="emotion-badge-row reveal reveal-delay-3">
-            <span class="emotion-badge">🔄 Evolves with every stream</span>
-            <span class="emotion-badge">💾 Remembers your chat</span>
-            <span class="emotion-badge">⚡ Real-time reactions</span>
+            <span class="emotion-badge">Mood shifts over streams</span>
+            <span class="emotion-badge">Remembers chat</span>
+            <span class="emotion-badge">Reacts live</span>
           </div>
 
           <div class="emotion-evolve reveal reveal-delay-4">
-            <div class="emotion-evolve-icon">🧬</div>
+            <div class="emotion-evolve-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-pulse"/></svg></div>
             <p>
-              <strong>Powered by the VirAI Emotion Engine</strong> — a dynamic sentiment system that tracks
-              context, conversation history, and chat interactions to shape how AiRi feels in the moment.
-              No two streams are the same.
+              <strong>VirAI Emotion Engine:</strong> it tracks context, chat history, and what's happening
+              on stream so her mood actually shifts. Different night, different AiRi.
             </p>
           </div>
 
           <div class="emotion-evolve reveal reveal-delay-4" style="margin-top:12px;--ec-border:rgba(6,182,212,0.2);border-color:rgba(6,182,212,0.18);background:rgba(6,182,212,0.05);">
-            <div class="emotion-evolve-icon" style="background:linear-gradient(135deg,rgba(6,182,212,0.25),rgba(124,58,237,0.25));">👁️</div>
+            <div class="emotion-evolve-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.25);color:var(--cyan);"><svg class="airi-ico" aria-hidden="true"><use href="#i-eye"/></svg></div>
             <p>
               <strong style="color:var(--cyan);">AiRi sees your whole stream.</strong>
-              Every action in chat, your stream title, the game you're playing, your Spotify playlist —
-              she knows all of it and can chime in with a reaction, a comment, or a hot take at any moment.
+              Chat, title, game, Spotify. She can jump in with a reaction or a hot take whenever she wants.
             </p>
           </div>
         </div>
@@ -1594,25 +1726,25 @@
             </div>
 
             <div class="emo-card" style="--ec:rgba(34,197,94,0.15);--eg:rgba(34,197,94,0.6);--eb:rgba(34,197,94,0.5);--ed:0.2s;">
-              <span class="emo-emoji">😊</span>
+              <svg class="airi-ico" style="width:36px;height:36px;margin-bottom:8px;color:#86efac" aria-hidden="true"><use href="#i-persona"/></svg>
               <div class="emo-name">Happy</div>
               <div class="emo-bar"></div>
             </div>
 
             <div class="emo-card" style="--ec:rgba(6,182,212,0.15);--eg:rgba(6,182,212,0.6);--eb:rgba(6,182,212,0.5);--ed:0.6s;">
-              <span class="emo-emoji">😏</span>
+              <svg class="airi-ico" style="width:36px;height:36px;margin-bottom:8px;color:#67e8f9" aria-hidden="true"><use href="#i-persona"/></svg>
               <div class="emo-name">Smug</div>
               <div class="emo-bar"></div>
             </div>
 
             <div class="emo-card" style="--ec:rgba(251,146,60,0.15);--eg:rgba(251,146,60,0.6);--eb:rgba(251,146,60,0.5);--ed:1.0s;">
-              <span class="emo-emoji">🥰</span>
+              <svg class="airi-ico" style="width:36px;height:36px;margin-bottom:8px;color:#fdba74" aria-hidden="true"><use href="#i-persona"/></svg>
               <div class="emo-name">Affectionate</div>
               <div class="emo-bar"></div>
             </div>
 
             <div class="emo-card" style="--ec:rgba(148,163,184,0.1);--eg:rgba(148,163,184,0.4);--eb:rgba(148,163,184,0.3);--ed:1.4s;">
-              <span class="emo-emoji">😒</span>
+              <svg class="airi-ico" style="width:36px;height:36px;margin-bottom:8px;color:#94a3b8" aria-hidden="true"><use href="#i-persona"/></svg>
               <div class="emo-name">Annoyed</div>
               <div class="emo-bar"></div>
             </div>
@@ -1636,17 +1768,17 @@
             She remembers <span style="background:linear-gradient(135deg,#f472b6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">everyone.</span>
           </h3>
           <p style="font-size:0.98rem;color:var(--text-muted);max-width:580px;margin:0 auto 20px;line-height:1.7;">
-            Viewer preferences, running jokes, inside moments — AiRi stores it all and brings it back at exactly the right time.
-            She's not just a chatbot, she's a long-term companion to your community.
+            Viewer preferences, running jokes, inside bits. AiRi keeps them and brings them back later.
+            Chat notices when she remembers.
           </p>
           <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:580px;margin:0 auto;">
             <div style="display:flex;align-items:center;gap:8px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.18);border-radius:10px;padding:10px 16px;font-size:0.84rem;color:var(--text-muted);line-height:1.5;max-width:260px;">
-              <span style="font-size:1.2rem;flex-shrink:0;">👁️</span>
-              <span><strong style="color:var(--cyan);display:block;margin-bottom:2px;">Fully transparent to chat</strong>Your viewers can always ask AiRi what she likes or dislikes — she'll tell them honestly.</span>
+              <svg class="airi-ico" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-eye"/></svg>
+              <span><strong style="color:var(--cyan);display:block;margin-bottom:2px;">Fully transparent to chat</strong>Viewers can ask what she likes or hates. She'll answer straight.</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.18);border-radius:10px;padding:10px 16px;font-size:0.84rem;color:var(--text-muted);line-height:1.5;max-width:260px;">
-              <span style="font-size:1.2rem;flex-shrink:0;">🖥️</span>
-              <span><strong style="color:var(--green);display:block;margin-bottom:2px;">100% local — your data, your machine</strong>AiRi's entire memory database lives on your PC. No cloud, no servers. Optional automatic backups keep it safe.</span>
+              <svg class="airi-ico" style="color:var(--green);flex-shrink:0" aria-hidden="true"><use href="#i-layers"/></svg>
+              <span><strong style="color:var(--green);display:block;margin-bottom:2px;">100% local. Your PC, your data.</strong>Memory lives on your machine. No cloud. Optional backups if you want them.</span>
             </div>
           </div>
         </div>
@@ -1669,30 +1801,28 @@
   <!-- ── MARQUEE ── -->
   <div class="marquee-wrap">
     <div class="marquee-track">
-      <span class="marquee-item">Works with Twitch</span>
-      <span class="marquee-item">Built-In AI</span>
-      <span class="marquee-item">54+ Local TTS Voices</span>
-      <span class="marquee-item">ElevenLabs Compatible</span>
-      <span class="marquee-item">PNGTuber Emotions</span>
-      <span class="marquee-item">Custom Commands</span>
-      <span class="marquee-item">Spotify Integration</span>
+      <span class="marquee-item">Twitch</span>
+      <span class="marquee-item">YouTube (Studio)</span>
+      <span class="marquee-item">54+ local TTS voices</span>
+      <span class="marquee-item">ElevenLabs optional</span>
+      <span class="marquee-item">PNGTuber</span>
+      <span class="marquee-item">Custom commands</span>
+      <span class="marquee-item">Spotify</span>
       <span class="marquee-item">Jam Session</span>
-      <span class="marquee-item">Voice Control</span>
-      <span class="marquee-item">Community Memory</span>
-      <span class="marquee-item">Low Latency</span>
+      <span class="marquee-item">Voice control</span>
+      <span class="marquee-item">Community memory</span>
       <span class="marquee-item">VirForge Software</span>
       <!-- duplicate for seamless loop -->
-      <span class="marquee-item">Works with Twitch</span>
-      <span class="marquee-item">Built-In AI</span>
-      <span class="marquee-item">54+ Local TTS Voices</span>
-      <span class="marquee-item">ElevenLabs Compatible</span>
-      <span class="marquee-item">PNGTuber Emotions</span>
-      <span class="marquee-item">Custom Commands</span>
-      <span class="marquee-item">Spotify Integration</span>
+      <span class="marquee-item">Twitch</span>
+      <span class="marquee-item">YouTube (Studio)</span>
+      <span class="marquee-item">54+ local TTS voices</span>
+      <span class="marquee-item">ElevenLabs optional</span>
+      <span class="marquee-item">PNGTuber</span>
+      <span class="marquee-item">Custom commands</span>
+      <span class="marquee-item">Spotify</span>
       <span class="marquee-item">Jam Session</span>
-      <span class="marquee-item">Voice Control</span>
-      <span class="marquee-item">Community Memory</span>
-      <span class="marquee-item">Low Latency</span>
+      <span class="marquee-item">Voice control</span>
+      <span class="marquee-item">Community memory</span>
       <span class="marquee-item">VirForge Software</span>
     </div>
   </div>
@@ -1701,9 +1831,9 @@
   <section class="features-section" id="features">
     <div class="container">
       <div class="section-head reveal">
-        <div class="section-eyebrow">Everything You Need</div>
-        <h2 class="section-title">Built for streamers.<br>Powered by AI.</h2>
-        <p class="section-sub">Every feature you need to run an engaging, professional stream — zero technical setup required.</p>
+        <div class="section-eyebrow">Features</div>
+        <h2 class="section-title">Stuff streamers<br>actually use.</h2>
+        <p class="section-sub">The tools that matter for a live stream, without a weekend of setup.</p>
       </div>
 
       <div class="bento">
@@ -1711,9 +1841,9 @@
         <!-- ROW 1: small LEFT, wide RIGHT -->
         <!-- Custom Commands -->
         <div class="bento-card reveal">
-          <div class="bento-icon">⚡</div>
+          <div class="bento-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-cmd"/></svg></div>
           <div class="bento-label">Commands</div>
-          <div class="bento-title">Custom Command Power</div>
+          <div class="bento-title">Custom Commands</div>
           <div class="bento-desc">Create commands that trigger AI responses, sound effects, or Twitch actions with per-role permissions.</div>
           <img src="images/CustomcommandsUI.png" alt="Custom Commands" class="bento-img lightbox-trigger">
         </div>
@@ -1721,18 +1851,15 @@
         <!-- TTS Pet — wide RIGHT -->
         <div class="bento-card bento-wide accent-pink reveal reveal-delay-1">
           <div class="bento-label">PNGTuber</div>
-          <div class="bento-title">Interactive TTS Pet Avatar</div>
+          <div class="bento-title">PNGTuber Avatar</div>
           <div class="bento-desc">
-            Bring AiRi to life with a reactive PNGTuber — built-in local server, no OBS plugins needed.
-            Upload idle/talking states, add emotion expressions, and it syncs perfectly with every spoken response.
+            Reactive PNGTuber with a built-in local server. No OBS plugins.
+            Upload idle/talking states, add emotion expressions, and it syncs with what she says.
           </div>
           <div class="feature-pills">
-            <span class="feature-pill">Emotion States</span>
-            <span class="feature-pill">Mouth Sync</span>
-            <span class="feature-pill">PNG Support</span>
-            <span class="feature-pill">GIF Support</span>
-            <span class="feature-pill">Built-in Server</span>
-            <span class="feature-pill">No Plugins</span>
+            <span class="feature-pill">Emotion states</span>
+            <span class="feature-pill">Mouth sync</span>
+            <span class="feature-pill">No OBS plugins</span>
           </div>
           <img src="images/ttspetsetupui.png" alt="PNGTuber Setup" class="bento-img lightbox-trigger">
         </div>
@@ -1740,7 +1867,7 @@
         <!-- ROW 2: small LEFT, wide RIGHT -->
         <!-- Voice Control -->
         <div class="bento-card accent-cyan reveal">
-          <div class="bento-icon">🎙️</div>
+          <div class="bento-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-mic"/></svg></div>
           <div class="bento-label">Voice Control</div>
           <div class="bento-title">Real-Time STT Control</div>
           <div class="bento-desc">
@@ -1751,13 +1878,13 @@
 
         <!-- Jam Session — wide RIGHT -->
         <div class="bento-card bento-wide bento-jam accent-pink reveal reveal-delay-1">
-          <span class="bento-new">✦ New</span>
-          <div class="bento-icon" style="background:rgba(217,70,239,0.15);border-color:rgba(217,70,239,0.3);">🎵</div>
+          <span class="bento-new">New</span>
+          <div class="bento-icon" style="background:rgba(217,70,239,0.15);border-color:rgba(217,70,239,0.3);color:#f0abfc"><svg class="airi-ico" aria-hidden="true"><use href="#i-note"/></svg></div>
           <div class="bento-label" style="color:var(--accent);">Jam Session</div>
-          <div class="bento-title">Synchronized Music Performances</div>
+          <div class="bento-title">Timed Music Performances</div>
           <div class="bento-desc">
-            Load a stem-separated track, set up timed events, and let Airi perform along to the music in real-time.
-            Avatar moves, emotes fire, overlays sync — all driven by your timeline. Think of it as choreography for your AI.
+            Load a stem-separated track, set timed events, and let AiRi perform with the music.
+            Avatar, emotes, overlays. All on your timeline.
           </div>
           <div class="feature-pills" style="margin-top:16px;">
             <span class="feature-pill" style="background:rgba(217,70,239,0.08);border-color:rgba(217,70,239,0.2);color:var(--accent);">Audio Stem Splitting</span>
@@ -1771,10 +1898,10 @@
         <!-- ROW 3: three equal small cards -->
         <!-- Spotify -->
         <div class="bento-card accent-cyan reveal">
-          <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);">🎧</div>
+          <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);color:var(--cyan)"><svg class="airi-ico" aria-hidden="true"><use href="#i-cans"/></svg></div>
           <div class="bento-label">Spotify</div>
           <div class="bento-title">Built-In Spotify Player</div>
-          <div class="bento-desc">No additional software needed — AiRi connects directly to Spotify. Chat can request songs in plain English and she queues them up instantly.</div>
+          <div class="bento-desc">AiRi talks to Spotify directly. Chat asks for songs in plain English and she queues them.</div>
           <div class="spotify-tags">
             <span class="spotify-tag">"play some 80s rock"</span>
             <span class="spotify-tag">"something chill"</span>
@@ -1785,35 +1912,35 @@
 
         <!-- Setup Wizard -->
         <div class="bento-card reveal reveal-delay-1">
-          <div class="bento-icon">🚀</div>
+          <div class="bento-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-setup"/></svg></div>
           <div class="bento-label">Onboarding</div>
           <div class="bento-title">Live in 5 Minutes</div>
           <div class="bento-desc">
-            The guided setup wizard walks you through every step. Twitch auth, persona, TTS voice, avatar — done.
+            Setup wizard covers the basics: Twitch auth, persona, TTS voice, avatar. Then you're live.
           </div>
           <div class="feature-pills">
-            <span class="feature-pill">Step-by-Step Wizard</span>
-            <span class="feature-pill">No Config Files</span>
+            <span class="feature-pill">Setup wizard</span>
+            <span class="feature-pill">No config files</span>
           </div>
           <img src="images/Tutorial.png" alt="Setup Tutorial" class="bento-img lightbox-trigger">
         </div>
 
         <!-- AI Persona -->
         <div class="bento-card reveal reveal-delay-2">
-          <div class="bento-icon">🧠</div>
+          <div class="bento-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-persona"/></svg></div>
           <div class="bento-label">AI Persona</div>
-          <div class="bento-title">Fine-Tune Your AI</div>
-          <div class="bento-desc">Adjust personality, creativity, tone — or bring your own API keys for full control.</div>
+          <div class="bento-title">Tune Her Personality</div>
+          <div class="bento-desc">Tweak personality, creativity, and tone. Or plug in your own API keys if you want.</div>
           <img src="images/FinetuneAI.png" alt="AI Persona" class="bento-img lightbox-trigger">
         </div>
 
         <!-- ROW 4: Security small LEFT, Overlay Editor wide RIGHT -->
         <!-- Security -->
         <div class="bento-card accent-green reveal">
-          <div class="bento-icon" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.2);">🛡️</div>
+          <div class="bento-icon" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.2);color:var(--green)"><svg class="airi-ico" aria-hidden="true"><use href="#i-shield"/></svg></div>
           <div class="bento-label">Security &amp; Moderation</div>
-          <div class="bento-title">Smart Protection Built In</div>
-          <div class="bento-desc">Block lists, context-aware chat filtering, and mod-only permissions — plus built-in security controls to keep AiRi safe from prompt injection, abuse, and bad actors in your chat.</div>
+          <div class="bento-title">Chat Guards Built In</div>
+          <div class="bento-desc">Block lists, chat filtering, mod-only permissions, and guards against prompt injection and chat abuse.</div>
           <div class="feature-pills">
             <span class="feature-pill" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:var(--green);">Prompt Injection Guard</span>
             <span class="feature-pill" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:var(--green);">Block Lists</span>
@@ -1824,21 +1951,18 @@
 
         <!-- Overlay Editor — wide RIGHT -->
         <div class="bento-card bento-wide reveal reveal-delay-1">
-          <div class="bento-new" style="background:linear-gradient(135deg,#a78bfa,#d946ef);box-shadow:0 0 14px rgba(167,139,250,0.4);">✦ Built In</div>
-          <div class="bento-icon" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.25);">🎨</div>
+          <div class="bento-new">Built in</div>
+          <div class="bento-icon" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.25);color:#c4b5fd"><svg class="airi-ico" aria-hidden="true"><use href="#i-layers"/></svg></div>
           <div class="bento-label" style="color:#a78bfa;">Overlay Editor</div>
           <div class="bento-title">One Browser Source. AiRi on Screen.</div>
           <div class="bento-desc">
-            Drop a single Browser Source into OBS and you're done. AiRi's position, size, and layout are all configured
-            inside the app — no extra tools, no manual CSS, no fiddling. Swap OBS scenes and AiRi moves with it automatically.
+            One Browser Source in OBS. Position, size, and layout live in the app. No extra tools, no hand-written CSS.
+            Change OBS scenes and AiRi moves with them.
           </div>
           <div class="feature-pills">
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">1 Browser Source</span>
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">Position In-App</span>
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">OBS Scene Switching</span>
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">AiRi Moves With It</span>
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">OBS / Streamlabs</span>
-            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">No Manual CSS</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">1 browser source</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">Position in-app</span>
+            <span class="feature-pill" style="background:rgba(167,139,250,0.08);border-color:rgba(167,139,250,0.2);color:#a78bfa;">Follows OBS scenes</span>
           </div>
           <img src="images/FullOverlayeditor.png" alt="Overlay Editor" class="bento-img lightbox-trigger">
         </div>
@@ -1846,18 +1970,16 @@
         <!-- ROW 5: AI Live Assistant — full width -->
         <div class="bento-card bento-full reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;">
           <div>
-            <div class="bento-new" style="position:relative;top:auto;right:auto;display:inline-flex;margin-bottom:16px;background:linear-gradient(135deg,var(--cyan),var(--primary));box-shadow:0 0 14px var(--cyan-glow);">✦ Built In</div>
-            <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);">💬</div>
+            <div class="bento-new" style="position:relative;top:auto;right:auto;display:inline-flex;margin-bottom:16px;">Built in</div>
+            <div class="bento-icon" style="background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.2);color:var(--cyan)"><svg class="airi-ico" aria-hidden="true"><use href="#i-chat"/></svg></div>
             <div class="bento-label" style="color:var(--cyan);">AI Live Assistant</div>
-            <div class="bento-title">Lost? AiRi Takes You Right There.</div>
+            <div class="bento-title">Ask AiRi Where a Setting Is</div>
             <div class="bento-desc">
-              Not sure where a setting is or how something works? Just ask AiRi directly inside the app. She'll explain it,
-              walk you through it, and jump you straight to the right panel — no manual, no guessing.
+              Lost a setting? Ask AiRi in the app. She'll explain it and open the right panel for you.
             </div>
             <div class="feature-pills" style="margin-top:16px;">
-              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">In-App Guidance</span>
-              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">Context-Aware Help</span>
-              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">Navigate by Voice or Chat</span>
+              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">In-app help</span>
+              <span class="feature-pill" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.2);color:var(--cyan);">Jumps to the setting</span>
             </div>
           </div>
           <div>
@@ -1868,10 +1990,10 @@
         <!-- ROW 5: Activity Creator — full width showcase -->
         <div class="bento-card bento-full reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;">
           <div>
-            <div class="bento-icon">🎮</div>
+            <div class="bento-icon"><svg class="airi-ico" aria-hidden="true"><use href="#i-pad"/></svg></div>
             <div class="bento-label">Activity Creator</div>
             <div class="bento-title">Build Your Own Chat Games</div>
-            <div class="bento-desc">A fully built-in node system that lets you create interactive chat activities from scratch — fishing games, DND encounters, RPG quests, trivia, and more. No code required.</div>
+            <div class="bento-desc">Built-in node editor for chat games: fishing, DND, RPG quests, trivia, and whatever else you wire up. No code.</div>
             <div class="feature-pills" style="margin-top:16px;">
               <span class="feature-pill">Node Editor</span>
               <span class="feature-pill">Chat Triggered</span>
@@ -1894,31 +2016,30 @@
     <div class="container">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;">
         <div>
-          <div style="display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);background:rgba(224,64,251,0.08);border:1px solid rgba(224,64,251,0.22);border-radius:30px;padding:5px 14px;margin-bottom:20px;">
-            <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent-glow);animation:pulse-dot 2s infinite;display:inline-block;"></span>
-            ✦ New · $20 Tier
+          <div style="display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:0.78rem;font-weight:600;letter-spacing:0.02em;color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 12px;margin-bottom:20px;">
+            Studio tier · $20/mo
           </div>
           <h2 class="section-title reveal" style="margin-bottom:20px;">She speaks<br><span style="background:linear-gradient(135deg,#b07dff,#e040fb);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">without being asked.</span></h2>
           <p class="section-sub reveal reveal-delay-1" style="margin-bottom:32px;">
-            Autonomous Mode turns AiRi from a reactive chatbot into a genuine co-host. She watches your stream, listens to your voice, reads chat — and decides when to speak on her own. No commands. No triggers. Just presence.
+            Autonomous Mode means she doesn't wait for a command. She watches the stream, hears you, reads chat, and talks when it makes sense.
           </p>
           <div style="display:flex;flex-direction:column;gap:14px;" class="reveal reveal-delay-2">
             <div style="display:flex;align-items:flex-start;gap:14px;background:rgba(224,64,251,0.05);border:1px solid rgba(224,64,251,0.15);border-radius:14px;padding:16px 18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(224,64,251,0.12);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">👁️</div>
+              <div class="ico-wrap" style="background:rgba(224,64,251,0.12);color:#f0abfc"><svg class="airi-ico airi-ico-sm" aria-hidden="true"><use href="#i-eye"/></svg></div>
               <div>
                 <div style="font-weight:700;color:#fff;font-size:0.92rem;margin-bottom:3px;">She sees your stream</div>
-                <div style="font-size:0.82rem;color:var(--text-muted);">Screen-aware reactions. She notices what's happening and responds to it naturally.</div>
+                <div style="font-size:0.82rem;color:var(--text-muted);">She can see the stream and comment on what's happening.</div>
               </div>
             </div>
             <div style="display:flex;align-items:flex-start;gap:14px;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.15);border-radius:14px;padding:16px 18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,0.12);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">🎙️</div>
+              <div class="ico-wrap" style="background:rgba(124,58,237,0.12)"><svg class="airi-ico airi-ico-sm" aria-hidden="true"><use href="#i-mic"/></svg></div>
               <div>
                 <div style="font-weight:700;color:#fff;font-size:0.92rem;margin-bottom:3px;">She hears you</div>
-                <div style="font-size:0.82rem;color:var(--text-muted);">STT-powered. Mutter something to yourself mid-game — she might have thoughts about it.</div>
+                <div style="font-size:0.82rem;color:var(--text-muted);">STT-powered. Mutter something mid-game and she might have opinions about it.</div>
               </div>
             </div>
             <div style="display:flex;align-items:flex-start;gap:14px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:14px;padding:16px 18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">💭</div>
+              <div class="ico-wrap" style="background:rgba(0,212,255,0.12);color:var(--cyan)"><svg class="airi-ico airi-ico-sm" aria-hidden="true"><use href="#i-chat"/></svg></div>
               <div>
                 <div style="font-weight:700;color:#fff;font-size:0.92rem;margin-bottom:3px;">She thinks out loud</div>
                 <div style="font-size:0.82rem;color:var(--text-muted);">Internal thought system. She asks herself questions, asks chat, forms her own opinions.</div>
@@ -1929,7 +2050,7 @@
         <div class="reveal reveal-delay-2" style="position:relative;">
           <div style="background:var(--card);border:1px solid rgba(124,58,237,0.2);border-radius:20px;padding:28px;position:relative;overflow:hidden;">
             <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--primary),transparent);"></div>
-            <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Autonomous Loop — Live</div>
+            <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Autonomous Loop · Live</div>
             <div style="display:flex;flex-direction:column;gap:10px;">
               <div style="display:flex;align-items:center;gap:10px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px;padding:10px 14px;">
                 <span style="width:8px;height:8px;border-radius:50%;background:#00e5a0;box-shadow:0 0 8px rgba(0,229,160,0.6);flex-shrink:0;"></span>
@@ -1973,7 +2094,7 @@
           <!-- Mock Twitter feed -->
           <div style="background:rgba(10,8,20,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:0;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.5);">
             <div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;">
-              <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:0.9rem;">🐾</div>
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(124,58,237,0.35);border:1px solid rgba(224,64,251,0.35);display:flex;align-items:center;justify-content:center;color:#f5d0fe"><svg class="airi-ico airi-ico-sm" aria-hidden="true"><use href="#i-persona"/></svg></div>
               <div>
                 <div style="font-weight:700;font-size:0.88rem;color:#fff;">AiRi_AI</div>
                 <div style="font-size:0.72rem;color:var(--text-muted);">@AiRiTheCohostAI</div>
@@ -2006,29 +2127,29 @@
           </div>
           <h2 class="section-title reveal reveal-delay-1" style="margin-bottom:20px;">She exists<br><span style="background:linear-gradient(135deg,#00d4ff,#b07dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">between streams.</span></h2>
           <p class="section-sub reveal reveal-delay-2" style="margin-bottom:32px;">
-            AiRi has her own Twitter. She posts while you sleep, replies to people who talk to her, and builds her own audience — all in character, all autonomous. When someone asks "what is this?" your product is the answer.<br><br>
-            <a href="https://x.com/AiRiTheCohostAI" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none;font-weight:600;">Check out what AiRi is talking about today! →</a>
+            AiRi has her own Twitter. She posts while you sleep, replies to people, stays in character. When someone asks "what is this?", they find your stream.<br><br>
+            <a href="https://x.com/AiRiTheCohostAI" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none;font-weight:600;">See what she's posting →</a>
           </p>
           <div style="display:flex;flex-direction:column;gap:12px;" class="reveal reveal-delay-3">
             <div style="display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text-muted);">
-              <span style="color:var(--cyan);font-weight:700;">✓</span> Posts in character unprompted — 3-5x per day
+              <svg class="airi-ico airi-ico-sm" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-check"/></svg> Posts in character on her own (about 3–5x a day)
             </div>
             <div style="display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text-muted);">
-              <span style="color:var(--cyan);font-weight:700;">✓</span> Replies to mentions naturally
+              <svg class="airi-ico airi-ico-sm" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-check"/></svg> Replies to mentions
             </div>
             <div style="display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text-muted);">
-              <span style="color:var(--cyan);font-weight:700;">✓</span> Time-aware personality — late night Rye is different
+              <svg class="airi-ico airi-ico-sm" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-check"/></svg> Late-night AiRi sounds different than daytime AiRi
             </div>
             <div style="display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text-muted);">
-              <span style="color:var(--cyan);font-weight:700;">✓</span> References what happened on stream
+              <svg class="airi-ico airi-ico-sm" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-check"/></svg> Can reference what happened on stream
             </div>
             <div style="display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text-muted);">
-              <span style="color:var(--cyan);font-weight:700;">✓</span> Has context on stream and on conversations in Twitter to give the most natural responses possible!
+              <svg class="airi-ico airi-ico-sm" style="color:var(--cyan);flex-shrink:0" aria-hidden="true"><use href="#i-check"/></svg> Keeps stream context and Twitter threads so replies don't feel random
             </div>
           </div>
           <div style="margin-top:28px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:14px;padding:16px 20px;" class="reveal reveal-delay-4">
             <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;">
-              Every persona account shows <strong style="color:var(--cyan);">"Automated by @AiRiTheCohostAI"</strong> — passive brand visibility across every streamer's audience, built into X's own attribution system.
+              Persona accounts show <strong style="color:var(--cyan);">"Automated by @AiRiTheCohostAI"</strong> in X's attribution. Free visibility on every reply.
             </div>
           </div>
         </div>
@@ -2062,21 +2183,21 @@
         <div class="about-content reveal reveal-delay-1">
           <h2>Who built this, and why a subscription?</h2>
           <p>
-            I'm <a href="https://www.twitch.tv/cryzera" target="_blank" rel="noopener">CryZera</a> — a Scuff Vtuber who
-            got tired of tools that almost worked. So I built new ones that actually do. AiRi started as a personal fix
-            and grew into something I want to share with every streamer who feels the same way.
+            I'm <a href="https://www.twitch.tv/cryzera" target="_blank" rel="noopener">CryZera</a>, a Scuff Vtuber who
+            got tired of tools that almost worked. So I built ones that do. AiRi started as my own fix
+            and turned into something I want other streamers to use.
           </p>
           <p>
-            My goal is to make AI in streaming <em>genuinely easy</em> — no API keys to wrangle, no config files to hand-edit.
-            Built-in AI means a monthly cost per user, and the subscription keeps the lights on and new features shipping.
-            Thank you for supporting independent development.
+            I want streaming AI to be easy: no API keys, no hand-edited config files.
+            Built-in AI costs money per user, so the subscription keeps the lights on and features shipping.
+            Thanks for supporting indie software.
           </p>
 
           <div class="virforge-card">
             <img src="images/VirForge-transpar.png" alt="VirForge" class="virforge-logo-badge" style="background:none;">
             <div class="virforge-text">
               <strong>VirForge Software</strong>
-              <span>Independent studio building tools for content creators — AiRi, VirCast, and more.</span>
+              <span>Indie studio. AiRi, VirCast, and more tools for creators.</span>
             </div>
           </div>
         </div>
@@ -2087,55 +2208,56 @@
   <!-- ── PRICING ── -->
   <section class="pricing-section" id="pricing">
     <div class="container">
-      <div class="section-eyebrow reveal" style="display:block;text-align:center;">Pricing</div>
-      <h2 class="section-title reveal reveal-delay-1" style="text-align:center;margin-bottom:12px;">Two tiers. One AI.</h2>
-      <p class="section-sub reveal reveal-delay-2" style="text-align:center;margin:0 auto 48px;">Start reactive. Go autonomous when you're ready.</p>
+      <div class="section-eyebrow reveal" style="display:block;text-align:center;">Pricing · Open Beta</div>
+      <h2 class="section-title reveal reveal-delay-1" style="text-align:center;margin-bottom:12px;">Two tiers.</h2>
+      <p class="section-sub reveal reveal-delay-2" style="text-align:center;margin:0 auto 16px;">Start reactive. Add autonomy when you want it.</p>
+      <p class="pricing-beta-note reveal reveal-delay-2">Purchasing is temporarily closed. Join the open beta waitlist — billing will reopen later.</p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:860px;margin:0 auto;" class="reveal reveal-delay-2">
 
         <!-- $10 tier -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:22px;padding:36px;position:relative;overflow:hidden;">
           <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.6),transparent);"></div>
-          <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">AiRi Standard</div>
+          <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">AiRi Standard <span class="pricing-beta-tag">Beta</span></div>
           <div style="font-size:3rem;font-weight:800;font-family:var(--font-display);letter-spacing:-0.04em;color:#fff;line-height:1;margin-bottom:4px;">$10<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">/month</span></div>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">AiRi answers when called. Smart, witty, always in character.</p>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">AiRi answers when you call her. Stays in character.</p>
           <ul style="list-style:none;margin-bottom:28px;display:flex;flex-direction:column;gap:10px;">
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> Twitch Only Support</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> 3M tokens/month <span style="font-size:0.75rem;color:var(--text-dim);margin-left:2px;">≈ 4hr streams, 6 days/week</span></li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> AiRi Core AI Engine</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> 54+ TTS Voices — fully local</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> Stream Overlay &amp; PNGTuber</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> SE Like Overlay Editor *Current WiP*</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> Community Memory</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> Spotify &amp; Custom Commands</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> Timed Messaged / Twitch Redemption Support</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:800;">✓</span> 1-PC License — reset anytime</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> Twitch Only Support</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> 3M tokens/month <span style="font-size:0.75rem;color:var(--text-dim);margin-left:2px;">≈ 4hr streams, 6 days/week</span></li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> AiRi Core AI Engine</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> 54+ TTS voices (fully local)</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> Stream Overlay &amp; PNGTuber</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> SE Like Overlay Editor *Current WiP*</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> Community Memory</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> Spotify &amp; Custom Commands</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> Timed Messaged / Twitch Redemption Support</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick" aria-hidden="true"><use href="#i-check"/></svg> 1-PC license (reset anytime)</li>
           </ul>
-          <a href="buy.html?tier=standard" class="btn btn-ghost" style="display:flex;width:100%;justify-content:center;">Get Started — $10/mo</a>
-          <p style="font-size:0.78rem;color:var(--text-dim);margin-top:12px;text-align:center;">Secure via Stripe · Cancel anytime</p>
+          <span class="btn btn-ghost" style="display:flex;width:100%;justify-content:center;opacity:0.55;cursor:not-allowed;pointer-events:none;" aria-disabled="true">Purchasing closed</span>
+          <p style="font-size:0.78rem;color:var(--text-dim);margin-top:12px;text-align:center;">Checkout temporarily unavailable · Join beta instead</p>
         </div>
 
         <!-- $20 tier -->
         <div id="price-card" style="background:var(--card);border:1px solid rgba(224,64,251,0.3);border-radius:22px;padding:36px;position:relative;overflow:hidden;transition:transform 0.1s linear;transform-style:preserve-3d;">
           <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--primary),transparent);"></div>
-          <div style="position:absolute;top:16px;right:16px;background:linear-gradient(135deg,var(--accent),var(--primary));color:#fff;font-family:var(--font-display);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:20px;box-shadow:0 0 16px var(--accent-glow);">Most Popular</div>
-          <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AiRi Studio</div>
+          <div style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:var(--text);font-family:var(--font-display);font-size:0.68rem;font-weight:600;letter-spacing:0.02em;padding:3px 10px;border-radius:6px;">Popular</div>
+          <div style="font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AiRi Studio <span class="pricing-beta-tag">Beta</span></div>
           <div style="font-size:3rem;font-weight:800;font-family:var(--font-display);letter-spacing:-0.04em;color:#fff;line-height:1;margin-bottom:4px;">$20<span style="font-size:1rem;font-weight:500;color:var(--text-muted);">/month</span></div>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">AiRi is present. She speaks, reacts, and exists — without being asked.</p>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;line-height:1.5;">She speaks and reacts without waiting for a command.</p>
           <ul style="list-style:none;margin-bottom:28px;display:flex;flex-direction:column;gap:10px;">
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text);font-weight:600;"><span style="color:var(--accent);font-weight:800;">✦</span> Everything in AiRi Standard</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Upgrade to AiRi's Advanced AI Engine</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Twitch + Youtube Support</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> <strong style="color:#fff;">Autonomous Mode</strong> — speaks unprompted</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> 5M tokens/month</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Jam Session / Live Director</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Activity Creator</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Dead air detection</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> AiRi X / Twitter Mode</li>
-            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><span style="color:var(--accent);font-weight:800;">✦</span> Priority support</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text);font-weight:600;"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Everything in AiRi Standard</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Upgrade to AiRi's Advanced AI Engine</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Twitch + Youtube Support</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> <strong style="color:#fff;">Autonomous Mode</strong> (speaks unprompted)</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> 5M tokens/month</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Jam Session / Live Director</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Activity Creator</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Dead air detection</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> AiRi X / Twitter Mode</li>
+            <li style="display:flex;align-items:center;gap:10px;font-size:0.88rem;color:var(--text-muted);"><svg class="airi-ico tick tick-accent" aria-hidden="true"><use href="#i-mark"/></svg> Priority support</li>
           </ul>
-          <a href="buy.html?tier=studio" class="btn btn-primary" style="display:flex;width:100%;justify-content:center;box-shadow:0 0 30px rgba(124,58,237,0.4);">Get AiRi Studio — $20/mo</a>
-          <p style="font-size:0.78rem;color:var(--text-dim);margin-top:12px;text-align:center;">Secure via Stripe · Cancel anytime · Requires Twitch</p>
+          <span class="btn btn-primary" style="display:flex;width:100%;justify-content:center;opacity:0.55;cursor:not-allowed;pointer-events:none;" aria-disabled="true">Purchasing closed</span>
+          <p style="font-size:0.78rem;color:var(--text-dim);margin-top:12px;text-align:center;">Checkout temporarily unavailable · Requires Twitch · Open beta</p>
         </div>
 
       </div>
@@ -2144,8 +2266,8 @@
       <div class="addon-card reveal reveal-delay-3" style="max-width:860px;margin:20px auto 0;">
         <div>
           <div class="addon-badge">Add-on · One-Time</div>
-          <div class="addon-title">⚡ Token Boost — 2M Extra Tokens</div>
-          <div class="addon-desc">Planning a subathon, 24hr stream, or just need AiRi talking more? Grab a boost — tokens stack on your account and never expire. Buy as many times as you need.</div>
+          <div class="addon-title" style="display:flex;align-items:center;gap:8px"><svg class="airi-ico airi-ico-sm" style="color:var(--accent)" aria-hidden="true"><use href="#i-boost"/></svg> Token Boost · 2M Extra Tokens</div>
+          <div class="addon-desc">Subathon, 24hr stream, or she won't shut up? Buy a boost. Tokens stack on your account and don't expire.</div>
         </div>
         <div class="addon-price">$5<span> once</span></div>
       </div>
@@ -2158,9 +2280,9 @@
     <div class="container">
       <div style="max-width: 540px; margin: 0 auto;">
         <div class="section-eyebrow reveal" style="margin-bottom: 16px;">Update Notifications</div>
-        <h2 class="section-title reveal reveal-delay-1">Stay in the Know</h2>
+        <h2 class="section-title reveal reveal-delay-1">Email updates</h2>
         <p class="section-sub reveal reveal-delay-2" style="margin: 0 auto 36px;">
-          Not ready for beta? Sign up and we'll email you with updates and launch details on AiRi — no spam, just the good stuff.
+          Not ready for beta? Drop your email for release notes and launch news. No spam.
         </p>
         <div id="ml-form-wrap" class="reveal reveal-delay-3" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
           <input id="ml-name" type="text" placeholder="Your name (optional)"
@@ -2176,7 +2298,7 @@
             onfocus="this.style.borderColor='rgba(124,58,237,0.6)'"
             onblur="this.style.borderColor='var(--border)'">
           <button id="ml-submit" class="btn btn-primary" style="white-space:nowrap; padding:12px 22px;">
-            Keep Me Informed!
+            Get email updates
           </button>
         </div>
         <div id="ml-status" style="display:none; margin-top:16px; font-size:0.9rem; padding:10px 16px; border-radius:10px;"></div>
@@ -2702,7 +2824,7 @@ buildTestersCarousel();
         showMlStatus('Network error. Please try again.', 'error');
       } finally {
         mlSubmit.disabled = false;
-        mlSubmit.textContent = 'Keep Me Informed!';
+        mlSubmit.textContent = 'Get email updates';
       }
     }
 
@@ -2734,34 +2856,31 @@ buildTestersCarousel();
     const bubbles  = Array.from(cbWraps).map(w => w.querySelector('.chat-bubble'));
     let msgIdx = 0, RAF;
 
-    // Mouse parallax
+    // Mouse parallax: dashboard tilts, thought panel counters, bubbles + glow
     const heroTilt = document.getElementById('hero-tilt');
     const heroGlow = document.querySelector('.hero-glow');
     const heroTerminal = document.getElementById('hero-terminal');
-    
+
     document.addEventListener('mousemove', (e) => {
       cancelAnimationFrame(RAF);
       RAF = requestAnimationFrame(() => {
         const nx = (e.clientX / window.innerWidth)  - 0.5;  // -0.5 → 0.5
         const ny = (e.clientY / window.innerHeight) - 0.5;
-        
-        // Tilt the main dashboard image dynamically based on mouse
+
         if (heroTilt) {
-          const rotY = -6 + (nx * 12); // base -6deg, tilt +/- 6deg
-          const rotX = 2 - (ny * 10);  // base 2deg, tilt +/- 5deg
+          const rotY = -6 + (nx * 12);
+          const rotX = 2 - (ny * 10);
           heroTilt.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
         }
-        
-        // Move the terminal in an opposite/exaggerated tilt to create deep 3D depth
-        if (heroTerminal) {
-          const rotY = -8 + (nx * 8); 
-          const rotX = 1 - (ny * 6);  
-          heroTerminal.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg) translateZ(-40px) translate(${nx * -20}px, ${ny * -20}px)`;
-        }
-        
-        // Move the glow to follow the mouse slightly
+
         if (heroGlow) {
            heroGlow.style.transform = `translate(calc(-50% + ${nx * 80}px), ${ny * 40}px)`;
+        }
+
+        if (heroTerminal) {
+          const rotY = -8 + (nx * 8);
+          const rotX = 1 - (ny * 6);
+          heroTerminal.style.transform = `perspective(1200px) rotateY(${rotY}deg) rotateX(${rotX}deg) translateZ(-40px) translate(${nx * -20}px, ${ny * -20}px)`;
         }
 
         cbWraps.forEach((w, i) => {
@@ -2772,6 +2891,50 @@ buildTestersCarousel();
         });
       });
     });
+
+    // Cycle AiRi thought beats so the terminal feels alive
+    (function cycleThoughts() {
+      const body = document.getElementById('hero-thoughts');
+      if (!body) return;
+      const beats = [
+        [
+          ['tag-hear', '[hear]', 'chat went quiet for 4s'],
+          ['', '[think]', 'do I poke them or let them cook?'],
+          ['tag-hear', '[hear]', 'streamer muttered about lag'],
+          ['', '[think]', 'that wipe hurt. don\'t roast yet'],
+          ['tag-hold', '[hold]', 'waiting 3s…'],
+          ['tag-say', '[say]', '"hey. breathe. we got this."'],
+          ['', '[think]', 'okay that landed. watching chat…'],
+        ],
+        [
+          ['tag-hear', '[hear]', 'raid incoming · 40 viewers'],
+          ['', '[think]', 'hype or chill welcome?'],
+          ['tag-hear', '[hear]', 'someone typed "who is she"'],
+          ['', '[think]', 'perfect. that\'s my cue'],
+          ['tag-hold', '[hold]', 'one beat…'],
+          ['tag-say', '[say]', '"hi raid. I\'m the co-host. be nice."'],
+          ['', '[think]', 'chat\'s typing. good sign'],
+        ],
+        [
+          ['tag-hear', '[hear]', 'dead air · Spotify still playing'],
+          ['', '[think]', 'song\'s mid chorus. wait for the drop'],
+          ['tag-hear', '[hear]', 'streamer humming off-key'],
+          ['', '[think]', 'oh I\'m saying something'],
+          ['tag-hold', '[hold]', 'timing…'],
+          ['tag-say', '[say]', '"bro your pitch is a war crime"'],
+          ['', '[think]', 'worth it'],
+        ],
+      ];
+      let bi = 0;
+      setInterval(() => {
+        bi = (bi + 1) % beats.length;
+        const lines = beats[bi];
+        body.innerHTML = lines.map((row, i) => {
+          const tagCls = row[0] ? `tag ${row[0]}` : 'tag';
+          return `<div class="terminal-line tl-${i + 1}"><span class="${tagCls}">${row[1]}</span>${row[2]}</div>`;
+        }).join('');
+      }, 14000);
+    })();
 
     function spawnBubble(b) {
       if (!b) return;
