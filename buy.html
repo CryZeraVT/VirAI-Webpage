@@ -12,7 +12,7 @@
     <div class="beta-ribbon" role="status" aria-label="Open beta notice">
       <div class="beta-ribbon-inner">
         <span class="beta-ribbon-pill">OPEN BETA</span>
-        <span class="beta-ribbon-text">Purchasing is temporarily closed. Join the open beta.</span>
+        <span class="beta-ribbon-text">Closed beta testing. Features will change.</span>
         <span class="beta-ribbon-links">
           <a href="beta.html">Join beta</a>
           <a href="account.html">Account</a>
@@ -49,9 +49,9 @@
         function showPurchasingClosed() {
             const spinner = document.querySelector('.spinner');
             if (spinner) spinner.style.display = 'none';
-            document.getElementById('status-title').textContent = 'Purchasing temporarily closed';
+            document.getElementById('status-title').textContent = 'Closed Beta Testing';
             document.getElementById('status-msg').innerHTML =
-                'New AiRi checkouts are paused right now. ' +
+                'Checkout is paused during closed beta testing. ' +
                 'Apply for <a href="beta.html" style="color:#a78bfa;text-decoration:underline;">Open Beta</a> ' +
                 'or manage an existing plan from your ' +
                 '<a href="account.html" style="color:#a78bfa;text-decoration:underline;">account</a>.';
