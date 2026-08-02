@@ -131,7 +131,7 @@ RLS: enabled. Policies:
 ### Other tables
 - `announcements` — in-app announcements
 - `beta_signups` — beta waitlist (28 entries)
-- `r2_versions` — download versions/URLs from R2 storage
+- `r2_versions` — download versions/URLs from R2 storage. **Channels (2026-07-31):** `channel` text NOT NULL DEFAULT `stable` (`stable`|`beta`); partial unique index `r2_versions_one_active_per_channel` (one active per channel). Account page: beta-tier licenses get active beta build if present, else stable; all other tiers get stable. Activating beta does not overwrite public `announcements`.
 - `site_settings` — site-level config (see below for ToS-related keys)
 - `subscription_plans` — plan pricing reference
 - `tos_versions` — append-only store of legal document bodies, keyed by `(surface, version)`. Surfaces: `app`, `web`, `privacy`. `body_sha256` is computed by trigger; UPDATE/DELETE blocked by `tos_versions_block_mutations()`. Public SELECT allowed (legal docs are public by design).

@@ -1743,13 +1743,15 @@
           return;
         }
 
-        let downloadUrl = null;
+        // Active installer URLs by release channel.
+        // stable = default for standard/studio/test (and beta fallback).
+        // beta   = only when an active beta build exists AND the license tier is beta.
+        let downloadsByChannel = { stable: null, beta: null };
         try {
           const versionParams = new URLSearchParams({
-            select: "download_url,version",
+            select: "download_url,version,channel",
             is_active: "eq.true",
             order: "created_at.desc",
-            limit: "1",
           });
           const versionRes = await withTimeout(
             fetch(`${SUPABASE_URL}/rest/v1/r2_versions?${versionParams.toString()}`, {
@@ -1760,12 +1762,25 @@
           );
           if (versionRes.ok) {
             const versionRows = await versionRes.json();
-            const versionData = Array.isArray(versionRows) ? (versionRows[0] || null) : null;
-            if (versionData) downloadUrl = versionData.download_url;
+            if (Array.isArray(versionRows)) {
+              for (const row of versionRows) {
+                const ch = (row.channel === "beta") ? "beta" : "stable";
+                // First hit wins (newest first via order).
+                if (!downloadsByChannel[ch] && row.download_url) {
+                  downloadsByChannel[ch] = row.download_url;
+                }
+              }
+            }
           }
         } catch (e) {
-          console.warn("Could not load active version:", e);
+          console.warn("Could not load active versions:", e);
         }
+        const downloadUrlForTier = (tier) => {
+          if (String(tier || "").toLowerCase() === "beta" && downloadsByChannel.beta) {
+            return downloadsByChannel.beta;
+          }
+          return downloadsByChannel.stable || downloadsByChannel.beta || null;
+        };
 
         const accessToken = _currentSession?.access_token;
         if (!accessToken) {
@@ -1898,8 +1913,9 @@
           ? new Date(row.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
           : "";
 
-        const downloadBtn = isActive && downloadUrl
-          ? `<a href="${downloadUrl}" class="btn" style="background:linear-gradient(135deg,#d946ef,#06b6d4);color:#fff;text-decoration:none;font-size:0.82rem;padding:7px 14px;">⬇️ Download</a>`
+        const rowDownloadUrl = downloadUrlForTier(row.tier);
+        const downloadBtn = isActive && rowDownloadUrl
+          ? `<a href="${rowDownloadUrl}" class="btn" style="background:linear-gradient(135deg,#d946ef,#06b6d4);color:#fff;text-decoration:none;font-size:0.82rem;padding:7px 14px;">⬇️ Download</a>`
           : "";
 
         return `

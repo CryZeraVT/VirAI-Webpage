@@ -528,7 +528,7 @@
         <div class="tab-content active" id="tab-publish">
           <div class="tab-header">
             <h3>🚀 Publish Update</h3>
-            <p>Set which version users see and can download. Only one version is active at a time.</p>
+            <p>Set which version users see and can download. One active build per channel (stable and beta can both be active).</p>
           </div>
           <div id="versions-list">
             <div style="text-align:center;padding:40px;color:#4b5563;">Loading versions...</div>
@@ -1279,8 +1279,19 @@
               <label>Changelog / Content</label>
               <textarea id="upload-content" placeholder="Describe the changes..." class="form-input form-textarea"></textarea>
             </div>
-            <div class="check-row">
-              <label><input id="upload-critical" type="checkbox"> Critical Update</label>
+            <div class="form-row" style="margin-top:8px;">
+              <div class="form-group">
+                <label>Release Channel</label>
+                <select id="upload-channel" class="form-input">
+                  <option value="stable" selected>Stable (current users)</option>
+                  <option value="beta">Beta (beta-tier keys only)</option>
+                </select>
+              </div>
+              <div class="form-group" style="display:flex;align-items:flex-end;">
+                <label class="check-row" style="margin:0 0 10px;">
+                  <input id="upload-critical" type="checkbox"> Critical Update
+                </label>
+              </div>
             </div>
             <div class="form-group" style="margin-top:12px;">
               <label>Select File (.exe or .zip)</label>
@@ -1973,37 +1984,44 @@
           return;
         }
 
-      listEl.innerHTML = data.map(ver => `
+      listEl.innerHTML = data.map(ver => {
+        const ch = (ver.channel === "beta") ? "beta" : "stable";
+        const chBadge = ch === "beta"
+          ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
+          : '<span class="badge" style="background:#14532d;color:#86efac;">STABLE</span>';
+        return `
         <div class="announcement-item" style="flex-direction: column; align-items: flex-start; gap: 15px;">
           <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
             <div class="announcement-info" style="flex: 1;">
-              <h4 style="display: flex; align-items: center; gap: 10px;">
+              <h4 style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 v${ver.version}: ${ver.title}
+                ${chBadge}
                 ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ''}
                 ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background: #2d1b4e;">INACTIVE</span>'}
               </h4>
               <p>${ver.content ? ver.content.substring(0, 100) : 'No changelog'}${ver.content && ver.content.length > 100 ? '...' : ''}</p>
               <p style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">
-                📦 ${ver.file_name} • Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
+                ${ver.file_name} · Channel: ${ch} · Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
               </p>
             </div>
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-              <input type="radio" name="active-version" value="${ver.id}" ${ver.is_active ? 'checked' : ''} 
-                onchange="setActiveVersion('${ver.id}')" 
+              <input type="radio" name="active-version-${ch}" value="${ver.id}" ${ver.is_active ? 'checked' : ''}
+                onchange="setActiveVersion('${ver.id}')"
                 style="width: 20px; height: 20px; cursor: pointer;">
-              <span style="color: #22c55e; font-weight: 600;">Set as Active</span>
+              <span style="color: #22c55e; font-weight: 600;">Set Active (${ch})</span>
             </label>
           </div>
           <div style="display: flex; gap: 10px; width: 100%;">
             <a href="${ver.download_url}" target="_blank" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; padding: 8px 16px; font-size: 0.85em; text-decoration: none;">
-              ⬇️ Download
+              Download
             </a>
             <button class="btn btn-outline delete-version-btn" data-id="${ver.id}" style="border-color: #ff4444; color: #ff4444; padding: 8px 16px; font-size: 0.85em;">
-              🗑️ Delete
+              Delete
             </button>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
 
       // Add delete handlers
       document.querySelectorAll(".delete-version-btn").forEach(btn => {
@@ -2027,13 +2045,28 @@
   }
 
     window.setActiveVersion = async function(versionId) {
-      // First, deactivate all versions
+      // Load the target first so we only touch its channel.
+      // Critical: never deactivate the other channel's active build.
+      const { data: target, error: targetErr } = await supabase
+        .from("r2_versions")
+        .select("*")
+        .eq("id", versionId)
+        .single();
+
+      if (targetErr || !target) {
+        alert("Error loading version: " + (targetErr?.message || "not found"));
+        return;
+      }
+
+      const channel = (target.channel === "beta") ? "beta" : "stable";
+
+      // Deactivate other builds in THIS channel only
       await supabase
         .from("r2_versions")
         .update({ is_active: false })
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      
-      // Then activate the selected one
+        .eq("channel", channel)
+        .neq("id", versionId);
+
       const { error } = await supabase
         .from("r2_versions")
         .update({ is_active: true })
@@ -2041,37 +2074,30 @@
 
       if (error) {
         alert("Error setting active version: " + error.message);
-      } else {
-        // Reload to reflect changes
-        loadVersions();
-        
-        // Also update announcement to match
-        const { data: version } = await supabase
-          .from("r2_versions")
-          .select("*")
-          .eq("id", versionId)
-          .single();
-        
-        if (version) {
-          // Deactivate old announcements
-          await supabase
-            .from("announcements")
-            .update({ active: false })
-            .neq("id", "00000000-0000-0000-0000-000000000000");
-          
-          // Create/update announcement for this version
-          await supabase.from("announcements").upsert({
-            version: version.version,
-            title: version.title,
-            content: version.content,
-            download_url: version.download_url,
-            is_critical: version.is_critical,
-            active: true
-          }, { onConflict: "version" });
-          
-          alert(`Version ${version.version} is now active!`);
-        }
+        return;
       }
+
+      loadVersions();
+
+      // Public announcements stay tied to STABLE only — activating beta
+      // must not overwrite what current/paid users see.
+      if (channel === "stable") {
+        await supabase
+          .from("announcements")
+          .update({ active: false })
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+
+        await supabase.from("announcements").upsert({
+          version: target.version,
+          title: target.title,
+          content: target.content,
+          download_url: target.download_url,
+          is_critical: target.is_critical,
+          active: true
+        }, { onConflict: "version" });
+      }
+
+      alert(`Version ${target.version} is now the active ${channel} build!`);
     };
 
     async function loadR2Config() {
@@ -2349,6 +2375,9 @@
         
         const { data: userData } = await supabase.auth.getUser();
         
+        const channelEl = document.getElementById("upload-channel");
+        const channel = (channelEl && channelEl.value === "beta") ? "beta" : "stable";
+
         const { error: versionError } = await supabase.from("r2_versions").insert([{
           version,
           title,
@@ -2358,6 +2387,7 @@
           download_url: downloadUrl,
           is_critical,
           is_active: false,
+          channel,
           uploaded_by: userData?.user?.id
         }]);
 
@@ -2372,6 +2402,9 @@
         document.getElementById("upload-content").value = "";
         document.getElementById("upload-critical").checked = false;
         document.getElementById("update-file").value = "";
+        if (document.getElementById("upload-channel")) {
+          document.getElementById("upload-channel").value = "stable";
+        }
         
         // Reload versions list
         loadVersions();
@@ -2423,6 +2456,7 @@
           license_key: key,
           email: email,
           status: status,
+          tier: "beta",
           expires_at: expiresAt.toISOString()
         }]);
 
@@ -2777,6 +2811,7 @@
             license_key: key,
             email: email,
             status: "active",
+            tier: "beta",
             expires_at: expiresAt.toISOString()
           }]);
 
