@@ -724,6 +724,112 @@
               <span id="studio-config-status" style="font-size:0.85rem;color:#4b5563;"></span>
             </div>
           </div>
+
+          <!-- Failover Chains + Probe -->
+          <div class="admin-section" style="border-color:rgba(16,185,129,0.35);margin-top:24px;">
+            <div class="admin-section-title" style="color:#10b981;">Failover Chains <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— models per hop · keys stay in API Keys tab</span></div>
+            <p style="color:#6b7280;font-size:0.85rem;margin-bottom:10px;">
+              Provider <strong>order is fixed</strong> by tier. Set the <strong>model ID</strong> for each hop here.
+              API keys are <strong>not duplicated</strong> — each hop uses the matching key from the
+              <strong style="color:#a78bfa;">API Keys</strong> tab (Gemini / OpenAI / Grok).
+              Blank hop-1 model uses the Prod/Studio primary model above.
+            </p>
+            <div id="fo-key-status" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;font-size:0.78rem;"></div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+              <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);border-radius:10px;padding:14px;">
+                <div style="color:#06b6d4;font-weight:700;margin-bottom:10px;">Core ($10) — Gemini → OpenAI → Grok</div>
+                <div class="form-group">
+                  <label>1. Gemini model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Gemini</span></label>
+                  <input id="fo-core-0-model" type="text" class="form-input" placeholder="blank = Prod primary model">
+                </div>
+                <div class="form-group">
+                  <label>2. OpenAI model <span style="color:#4b5563;font-weight:400;">· key: API Keys → OpenAI</span></label>
+                  <input id="fo-core-1-model" type="text" class="form-input" placeholder="gpt-4o-mini">
+                </div>
+                <div class="form-group">
+                  <label>3. Grok model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Grok</span></label>
+                  <input id="fo-core-2-model" type="text" class="form-input" placeholder="grok-3">
+                </div>
+              </div>
+              <div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.25);border-radius:10px;padding:14px;">
+                <div style="color:#a78bfa;font-weight:700;margin-bottom:10px;">Studio ($20) — Grok → OpenAI → Gemini</div>
+                <div class="form-group">
+                  <label>1. Grok model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Grok</span></label>
+                  <input id="fo-studio-0-model" type="text" class="form-input" placeholder="blank = Studio primary model">
+                </div>
+                <div class="form-group">
+                  <label>2. OpenAI model <span style="color:#4b5563;font-weight:400;">· key: API Keys → OpenAI</span></label>
+                  <input id="fo-studio-1-model" type="text" class="form-input" placeholder="gpt-4o-mini">
+                </div>
+                <div class="form-group">
+                  <label>3. Gemini model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Gemini</span></label>
+                  <input id="fo-studio-2-model" type="text" class="form-input" placeholder="gemini-2.5-flash">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-top:12px;">
+              <div class="form-group" style="max-width:220px;">
+                <label>Hop timeout (ms)</label>
+                <input id="fo-hop-timeout" type="number" min="3000" max="60000" step="1000" value="20000" class="form-input">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap;">
+              <button id="save-failover-chains" class="btn" style="background:linear-gradient(135deg,#059669,#10b981);padding:10px 24px;">Save Failover Models</button>
+              <button type="button" id="fo-goto-api-keys" class="btn btn-secondary" style="padding:10px 18px;">Open API Keys tab</button>
+              <span id="failover-chains-status" style="font-size:0.85rem;color:#4b5563;"></span>
+            </div>
+          </div>
+
+          <div class="admin-section" style="border-color:rgba(245,158,11,0.35);margin-top:24px;">
+            <div class="admin-section-title" style="color:#f59e0b;">Failover Probe <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#4b5563;">— targeted test key · not saved to ai_api_keys</span></div>
+            <p style="color:#6b7280;font-size:0.85rem;margin-bottom:14px;">
+              Requires Supabase secret <code style="color:#f59e0b;">AIRI_ADMIN_PROBE_SECRET</code> on <code>ai-proxy</code>.
+              Paste the same value below. Optional test key applies only to the selected provider for this request.
+            </p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Admin probe secret</label>
+                <input id="fo-probe-secret" type="password" class="form-input" autocomplete="off" placeholder="AIRI_ADMIN_PROBE_SECRET">
+              </div>
+              <div class="form-group">
+                <label>License key (active)</label>
+                <input id="fo-probe-license" type="password" class="form-input" autocomplete="off" placeholder="License used for quota/auth">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Chain to probe</label>
+                <select id="fo-probe-chain" class="form-input">
+                  <option value="core">Core (Gemini → OpenAI → Grok)</option>
+                  <option value="studio">Studio (Grok → OpenAI → Gemini)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Test key provider (optional)</label>
+                <select id="fo-test-provider" class="form-input">
+                  <option value="">— none (use production keys) —</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="grok">Grok</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Ephemeral test API key (optional)</label>
+              <input id="fo-test-api-key" type="password" class="form-input" autocomplete="off" placeholder="Only used for this probe; not persisted">
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:10px 0 14px;">
+              <input id="fo-force-failover" type="checkbox" checked style="width:18px;height:18px;cursor:pointer;">
+              <span style="color:#d1d5db;font-size:0.9rem;"><strong style="color:#f59e0b;">Force hop 0 fail</strong> — proves backup hops</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+              <button id="run-failover-probe" class="btn" style="background:linear-gradient(135deg,#d97706,#f59e0b);padding:10px 24px;">Run Failover Probe</button>
+              <span id="failover-probe-status" style="font-size:0.85rem;color:#4b5563;"></span>
+            </div>
+            <pre id="failover-probe-result" style="margin-top:14px;padding:12px;border-radius:8px;background:#0b1220;color:#d1d5db;font-size:0.78rem;max-height:280px;overflow:auto;white-space:pre-wrap;display:none;"></pre>
+          </div>
         </div>
 
         <!-- Tab: Tier Limits ─────────────────────────────────────────────
@@ -838,7 +944,7 @@
         <div class="tab-content" id="tab-api-keys">
           <div class="tab-header">
             <h3>🗝️ API Keys</h3>
-            <p>Store your AI provider API keys securely server-side. Keys are never exposed to clients — all AI calls proxy through the edge function.</p>
+            <p>Store your AI provider API keys securely server-side. These three keys cover <strong>primary + every failover hop</strong> (Gemini / OpenAI / Grok). Keys are never exposed to clients — all AI calls proxy through <code>ai-proxy</code>.</p>
           </div>
 
           <div class="admin-section">
@@ -849,7 +955,7 @@
                 <input id="apikey-openai" type="password" placeholder="sk-..." class="form-input" autocomplete="off">
                 <button type="button" id="toggle-openai-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
               </div>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">OpenAI</strong>.</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used for <strong style="color:#a78bfa;">OpenAI</strong> primary and failover hops (Core hop 2 / Studio hop 2). Same key for every OpenAI call.</p>
             </div>
           </div>
 
@@ -861,7 +967,7 @@
                 <input id="apikey-grok" type="password" placeholder="xai-..." class="form-input" autocomplete="off">
                 <button type="button" id="toggle-grok-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
               </div>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Grok</strong>. Routes to Studio tier users.</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used for <strong style="color:#a78bfa;">Grok</strong> primary and failover hops (Studio hop 1 / Core hop 3). Same key for every Grok call.</p>
             </div>
           </div>
 
@@ -873,7 +979,7 @@
                 <input id="apikey-gemini" type="password" placeholder="AIza..." class="form-input" autocomplete="off">
                 <button type="button" id="toggle-gemini-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
               </div>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used when AI Engine provider is set to <strong style="color:#a78bfa;">Gemini</strong>. Routes to Standard tier users.</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used for <strong style="color:#a78bfa;">Gemini</strong> primary and failover hops (Core hop 1 / Studio hop 3). Same key for every Gemini call.</p>
             </div>
           </div>
 
@@ -1439,6 +1545,7 @@
         
         loadAnnouncements();
         loadAIConfig();
+        loadFailoverChains();
         loadApiKeys();
         loadR2Config();
         loadVersions();
@@ -2425,6 +2532,189 @@
     document.getElementById("save-studio-config").addEventListener("click", () =>
       saveAiConfig("studio_ai_provider", "studio", "studio-config-status")
     );
+
+    // ── Failover chains + probe ───────────────────────────────────────
+    const FO_CORE_PROVIDERS = ["gemini", "openai", "grok"];
+    const FO_STUDIO_PROVIDERS = ["grok", "openai", "gemini"];
+
+    function readFailoverChainsFromUi() {
+      const hopTimeout = parseInt(document.getElementById("fo-hop-timeout").value, 10) || 20000;
+      return {
+        core: FO_CORE_PROVIDERS.map((provider, i) => ({
+          provider,
+          model: (document.getElementById(`fo-core-${i}-model`).value || "").trim(),
+        })),
+        studio: FO_STUDIO_PROVIDERS.map((provider, i) => ({
+          provider,
+          model: (document.getElementById(`fo-studio-${i}-model`).value || "").trim(),
+        })),
+        retryable_status: [429, 500, 502, 503, 504],
+        hop_timeout_ms: hopTimeout,
+      };
+    }
+
+    function applyFailoverChainsToUi(value) {
+      const v = value || {};
+      const core = Array.isArray(v.core) ? v.core : [];
+      const studio = Array.isArray(v.studio) ? v.studio : [];
+      for (let i = 0; i < 3; i++) {
+        const c = core[i] || {};
+        const s = studio[i] || {};
+        const cEl = document.getElementById(`fo-core-${i}-model`);
+        const sEl = document.getElementById(`fo-studio-${i}-model`);
+        if (cEl) cEl.value = (c.model != null ? String(c.model) : "");
+        if (sEl) sEl.value = (s.model != null ? String(s.model) : "");
+      }
+      const tEl = document.getElementById("fo-hop-timeout");
+      if (tEl && v.hop_timeout_ms) tEl.value = String(v.hop_timeout_ms);
+    }
+
+
+    function refreshFailoverKeyStatus(keys) {
+      const el = document.getElementById("fo-key-status");
+      if (!el) return;
+      const k = keys || {};
+      const chip = (name, ok) =>
+        `<span style="padding:4px 10px;border-radius:999px;border:1px solid ${ok ? "rgba(16,185,129,0.45)" : "rgba(239,68,68,0.45)"};background:${ok ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)"};color:${ok ? "#6ee7b7" : "#fca5a5"};">${name}: ${ok ? "key set" : "missing"}</span>`;
+      el.innerHTML =
+        chip("Gemini", !!(k.gemini && String(k.gemini).trim())) +
+        chip("OpenAI", !!(k.openai && String(k.openai).trim())) +
+        chip("Grok", !!(k.grok && String(k.grok).trim()));
+    }
+
+        async function loadFailoverChains() {
+      try {
+        const { data, error } = await supabase
+          .from("system_config")
+          .select("value")
+          .eq("key", "ai_failover_chains")
+          .maybeSingle();
+        if (error) {
+          console.error("loadFailoverChains:", error);
+          return;
+        }
+        if (data?.value) applyFailoverChainsToUi(data.value);
+        else {
+          applyFailoverChainsToUi({
+            core: [
+              { provider: "gemini", model: "" },
+              { provider: "openai", model: "gpt-4o-mini" },
+              { provider: "grok", model: "grok-3" },
+            ],
+            studio: [
+              { provider: "grok", model: "" },
+              { provider: "openai", model: "gpt-4o-mini" },
+              { provider: "gemini", model: "gemini-2.5-flash" },
+            ],
+            hop_timeout_ms: 20000,
+          });
+        }
+        // Mirror key presence from API Keys tab (same ai_api_keys row).
+        try {
+          const { data: keyData } = await supabase
+            .from("system_config").select("value").eq("key", "ai_api_keys").maybeSingle();
+          if (typeof refreshFailoverKeyStatus === "function") refreshFailoverKeyStatus(keyData?.value || {});
+        } catch (_) {}
+      } catch (err) {
+        console.error("Unexpected error in loadFailoverChains:", err);
+      }
+    }
+
+    document.getElementById("fo-goto-api-keys")?.addEventListener("click", () => {
+      const tab = document.querySelector('.nav-tab[data-tab="api-keys"]');
+      if (tab) tab.click();
+      else document.getElementById("tab-api-keys")?.scrollIntoView({ behavior: "smooth" });
+    });
+
+    document.getElementById("save-failover-chains").addEventListener("click", async () => {
+      const statusEl = document.getElementById("failover-chains-status");
+      const value = readFailoverChainsFromUi();
+      statusEl.textContent = "Saving…";
+      statusEl.style.color = "#4b5563";
+      const { error } = await supabase.from("system_config").upsert({
+        key: "ai_failover_chains",
+        value,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        statusEl.textContent = "Error: " + error.message;
+        statusEl.style.color = "#ef4444";
+      } else {
+        statusEl.textContent = "✓ Saved";
+        statusEl.style.color = "#10b981";
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
+      }
+    });
+
+    document.getElementById("run-failover-probe").addEventListener("click", async () => {
+      const statusEl = document.getElementById("failover-probe-status");
+      const resultEl = document.getElementById("failover-probe-result");
+      const secret = document.getElementById("fo-probe-secret").value.trim();
+      const license = document.getElementById("fo-probe-license").value.trim();
+      const chain = document.getElementById("fo-probe-chain").value;
+      const testProvider = document.getElementById("fo-test-provider").value.trim();
+      const testKey = document.getElementById("fo-test-api-key").value.trim();
+      const force = document.getElementById("fo-force-failover").checked;
+
+      if (!secret) {
+        statusEl.textContent = "Enter AIRI_ADMIN_PROBE_SECRET.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+      if (!license) {
+        statusEl.textContent = "Enter an active license key.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+
+      statusEl.textContent = "Probing…";
+      statusEl.style.color = "#4b5563";
+      resultEl.style.display = "none";
+
+      const body = {
+        license_key: license,
+        chain_override: chain,
+        force_failover: force,
+        max_tokens: 64,
+        messages: [
+          { role: "system", content: "Reply with exactly: FAILOVER_PROBE_OK" },
+          { role: "user", content: "ping" },
+        ],
+      };
+      if (testProvider && testKey) {
+        body.test_provider = testProvider;
+        body.test_api_key = testKey;
+      }
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-proxy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-airi-admin-probe": secret,
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        resultEl.style.display = "block";
+        resultEl.textContent = JSON.stringify({ http_status: res.status, ...data }, null, 2);
+        if (res.ok) {
+          const hops = Array.isArray(data.attempted) ? data.attempted.length : "?";
+          statusEl.textContent = `✓ ${data.provider}/${data.model} · failover_used=${!!data.failover_used} · hops=${hops}`;
+          statusEl.style.color = "#10b981";
+        } else {
+          statusEl.textContent = `Probe failed (${res.status})`;
+          statusEl.style.color = "#ef4444";
+        }
+      } catch (err) {
+        statusEl.textContent = "Error: " + err.message;
+        statusEl.style.color = "#ef4444";
+        resultEl.style.display = "block";
+        resultEl.textContent = String(err);
+      }
+    });
+
+
 
     document.getElementById("generate-license").addEventListener("click", async () => {
       const email = document.getElementById("license-email").value.trim().toLowerCase();

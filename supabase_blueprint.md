@@ -226,3 +226,11 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 - Supabase Auth (email/password)
 - `profiles` table mirrors `auth.users` via trigger
 - `licenses.email` links licenses to accounts (case-insensitive ilike query in account.html)
+
+## AI failover chains
+
+- `system_config.ai_failover_chains`: Core Gemini→OpenAI→Grok; Studio Grok→OpenAI→Gemini
+- Edge function `ai-proxy` retries retryable provider failures across hops
+- Admin probe requires Deno secret `AIRI_ADMIN_PROBE_SECRET` + header `x-airi-admin-probe`
+- See `AI_PROXY_FAILOVER.md` for ops steps
+
