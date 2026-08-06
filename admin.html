@@ -490,6 +490,9 @@
         <button class="nav-tab" data-tab="api-keys">
           <span class="tab-icon">🗝️</span><span class="tab-label">API Keys</span>
         </button>
+        <button class="nav-tab" data-tab="alerts">
+          <span class="tab-icon">🚨</span><span class="tab-label">Alerts</span>
+        </button>
         <button class="nav-tab" data-tab="storage">
           <span class="tab-icon">☁️</span><span class="tab-label">Storage (R2)</span>
         </button>
@@ -892,18 +895,23 @@
           </div>
 
           <!-- Beta Auto-Renewal ───────────────────────────────────────────────
-               Controls how validate-license auto-extends beta licenses that are
-               used within the grace window before expiry.  Written to
+               Activity keep-alive for beta licenses. validate-license (app open)
+               and ai-proxy (authenticated AI use) extend expires_at when remaining
+               life < renewal_days/2 (or already expired). Written to
                system_config.beta_renewal_config via update_beta_renewal_config()
-               RPC; read (with 60 s cache) by the validate-license edge function.
+               RPC; read with 60 s cache by those edge functions.
           -->
           <div class="admin-section" style="border-color:rgba(217,70,239,0.3);margin-top:24px;">
             <div class="admin-section-title" style="color:#d946ef;">🔄 Beta Auto-Renewal</div>
             <p style="color:#6b7280;font-size:0.85rem;margin-bottom:14px;">
-              When a <strong style="color:#d946ef;">beta</strong> user opens the app within
-              <em>Grace Window</em> days of their license expiring, the expiry is automatically
-              pushed forward by <em>Renewal Length</em> days. Non-beta licenses are unaffected.
-              Changes take effect within 60 seconds (edge-function cache TTL).
+              <strong style="color:#d946ef;">Activity keep-alive</strong> for
+              <strong style="color:#d946ef;">beta</strong> only: when a beta user
+              successfully validates a license (app open) or hits
+              <code>ai-proxy</code>, if the key is already expired <em>or</em>
+              remaining life is under half of <em>Renewal Length</em>,
+              <code>expires_at</code> is set to today + Renewal Length.
+              Non-beta licenses are completely unchanged. Changes take effect
+              within 60 seconds (edge-function cache TTL).
             </p>
 
             <div id="br-loading" style="color:#6b7280;font-size:0.9rem;padding:8px 0;">Loading…</div>
@@ -911,12 +919,12 @@
             <div id="br-editor" style="display:none;">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Grace Window <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(days before expiry that triggers renewal)</span></label>
+                  <label>Grace Window <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(legacy — retained in config; not used as renew gate)</span></label>
                   <input id="br-grace" type="number" min="1" max="365" step="1" class="form-input" placeholder="3">
                   <span id="br-grace-hint" style="color:#6b7280;font-size:0.78rem;">—</span>
                 </div>
                 <div class="form-group">
-                  <label>Renewal Length <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(days added from today on renewal)</span></label>
+                  <label>Renewal Length <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(days set from today when keep-alive fires)</span></label>
                   <input id="br-renewal" type="number" min="1" max="365" step="1" class="form-input" placeholder="30">
                   <span id="br-renewal-hint" style="color:#6b7280;font-size:0.78rem;">—</span>
                 </div>
@@ -924,10 +932,12 @@
 
               <div style="background:rgba(217,70,239,0.05);border:1px solid rgba(217,70,239,0.2);border-radius:8px;padding:12px;margin:14px 0;">
                 <span style="color:#d1d5db;font-size:0.85rem;">
-                  Example: Grace = <strong style="color:#d946ef;" id="br-example-grace">3</strong> days,
-                  Renewal = <strong style="color:#d946ef;" id="br-example-renewal">30</strong> days →
-                  a beta user who opens the app within 3 days of expiry gets
+                  Example: Renewal = <strong style="color:#d946ef;" id="br-example-renewal">30</strong> days →
+                  a beta user who opens the app (or uses AI) while expired, or with
+                  fewer than <strong style="color:#d946ef;" id="br-example-grace">15</strong> days left
+                  (half of renewal), gets
                   <strong style="color:#d946ef;" id="br-example-renewal2">30</strong> days from today.
+                  Writes are coalesced so a freshly renewed key is not rewritten on every request.
                 </span>
               </div>
 
@@ -993,6 +1003,89 @@
             <p style="font-size:0.85rem;color:#9ca3af;margin:0 0 10px;">AiRi app calls this edge function instead of OpenAI/Grok directly:</p>
             <code id="proxy-url-display" style="display:block;background:rgba(0,0,0,0.3);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#a78bfa;word-break:break-all;"></code>
             <button id="copy-proxy-url" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;margin-top:10px;font-size:0.82rem;">📋 Copy URL</button>
+          </div>
+        </div>
+
+        <!-- Tab: Alerts ─────────────────────────────────────────────────────
+             Ops email alerts via notify-admin + Resend.
+             Reads/writes system_config.alert_settings via get/update_alert_settings RPCs.
+             Recipients are RLS-denied for anon; admin-only RPCs.
+        -->
+        <div class="tab-content" id="tab-alerts">
+          <div class="tab-header">
+            <h3>🚨 Alerts</h3>
+            <p>Admin email notifications for AI downtime, failover, and Stripe failures. Sent via Resend with subject prefix <code>[AiRi ALERT]</code>. Admin probes / <code>force_failover</code> never email.</p>
+          </div>
+
+          <div class="admin-section" style="border-color:rgba(248,113,113,0.35);">
+            <div class="admin-section-title" style="color:#f87171;">Notification Settings</div>
+            <p style="color:#6b7280;font-size:0.85rem;margin-bottom:14px;">
+              <strong style="color:#f87171;">P0</strong> = instant (all AI hops failed, critical Stripe insert failures).
+              <strong style="color:#fbbf24;">P1</strong> = debounced (~10 min default; failover used, payment deactivation, signature spikes).
+              Daily digest (P2) is stubbed off until a cron is added.
+              External uptime monitors can ping <code>GET …/functions/v1/notify-admin</code> (health only).
+            </p>
+
+            <div id="al-loading" style="color:#6b7280;font-size:0.9rem;padding:8px 0;">Loading…</div>
+
+            <div id="al-editor" style="display:none;">
+              <div class="form-group" style="margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                  <input id="al-enabled" type="checkbox" style="width:18px;height:18px;">
+                  <span>Master enable — send alert emails</span>
+                </label>
+              </div>
+
+              <div class="admin-section-title" style="color:#fbbf24;font-size:0.85rem;">Alert classes</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:18px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#d1d5db;font-size:0.9rem;">
+                  <input id="al-class-p0" type="checkbox" style="width:16px;height:16px;"> P0 downtime (all hops fail)
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#d1d5db;font-size:0.9rem;">
+                  <input id="al-class-failover" type="checkbox" style="width:16px;height:16px;"> P1 failover used
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#d1d5db;font-size:0.9rem;">
+                  <input id="al-class-stripe" type="checkbox" style="width:16px;height:16px;"> Stripe (P0 insert / P1 payment)
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#6b7280;font-size:0.9rem;">
+                  <input id="al-class-digest" type="checkbox" style="width:16px;height:16px;"> P2 daily digest (stub)
+                </label>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Min severity</label>
+                  <select id="al-min-severity" class="form-input">
+                    <option value="P0">P0 only</option>
+                    <option value="P1">P0 + P1 (default)</option>
+                    <option value="P2">P0 + P1 + P2</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Dedupe window (seconds)</label>
+                  <input id="al-dedupe" type="number" min="60" max="86400" step="60" class="form-input" placeholder="600">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Mute until <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(optional local datetime — leave blank for none)</span></label>
+                <input id="al-mute" type="datetime-local" class="form-input">
+              </div>
+
+              <div class="admin-section-title" style="color:#a78bfa;font-size:0.85rem;margin-top:8px;">Recipients</div>
+              <div id="al-recipient-list" style="margin-bottom:10px;"></div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+                <input id="al-add-email" type="email" placeholder="ops@example.com" class="form-input" style="flex:1;min-width:200px;">
+                <button type="button" id="al-add-btn" class="btn btn-secondary" style="padding:10px 16px;">＋ Add</button>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px;">
+                <button id="al-save-btn" class="btn" style="background:linear-gradient(135deg,#f87171,#b91c1c);padding:10px 24px;">💾 Save Alert Settings</button>
+                <button id="al-refresh-btn" class="btn btn-secondary" style="padding:10px 18px;">↻ Refresh</button>
+                <button id="al-test-btn" class="btn btn-outline" style="border-color:#fbbf24;color:#fbbf24;padding:10px 18px;">✉️ Test send</button>
+                <span id="al-status" style="font-size:0.85rem;color:#4b5563;"></span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2400,6 +2493,7 @@
         if (tab.dataset.tab === "newsletter")   loadNewsletterSubscribers();
         if (tab.dataset.tab === "tos-audit")    loadTosAudit();
         if (tab.dataset.tab === "tier-limits")  { loadTierLimits(); loadBetaRenewal(); }
+        if (tab.dataset.tab === "alerts")       loadAlertSettings();
       });
     });
 
@@ -3661,9 +3755,11 @@
       function update() {
         const g = parseInt(graceEl?.value || "0", 10);
         const r = parseInt(renewalEl?.value || "0", 10);
-        if (graceHint)   graceHint.textContent   = Number.isFinite(g) && g > 0 ? `Within ${g} day${g !== 1 ? "s" : ""} of expiry` : "—";
-        if (renewalHint) renewalHint.textContent = Number.isFinite(r) && r > 0 ? `+${r} day${r !== 1 ? "s" : ""} from today` : "—";
-        if (exGrace)    exGrace.textContent    = g > 0 ? g : "—";
+        const half = Number.isFinite(r) && r > 0 ? Math.floor(r / 2) : 0;
+        if (graceHint)   graceHint.textContent   = Number.isFinite(g) && g > 0 ? `Stored only (unused by keep-alive gate)` : "—";
+        if (renewalHint) renewalHint.textContent = Number.isFinite(r) && r > 0 ? `+${r} day${r !== 1 ? "s" : ""} from today when remaining < ${half}d` : "—";
+        // Example "grace" slot now shows half-of-renewal threshold (active rule).
+        if (exGrace)    exGrace.textContent    = half > 0 ? String(half) : "—";
         if (exRenewal)  exRenewal.textContent  = r > 0 ? r : "—";
         if (exRenewal2) exRenewal2.textContent = r > 0 ? r : "—";
       }
@@ -3720,7 +3816,7 @@
         return;
       }
 
-      if (!confirm(`Save beta auto-renewal settings?\n\n  • Grace window: ${g} day${g !== 1 ? "s" : ""} before expiry\n  • Renewal length: +${r} day${r !== 1 ? "s" : ""} from today\n\nChanges propagate within 60 seconds. Continue?`)) return;
+      if (!confirm(`Save beta auto-renewal settings?\n\n  • Renewal length: +${r} day${r !== 1 ? "s" : ""} from today (keep-alive)\n  • Renew when remaining < ${Math.floor(r / 2)} day${Math.floor(r / 2) !== 1 ? "s" : ""} (half of renewal) or already expired\n  • Grace window: ${g} day${g !== 1 ? "s" : ""} (legacy field, unused by gate)\n\nChanges propagate within 60 seconds. Continue?`)) return;
 
       btn.dataset.saving = "1";
       btn.disabled = true;
@@ -3747,6 +3843,224 @@
 
     document.getElementById("br-save-btn")?.addEventListener("click", saveBetaRenewal);
     document.getElementById("br-refresh-btn")?.addEventListener("click", () => loadBetaRenewal());
+
+    // ── Alerts (notify-admin / Resend) ───────────────────────────────────────
+    // Recipients + class toggles stored in system_config.alert_settings via
+    // admin RPCs. Test send hits notify-admin with the admin JWT.
+
+    let _alRecipients = [];
+
+    function renderAlertRecipients() {
+      const list = document.getElementById("al-recipient-list");
+      if (!list) return;
+      if (!_alRecipients.length) {
+        list.innerHTML = `<p style="color:#6b7280;font-size:0.85rem;margin:0;">No recipients yet — add at least one email to receive alerts.</p>`;
+        return;
+      }
+      list.innerHTML = _alRecipients.map((email, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:6px;background:rgba(0,0,0,0.25);border:1px solid rgba(248,113,113,0.2);border-radius:8px;">
+          <span style="color:#e2e8f0;font-size:0.9rem;">${email}</span>
+          <button type="button" class="btn btn-outline al-remove-btn" data-idx="${i}" style="border-color:#ef4444;color:#ef4444;padding:4px 10px;font-size:0.78rem;">Remove</button>
+        </div>
+      `).join("");
+      list.querySelectorAll(".al-remove-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          if (!Number.isFinite(idx)) return;
+          _alRecipients = _alRecipients.filter((_, j) => j !== idx);
+          renderAlertRecipients();
+        });
+      });
+    }
+
+    function muteLocalToIso(localVal) {
+      if (!localVal) return null;
+      const d = new Date(localVal);
+      if (!Number.isFinite(d.getTime())) return null;
+      return d.toISOString();
+    }
+
+    function muteIsoToLocal(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (!Number.isFinite(d.getTime())) return "";
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    async function loadAlertSettings() {
+      const loadingEl = document.getElementById("al-loading");
+      const editorEl  = document.getElementById("al-editor");
+      const statusEl  = document.getElementById("al-status");
+      if (statusEl) statusEl.textContent = "";
+
+      try {
+        const { data, error } = await supabase.rpc("get_alert_settings");
+        if (error) throw error;
+
+        const cfg = (data && typeof data === "object") ? data : {};
+        const classes = cfg.enabled_classes || {};
+        _alRecipients = Array.isArray(cfg.recipients)
+          ? cfg.recipients.map((e) => String(e).toLowerCase())
+          : [];
+
+        document.getElementById("al-enabled").checked = cfg.enabled !== false;
+        document.getElementById("al-class-p0").checked = classes.p0_downtime !== false;
+        document.getElementById("al-class-failover").checked = classes.p1_failover !== false;
+        document.getElementById("al-class-stripe").checked = classes.p1_stripe !== false;
+        document.getElementById("al-class-digest").checked = classes.p2_digest === true;
+        document.getElementById("al-min-severity").value = cfg.min_severity || "P1";
+        document.getElementById("al-dedupe").value = Number(cfg.dedupe_window_sec) || 600;
+        document.getElementById("al-mute").value = muteIsoToLocal(cfg.mute_until);
+
+        renderAlertRecipients();
+        if (loadingEl) loadingEl.style.display = "none";
+        if (editorEl)  editorEl.style.display  = "";
+      } catch (err) {
+        if (loadingEl) {
+          loadingEl.textContent = "❌ Failed to load: " + (err.message || err);
+          loadingEl.style.color = "#ef4444";
+        }
+      }
+    }
+
+    async function saveAlertSettings() {
+      const btn = document.getElementById("al-save-btn");
+      const statusEl = document.getElementById("al-status");
+      if (btn.dataset.saving === "1") return;
+
+      const dedupe = parseInt(document.getElementById("al-dedupe").value, 10);
+      if (!Number.isFinite(dedupe) || dedupe < 60 || dedupe > 86400) {
+        statusEl.textContent = "❌ Dedupe window must be 60–86400 seconds.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+
+      const settings = {
+        recipients: _alRecipients.slice(),
+        enabled: document.getElementById("al-enabled").checked,
+        enabled_classes: {
+          p0_downtime: document.getElementById("al-class-p0").checked,
+          p1_failover: document.getElementById("al-class-failover").checked,
+          p1_stripe: document.getElementById("al-class-stripe").checked,
+          p2_digest: document.getElementById("al-class-digest").checked,
+        },
+        min_severity: document.getElementById("al-min-severity").value || "P1",
+        mute_until: muteLocalToIso(document.getElementById("al-mute").value),
+        dedupe_window_sec: dedupe,
+      };
+
+      if (!confirm(`Save alert settings for ${_alRecipients.length} recipient(s)?`)) return;
+
+      btn.dataset.saving = "1";
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = "Saving…";
+      statusEl.textContent = "";
+
+      try {
+        const { data, error } = await supabase.rpc("update_alert_settings", {
+          p_settings: settings,
+        });
+        if (error) throw error;
+        if (data?.new_config?.recipients) {
+          _alRecipients = data.new_config.recipients;
+          renderAlertRecipients();
+        }
+        statusEl.textContent = "✅ Saved.";
+        statusEl.style.color = "#10b981";
+      } catch (err) {
+        statusEl.textContent = "❌ " + (err.message || "Save failed.");
+        statusEl.style.color = "#ef4444";
+      } finally {
+        btn.dataset.saving = "";
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    async function testAlertSend() {
+      const btn = document.getElementById("al-test-btn");
+      const statusEl = document.getElementById("al-status");
+      if (btn.dataset.sending === "1") return;
+      if (!_alRecipients.length) {
+        statusEl.textContent = "❌ Add and save at least one recipient first.";
+        statusEl.style.color = "#ef4444";
+        return;
+      }
+      if (!confirm("Send a single test alert to configured recipients?")) return;
+
+      btn.dataset.sending = "1";
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = "Sending…";
+      statusEl.textContent = "";
+
+      try {
+        const { data: result, error: invokeErr } = await supabase.functions.invoke("notify-admin", {
+          body: {
+            action: "test",
+            class: "test",
+            severity: "P1",
+            title: "Admin test alert",
+            detail: "This is a manual test from admin.html → Alerts.",
+            source: "admin-ui",
+          },
+        });
+        if (invokeErr) throw invokeErr;
+        if (result?.error) throw new Error(result.error);
+        if (result?.skipped) {
+          statusEl.textContent = `⚠️ Skipped: ${result.skipped}`;
+          statusEl.style.color = "#f59e0b";
+        } else {
+          statusEl.textContent = `✅ Test sent to ${result?.sent ?? "?"} recipient(s).`;
+          statusEl.style.color = "#10b981";
+        }
+      } catch (err) {
+        statusEl.textContent = "❌ " + (err.message || "Test send failed.");
+        statusEl.style.color = "#ef4444";
+      } finally {
+        btn.dataset.sending = "";
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    document.getElementById("al-add-btn")?.addEventListener("click", () => {
+      const input = document.getElementById("al-add-email");
+      const statusEl = document.getElementById("al-status");
+      const email = String(input?.value || "").trim().toLowerCase();
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!re.test(email)) {
+        if (statusEl) {
+          statusEl.textContent = "❌ Invalid email.";
+          statusEl.style.color = "#ef4444";
+        }
+        return;
+      }
+      if (_alRecipients.includes(email)) {
+        if (statusEl) {
+          statusEl.textContent = "Already in list.";
+          statusEl.style.color = "#f59e0b";
+        }
+        return;
+      }
+      if (_alRecipients.length >= 20) {
+        if (statusEl) {
+          statusEl.textContent = "❌ Max 20 recipients.";
+          statusEl.style.color = "#ef4444";
+        }
+        return;
+      }
+      _alRecipients.push(email);
+      input.value = "";
+      renderAlertRecipients();
+      if (statusEl) statusEl.textContent = "";
+    });
+
+    document.getElementById("al-save-btn")?.addEventListener("click", saveAlertSettings);
+    document.getElementById("al-refresh-btn")?.addEventListener("click", () => loadAlertSettings());
+    document.getElementById("al-test-btn")?.addEventListener("click", testAlertSend);
 
     // ── Users ────────────────────────────────────────────────────────────────
     async function callAdminUsers(action, payload = {}) {

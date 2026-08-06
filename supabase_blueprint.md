@@ -1,5 +1,5 @@
 # Supabase Blueprint — AiRi / viritts.com
-> Last mapped: May 13, 2026. Update before schema changes.
+> Last mapped: Aug 6, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -84,7 +84,13 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
   - `proxy_ai_provider` — prod AI config (provider, model, params)
   - `ai_api_keys` — provider API keys object
   - `tier_limits` — per-tier AI token allocation (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Added 2026-04-18. Written exclusively via `update_tier_limits()` RPC (admin-gated, validated, audited). Read by `admin.html` (via `get_tier_limits()`) and by `ai-proxy` / `get-quota` edge functions (direct table read, 60s in-memory cache).
-  - `beta_renewal_config` — beta auto-renewal settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 30}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` edge function (direct table read, 60s in-memory cache). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
+  - `beta_renewal_config` — beta activity keep-alive settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 30}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` and `ai-proxy` (direct table read, 60s in-memory cache). **Renew rule (2026-08):** for `tier='beta'` + `status='active'` on successful validate / authenticated AI use, if `expires_at` is past **or** remaining life `< renewal_days/2`, set `expires_at = now + renewal_days` and return/update accordingly (`beta_renewed: true` from validate-license). `grace_days` is retained in config for admin compatibility but is **not** used as the renew gate (superseded by activity keep-alive). Non-beta tiers unchanged (hard expiry). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
+  - `alert_settings` — admin ops email alerting (jsonb). Added 2026-08-06. Shape: `{recipients[], enabled, enabled_classes:{p0_downtime,p1_failover,p1_stripe,p2_digest}, min_severity, mute_until, dedupe_window_sec}`. Written exclusively via `update_alert_settings()` (admin-gated, validated, audited). Read by admin UI via `get_alert_settings()` and by `notify-admin` (service role). **RLS:** included in the public SELECT deny-list alongside `ai_api_keys` / `ai_failover_chains` — recipients must never be anonymously readable.
+
+Public SELECT deny-list on `system_config`: `ai_api_keys`, `proxy_ai_provider`, `studio_ai_provider`, `builtin_ai_provider`, `ai_failover_chains`, `alert_settings`.
+
+### `alert_dedupe`
+> Storm-control timestamps for `notify-admin`. Added 2026-08-06. PK `dedupe_key`, `last_sent_at`. RLS enabled; no anon/authenticated grants — service role only.
 
 ---
 
@@ -100,7 +106,7 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
 | `changed_by` | uuid | FK → `auth.users(id)` (SET NULL on delete) |
 | `changed_at` | timestamptz | now() |
 
-Indexed on `(config_key, changed_at DESC)`. RLS: enabled. Admins (`profiles.is_admin = true`) have SELECT. No direct INSERT/UPDATE/DELETE grant — rows are written exclusively by `SECURITY DEFINER` RPCs (currently only `update_tier_limits`).
+Indexed on `(config_key, changed_at DESC)`. RLS: enabled. Admins (`profiles.is_admin = true`) have SELECT. No direct INSERT/UPDATE/DELETE grant — rows are written exclusively by `SECURITY DEFINER` RPCs (`update_tier_limits`, `update_beta_renewal_config`, `update_alert_settings`, …).
 
 ---
 
@@ -188,6 +194,12 @@ Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE
 ### `count_active_by_tier()`
 `SECURITY DEFINER` SQL helper. Returns `jsonb` of `{tier: active_count}` from `licenses` where `status = 'active' AND tier IS NOT NULL`. Used by the Tier Limits admin UI to show "N active" badges and to size the confirmation dialog. EXECUTE granted to `authenticated`. Added 2026-04-18.
 
+### `get_alert_settings()`
+`SECURITY DEFINER` RPC. **Admin-only** (`profiles.is_admin`). Returns `system_config.alert_settings` or safe default (empty recipients, enabled, P1 min, classes on except `p2_digest`). EXECUTE granted to `authenticated`; revoked from `anon`. Added 2026-08-06.
+
+### `update_alert_settings(p_settings jsonb)`
+`SECURITY DEFINER` RPC. **Admin-only**. Validates recipients (≤20 emails), classes, `min_severity` ∈ {P0,P1,P2}, `dedupe_window_sec` 60–86400, optional `mute_until`. Upserts `alert_settings`, writes `system_config_audit`. Returns `{success, new_config}`. EXECUTE granted to `authenticated`; revoked from `anon`. Added 2026-08-06.
+
 ### `publish_tos_version(p_surface text, p_version text, p_body_markdown text)`
 `SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Atomically:
 1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger `tos_versions_set_sha()` which qualifies `extensions.digest()` explicitly because pgcrypto lives in the `extensions` schema),
@@ -204,11 +216,12 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 
 | Function | Purpose |
 |---|---|
-| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota. Reads tier→token limits from `system_config.tier_limits` (60s in-memory cache, falls back to `{standard: 3M, test: 50k}` if missing/malformed). Passes the resolved limit to `increment_token_quota` as `p_base_limit`, which upserts it onto `token_quotas.base_limit`. **Updated 2026-05-13 (v18):** Reads `reasoning_effort` from the active config row and forwards it to xAI chat completions when the model is classified as reasoning (`grok-4.x` without `non-reasoning`). Values: `none / low (default) / medium / high`. Configurable in `admin.html` AI Engine tab. |
+| `ai-proxy` | Main AI proxy — validates license, quota pre-check, forwards to provider, increments quota. Reads tier→token limits from `system_config.tier_limits` (60s in-memory cache, falls back to `{standard: 3M, test: 50k}` if missing/malformed). Passes the resolved limit to `increment_token_quota` as `p_base_limit`, which upserts it onto `token_quotas.base_limit`. **Updated 2026-05-13 (v18):** Reads `reasoning_effort` from the active config row and forwards it to xAI chat completions when the model is classified as reasoning (`grok-4.x` without `non-reasoning`). Values: `none / low (default) / medium / high`. Configurable in `admin.html` AI Engine tab. **Updated 2026-08:** For `tier='beta'` only, runs coalesced activity keep-alive before the expiry gate (same `renewal_days/2` rule as `validate-license`); non-beta hard expiry unchanged. **Updated 2026-08-06 (v27):** Fire-and-forget P0 on all-hops-failed and P1 on `failover_used` via `notify-admin` + `ALERT_INTERNAL_SECRET`; **never** notifies when admin probe / `force_failover` authorized. |
 | `get-quota` | Returns quota stats for a license key (tokens_used, boost_remaining, days_remaining, avg usage). Uses the same cached `system_config.tier_limits` read as `ai-proxy` for the fallback when no `token_quotas` row exists yet (new customer pre-first-call). |
-| `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). |
+| `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). **Updated 2026-08-06 (v40):** Fire-and-forget alerts — P0 license/purchase insert failures, P1 signature spikes + payment-failure deactivation — via `notify-admin`. |
+| `notify-admin` | Ops email alerts via Resend (`RESEND_API_KEY`, from `AiRi Alerts <noreply@virflowsocial.com>`, subject prefix `[AiRi ALERT]`). Auth: header `x-airi-alert-secret` === Deno secret `ALERT_INTERNAL_SECRET` (edge→edge) **or** admin JWT + `profiles.is_admin` (Test send). `verify_jwt=false` (custom auth). GET / `{action:"health"}` = health ping (no email). Reads `alert_settings`, respects enabled/mute/classes/min_severity, dedupes via `alert_dedupe`. Added 2026-08-06 (v1). |
 | `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |
-| `validate-license` | Validates license key for app activation. Also auto-renews **beta** licenses that are used within `beta_renewal_config.grace_days` of expiry — pushes `expires_at` forward by `renewal_days` days and returns `beta_renewed: true`. Config cached 60 s. Updated 2026-05-12. |
+| `validate-license` | Validates license key for app activation. **Beta activity keep-alive (2026-08):** skips hard `"License expired"` reject for `tier='beta'`; on successful validate, if expired or remaining life `< renewal_days/2`, sets `expires_at = now + renewal_days`, updates `last_seen`, returns `beta_renewed: true`. Non-beta hard expiry unchanged. Config cached 60 s. |
 | `reset-license` | Clears `machine_id` to allow new PC binding |
 | `admin-users` | Admin: list/manage users |
 | `beta-signup` | Handles beta waitlist form submission |
@@ -233,4 +246,12 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 - Edge function `ai-proxy` retries retryable provider failures across hops
 - Admin probe requires Deno secret `AIRI_ADMIN_PROBE_SECRET` + header `x-airi-admin-probe`
 - See `AI_PROXY_FAILOVER.md` for ops steps
+
+## Admin email alerting (Phase 0/1)
+
+- Config: `system_config.alert_settings` via admin **Alerts** tab (`admin.html`)
+- Edge: `notify-admin` + call sites in `ai-proxy` / `stripe-webhook`
+- Secrets: `RESEND_API_KEY` (existing), **`ALERT_INTERNAL_SECRET`** (required for edge→edge; set in Supabase Dashboard → Edge Functions → Secrets)
+- Health / external uptime: `GET https://rgigtqpesabuyaumibaj.supabase.co/functions/v1/notify-admin` (no signup wired in code)
+- Phase 2 leftovers: daily digest cron (`p2_digest`), Sentry, UptimeRobot account signup
 

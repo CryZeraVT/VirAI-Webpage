@@ -6,6 +6,7 @@ const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ALERT_INTERNAL_SECRET = Deno.env.get("ALERT_INTERNAL_SECRET") ?? "";
 
 const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
 const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -15,6 +16,32 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+/** Fire-and-forget admin alert. Never blocks Stripe ack path. */
+function notifyAdminFireAndForget(payload: {
+  class: string;
+  severity: string;
+  title: string;
+  detail: string;
+  dedupe_key?: string;
+}) {
+  if (!ALERT_INTERNAL_SECRET || !supabaseUrl) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2500);
+  fetch(`${supabaseUrl}/functions/v1/notify-admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      "x-airi-alert-secret": ALERT_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({ ...payload, source: "stripe-webhook" }),
+    signal: controller.signal,
+  })
+    .catch((e) => console.warn("notify-admin swallow:", String(e)))
+    .finally(() => clearTimeout(timer));
 }
 
 function generateLicenseKey(): string {
@@ -41,6 +68,14 @@ serve(async (req) => {
     event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
   } catch (err) {
     console.error("Stripe webhook signature error:", err);
+    // Debounced P1 — signature spikes (bad secret / replay / misconfig).
+    notifyAdminFireAndForget({
+      class: "p1_stripe",
+      severity: "P1",
+      title: "Stripe webhook signature verification failed",
+      detail: String(err),
+      dedupe_key: "p1_stripe:signature_fail",
+    });
     return jsonResponse({ error: "Invalid signature" }, 400);
   }
 
@@ -159,6 +194,13 @@ serve(async (req) => {
         if (licenseKey) {
           await supabase.from("licenses").update({ status: "inactive" }).eq("license_key", licenseKey);
           console.log("License deactivated after payment failure:", licenseKey);
+          notifyAdminFireAndForget({
+            class: "p1_stripe",
+            severity: "P1",
+            title: "License deactivated after payment failure",
+            detail: `license_key=${licenseKey}\nsubscription=${subId}\nstatus=${sub.status}`,
+            dedupe_key: `p1_stripe:payment_failed:${licenseKey}`,
+          });
         }
       } else {
         console.log("Payment failed but Stripe still retrying — leaving license active. Sub:", subId, "status:", sub.status);
@@ -258,6 +300,18 @@ serve(async (req) => {
 
     if (licenseError) {
       console.error("Failed to insert license:", licenseError);
+      notifyAdminFireAndForget({
+        class: "p1_stripe",
+        severity: "P0",
+        title: "Stripe checkout: license insert failed",
+        detail: [
+          `session=${sessionId}`,
+          `email=${email || "(none)"}`,
+          `tier=${tier}`,
+          `error=${JSON.stringify(licenseError)}`,
+        ].join("\n"),
+        dedupe_key: `p0_stripe:license_insert:${sessionId}`,
+      });
     }
 
     // Create purchase record (for download)
@@ -275,6 +329,18 @@ serve(async (req) => {
 
     if (purchaseError) {
       console.error("Failed to insert purchase:", purchaseError);
+      notifyAdminFireAndForget({
+        class: "p1_stripe",
+        severity: "P0",
+        title: "Stripe checkout: purchase insert failed",
+        detail: [
+          `session=${sessionId}`,
+          `license_key=${licenseKey}`,
+          `email=${email || "(none)"}`,
+          `error=${JSON.stringify(purchaseError)}`,
+        ].join("\n"),
+        dedupe_key: `p0_stripe:purchase_insert:${sessionId}`,
+      });
     }
   }
 

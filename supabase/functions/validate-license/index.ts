@@ -16,6 +16,9 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 // ── Beta renewal config cache ─────────────────────────────────────────────────
 // Reads system_config.beta_renewal_config (grace_days, renewal_days).
 // Cached for 60s — same TTL pattern as TOS version below.
+// Activity keep-alive (2026-08): renew when remaining life < renewal_days/2
+// (or already expired). grace_days is retained in config for admin/docs only
+// and is NOT used as a renew gate anymore.
 interface BetaRenewalConfig { grace_days: number; renewal_days: number; }
 const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 30 };
 let _cachedBetaRenewal: BetaRenewalConfig | null = null;
@@ -135,7 +138,9 @@ serve(async (req) => {
     return jsonResponse({ valid: false, message: "License is inactive." }, 200);
   }
 
-  if (data.expires_at) {
+  // Non-beta: hard-reject past expires_at. Beta skips this gate so activity
+  // keep-alive below can self-heal an already-expired but still-active key.
+  if (data.tier !== "beta" && data.expires_at) {
     const expiresAt = new Date(data.expires_at);
     if (expiresAt.getTime() < Date.now()) {
       return jsonResponse({ valid: false, message: "License expired." }, 200);
@@ -157,19 +162,20 @@ serve(async (req) => {
     updates.machine_id = machineId;
   }
 
-  // ── Beta auto-renewal ──────────────────────────────────────────────────────
-  // If the license is beta tier, has a finite expiry, and the user is active
-  // within the configured grace window, push the expiry forward by renewal_days.
+  // ── Beta activity keep-alive ───────────────────────────────────────────────
+  // On successful validate for tier=beta with a finite expiry: if already past
+  // expires_at OR remaining life < renewal_days/2, set expires_at = now +
+  // renewal_days. Coalesce avoids a write on every open once freshly renewed.
   // Non-fatal: a config read failure must never block a valid license check.
   let betaRenewed = false;
   if (data.tier === "beta" && data.expires_at) {
     try {
-      const renewalCfg   = await getBetaRenewalConfig();
-      const expiresAtMs  = new Date(data.expires_at).getTime();
-      const graceMs      = renewalCfg.grace_days * 24 * 60 * 60 * 1000;
-      const msUntilExpiry = expiresAtMs - Date.now();
-      if (msUntilExpiry <= graceMs) {
-        const newExpiry = new Date(Date.now() + renewalCfg.renewal_days * 24 * 60 * 60 * 1000);
+      const renewalCfg  = await getBetaRenewalConfig();
+      const expiresAtMs = new Date(data.expires_at).getTime();
+      const renewalMs   = renewalCfg.renewal_days * 24 * 60 * 60 * 1000;
+      const remainingMs = expiresAtMs - Date.now();
+      if (remainingMs < renewalMs / 2) {
+        const newExpiry = new Date(Date.now() + renewalMs);
         updates.expires_at = newExpiry.toISOString();
         betaRenewed = true;
       }

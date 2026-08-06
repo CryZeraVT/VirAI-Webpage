@@ -20,6 +20,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 const supabaseUrl    = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_PROBE_SECRET = Deno.env.get("AIRI_ADMIN_PROBE_SECRET") ?? "";
+const ALERT_INTERNAL_SECRET = Deno.env.get("ALERT_INTERNAL_SECRET") ?? "";
 
 const ALLOWED_CONFIG_KEYS = ["builtin_ai_provider", "proxy_ai_provider", "studio_ai_provider"] as const;
 type ConfigKey = typeof ALLOWED_CONFIG_KEYS[number];
@@ -96,6 +97,69 @@ const TIER_CACHE_TTL_MS = 60_000;
 let FAILOVER_CACHE: FailoverChains = structuredClone(FAILOVER_CHAINS_FALLBACK);
 let FAILOVER_CACHE_AT = 0;
 
+// Beta activity keep-alive (same rule as validate-license): renew when
+// remaining life < renewal_days/2 (or already expired). Coalesced so AI
+// traffic does not rewrite expires_at on every token request.
+interface BetaRenewalConfig { grace_days: number; renewal_days: number; }
+const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 30 };
+let _cachedBetaRenewal: BetaRenewalConfig | null = null;
+let _cachedBetaRenewalAt = 0;
+const BETA_RENEWAL_CACHE_TTL_MS = 60_000;
+
+async function getBetaRenewalConfig(supabase: SupabaseClient): Promise<BetaRenewalConfig> {
+  const now = Date.now();
+  if (_cachedBetaRenewal && now - _cachedBetaRenewalAt < BETA_RENEWAL_CACHE_TTL_MS) {
+    return _cachedBetaRenewal;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("system_config")
+      .select("value")
+      .eq("key", "beta_renewal_config")
+      .maybeSingle();
+    if (error || !data?.value) return BETA_RENEWAL_DEFAULT;
+    const cfg = data.value as { grace_days?: unknown; renewal_days?: unknown };
+    const result: BetaRenewalConfig = {
+      grace_days:   Number(cfg.grace_days   ?? BETA_RENEWAL_DEFAULT.grace_days),
+      renewal_days: Number(cfg.renewal_days ?? BETA_RENEWAL_DEFAULT.renewal_days),
+    };
+    if (!Number.isFinite(result.grace_days)   || result.grace_days   < 1) result.grace_days   = BETA_RENEWAL_DEFAULT.grace_days;
+    if (!Number.isFinite(result.renewal_days) || result.renewal_days < 1) result.renewal_days = BETA_RENEWAL_DEFAULT.renewal_days;
+    _cachedBetaRenewal   = result;
+    _cachedBetaRenewalAt = now;
+    return result;
+  } catch {
+    return BETA_RENEWAL_DEFAULT;
+  }
+}
+
+/** Best-effort beta keep-alive. Returns updated expires_at ISO or null if unchanged/failed. */
+async function maybeRenewBetaLicense(
+  supabase: SupabaseClient,
+  licenseKey: string,
+  expiresAt: string | null,
+): Promise<string | null> {
+  if (!expiresAt) return null;
+  try {
+    const renewalCfg  = await getBetaRenewalConfig(supabase);
+    const expiresAtMs = new Date(expiresAt).getTime();
+    const renewalMs   = renewalCfg.renewal_days * 24 * 60 * 60 * 1000;
+    const remainingMs = expiresAtMs - Date.now();
+    if (remainingMs >= renewalMs / 2) return null;
+    const newExpiry = new Date(Date.now() + renewalMs).toISOString();
+    const { error } = await supabase
+      .from("licenses")
+      .update({ expires_at: newExpiry, last_seen: new Date().toISOString() })
+      .eq("license_key", licenseKey)
+      .eq("tier", "beta")
+      .eq("status", "active");
+    if (error) return null;
+    return newExpiry;
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -107,6 +171,33 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
+}
+
+/** Fire-and-forget admin alert. Never throws into the AI hot path. Skipped when secret unset. */
+function notifyAdminFireAndForget(payload: {
+  class: string;
+  severity: string;
+  title: string;
+  detail: string;
+  dedupe_key?: string;
+  source?: string;
+}) {
+  if (!ALERT_INTERNAL_SECRET || !supabaseUrl) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2500);
+  fetch(`${supabaseUrl}/functions/v1/notify-admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      "x-airi-alert-secret": ALERT_INTERNAL_SECRET,
+    },
+    body: JSON.stringify({ ...payload, source: payload.source ?? "ai-proxy" }),
+    signal: controller.signal,
+  })
+    .catch((e) => console.warn("notify-admin swallow:", String(e)))
+    .finally(() => clearTimeout(timer));
 }
 
 function isReasoningModel(provider: string, model: string): boolean {
@@ -546,11 +637,18 @@ serve(async (req) => {
 
   if (licError || !license) return jsonResponse({ error: "License not found" }, 403);
   if (license.status !== "active") return jsonResponse({ error: "License is inactive" }, 403);
-  if (license.expires_at && new Date(license.expires_at) < new Date())
-    return jsonResponse({ error: "License has expired" }, 403);
 
   const tier = (license.tier ?? "standard") as string;
   const isBeta = tier === "beta";
+
+  // Beta: activity keep-alive before expiry gate (self-heal + coalesce).
+  // Non-beta: unchanged hard reject on past expires_at.
+  if (isBeta && license.expires_at) {
+    const renewed = await maybeRenewBetaLicense(supabase, trimmedKey, license.expires_at);
+    if (renewed) license.expires_at = renewed;
+  } else if (license.expires_at && new Date(license.expires_at) < new Date()) {
+    return jsonResponse({ error: "License has expired" }, 403);
+  }
 
   const tierLimits = await getTierLimits(supabase);
   const tierLimit = tierLimits[tier] ?? tierLimits.standard ?? TIER_LIMITS_FALLBACK.standard;
@@ -745,6 +843,21 @@ serve(async (req) => {
   }
 
   if (!winner) {
+    // P0: all hops failed. Never email on admin probe / force_failover.
+    if (!probeAuthorized) {
+      notifyAdminFireAndForget({
+        class: "p0_downtime",
+        severity: "P0",
+        title: `AI proxy all hops failed (${chainName})`,
+        detail: [
+          `tier=${tier}`,
+          `chain=${chainName}`,
+          `last_error=${lastError}`,
+          `attempted=${JSON.stringify(attempted)}`,
+        ].join("\n"),
+        dedupe_key: `p0_downtime:ai-proxy:${chainName}`,
+      });
+    }
     return jsonResponse({
       error: lastError,
       tier,
@@ -762,6 +875,22 @@ serve(async (req) => {
   const reasoning = winner.reasoning;
   const failoverUsed = attempted.length > 1 ||
     (attempted.length === 1 && attempted[0].provider !== normalizeProvider(primaryForChain.provider));
+
+  // P1: failover used on a real request (debounced in notify-admin). Skip probe.
+  if (!probeAuthorized && failoverUsed) {
+    notifyAdminFireAndForget({
+      class: "p1_failover",
+      severity: "P1",
+      title: `AI proxy failover used (${chainName} → ${winner.provider})`,
+      detail: [
+        `tier=${tier}`,
+        `chain=${chainName}`,
+        `winner=${winner.provider}/${winner.model}`,
+        `attempted=${JSON.stringify(attempted)}`,
+      ].join("\n"),
+      dedupe_key: `p1_failover:ai-proxy:${chainName}`,
+    });
+  }
 
   // ── Track usage (always, for analytics) ──────────────────────────────
   const totalTokens = promptTokens + completionTokens;
