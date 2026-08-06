@@ -3979,6 +3979,28 @@
       }
     }
 
+    async function invokeErrorDetail(invokeErr) {
+      if (!invokeErr) return "";
+      try {
+        const ctx = invokeErr.context;
+        if (!ctx) return invokeErr.message || "";
+        // Response body can only be read once — clone when available.
+        const text = typeof ctx.text === "function"
+          ? await (ctx.clone?.() ?? ctx).text()
+          : "";
+        if (!text) return invokeErr.message || "";
+        try {
+          const j = JSON.parse(text);
+          const parts = [j.error, j.details].filter(Boolean);
+          return parts.length ? parts.join(" — ") : text;
+        } catch {
+          return text;
+        }
+      } catch {
+        return invokeErr.message || "";
+      }
+    }
+
     async function testAlertSend() {
       const btn = document.getElementById("al-test-btn");
       const statusEl = document.getElementById("al-status");
@@ -3988,7 +4010,7 @@
         statusEl.style.color = "#ef4444";
         return;
       }
-      if (!confirm("Send a single test alert to configured recipients?")) return;
+      if (!confirm("Send a single test alert to configured recipients?\n\nMake sure you clicked Save first — Test send uses saved recipients on the server.")) return;
 
       btn.dataset.sending = "1";
       btn.disabled = true;
@@ -3997,7 +4019,21 @@
       statusEl.textContent = "";
 
       try {
+        // Match callAdminUsers: refresh + explicit Bearer so notify-admin gets the JWT
+        // (functions.invoke alone was hitting 401 Missing Authorization).
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData?.user) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData?.session) {
+            throw new Error("Session expired. Please sign in again.");
+          }
+        }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) throw new Error("Session expired. Please sign in again.");
+
         const { data: result, error: invokeErr } = await supabase.functions.invoke("notify-admin", {
+          headers: { Authorization: `Bearer ${token}` },
           body: {
             action: "test",
             class: "test",
@@ -4007,8 +4043,13 @@
             source: "admin-ui",
           },
         });
-        if (invokeErr) throw invokeErr;
-        if (result?.error) throw new Error(result.error);
+        if (invokeErr) {
+          const detail = await invokeErrorDetail(invokeErr);
+          throw new Error(detail || invokeErr.message || "Test send failed.");
+        }
+        if (result?.error) {
+          throw new Error([result.error, result.details].filter(Boolean).join(" — "));
+        }
         if (result?.skipped) {
           statusEl.textContent = `⚠️ Skipped: ${result.skipped}`;
           statusEl.style.color = "#f59e0b";

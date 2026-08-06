@@ -10,7 +10,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const alertSecret = Deno.env.get("ALERT_INTERNAL_SECRET") ?? "";
 
@@ -61,30 +60,36 @@ function serviceClient() {
   });
 }
 
-async function requireAdminJwt(req: Request): Promise<{ ok: true; userId: string } | { ok: false; status: number; error: string }> {
+async function requireAdminJwt(req: Request): Promise<{ ok: true; userId: string } | { ok: false; status: number; error: string; details?: string }> {
+  // Same pattern as admin-users: service-role client + getUser(token).
   const auth = req.headers.get("Authorization") ?? "";
-  if (!auth.startsWith("Bearer ")) {
+  const bearerMatch = auth.match(/^Bearer\s+(.+)$/i);
+  if (!bearerMatch?.[1]?.trim()) {
     return { ok: false, status: 401, error: "Missing Authorization" };
   }
-  const jwt = auth.slice(7).trim();
-  if (!jwt) return { ok: false, status: 401, error: "Missing Authorization" };
-
-  const userClient = createClient(supabaseUrl, anonKey || serviceRoleKey, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const { data: userData, error: userErr } = await userClient.auth.getUser(jwt);
-  if (userErr || !userData?.user) {
-    return { ok: false, status: 401, error: "Invalid session" };
-  }
+  const jwt = bearerMatch[1].trim();
 
   const sb = serviceClient();
-  const { data: profile } = await sb
+  const { data: userData, error: userErr } = await sb.auth.getUser(jwt);
+  if (userErr || !userData?.user) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid session",
+      details: userErr?.message ?? "Invalid or expired token",
+    };
+  }
+
+  const { data: profile, error: profileError } = await sb
     .from("profiles")
     .select("is_admin")
     .eq("id", userData.user.id)
     .maybeSingle();
 
+  if (profileError) {
+    console.error("notify-admin admin profile check failed:", profileError.message);
+    return { ok: false, status: 500, error: "Failed to verify admin permissions" };
+  }
   if (!profile?.is_admin) {
     return { ok: false, status: 403, error: "Admin access required" };
   }
@@ -251,7 +256,10 @@ serve(async (req) => {
   if (!internal) {
     const admin = await requireAdminJwt(req);
     if (!admin.ok) {
-      return jsonResponse({ error: admin.error }, admin.status);
+      return jsonResponse(
+        { ok: false, error: admin.error, ...(admin.details ? { details: admin.details } : {}) },
+        admin.status,
+      );
     }
     adminOk = true;
   }
@@ -262,6 +270,7 @@ serve(async (req) => {
   const detail = String(body.detail ?? "").trim();
   const source = String(body.source ?? (adminOk ? "admin-ui" : "internal")).trim();
   const isTest = body.action === "test" || alertClass === "test";
+  const dryRun = body.dry_run === true;
 
   if (!ALLOWED_CLASSES.has(alertClass) && !isTest) {
     return jsonResponse({ error: "Invalid class" }, 400);
@@ -300,7 +309,15 @@ serve(async (req) => {
   }
 
   if (settings.recipients.length === 0) {
-    return jsonResponse({ ok: false, error: "No alert recipients configured" }, 400);
+    return jsonResponse({
+      ok: false,
+      error: "No alert recipients configured",
+      details: "Save at least one recipient in admin → Alerts before sending.",
+    }, 400);
+  }
+
+  if (!resendApiKey && !dryRun) {
+    return jsonResponse({ ok: false, error: "RESEND_API_KEY not configured" }, 503);
   }
 
   const effectiveClass = isTest ? "test" : alertClass;
@@ -321,6 +338,23 @@ serve(async (req) => {
     if (claim === "skip") {
       return jsonResponse({ ok: true, skipped: "deduped", dedupe_key: dedupeKey });
     }
+  }
+
+  // Auth + config smoke test without calling Resend (admin dry_run only).
+  if (dryRun) {
+    if (!adminOk && !internal) {
+      return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    }
+    return jsonResponse({
+      ok: true,
+      dry_run: true,
+      would_send: settings.recipients.length,
+      class: effectiveClass,
+      severity: effectiveSeverity,
+      resend_configured: !!resendApiKey,
+      secret_configured: !!alertSecret,
+      auth: adminOk ? "admin_jwt" : "internal_secret",
+    });
   }
 
   const subject = `${SUBJECT_PREFIX} ${effectiveSeverity} ${title}`.slice(0, 200);
@@ -351,7 +385,11 @@ serve(async (req) => {
     const result = await sendResend(settings.recipients, subject, html, text);
     if (!result.ok) {
       console.error("notify-admin Resend failed:", result.error);
-      return jsonResponse({ ok: false, error: result.error ?? "send failed" }, 502);
+      return jsonResponse({
+        ok: false,
+        error: "Resend send failed",
+        details: result.error ?? "send failed",
+      }, 502);
     }
     return jsonResponse({
       ok: true,
@@ -362,7 +400,10 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("notify-admin send exception:", e);
-    // Never hard-fail callers in a surprising way — still return JSON error.
-    return jsonResponse({ ok: false, error: "send exception" }, 502);
+    return jsonResponse({
+      ok: false,
+      error: "send exception",
+      details: e instanceof Error ? e.message : String(e),
+    }, 502);
   }
 });
