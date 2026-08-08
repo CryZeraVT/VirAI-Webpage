@@ -217,6 +217,10 @@ serve(async (req) => {
     valid: true,
     message: "License activated.",
     expires_at: betaRenewed ? updates.expires_at! : effectiveExpiresAt,
+    // Tier is required so desktop can set active_tier on validate
+    // (without waiting for a later ai-proxy / get-quota call). Older
+    // app builds that ignore unknown fields are unaffected.
+    tier: data.tier ?? "standard",
     // ── Subscription fields (new — older app builds will ignore these) ──
     current_period_end:   data.current_period_end ?? null,
     cancel_at_period_end: !!data.cancel_at_period_end,
