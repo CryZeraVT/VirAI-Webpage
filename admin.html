@@ -1468,8 +1468,8 @@
           <div class="admin-section">
             <div class="admin-section-title">Release Builds</div>
             <p style="margin:0 0 14px;font-size:0.85rem;color:#6b7280;">
-              Upload a new installer, or assign an already-uploaded build to Stable/Beta without re-uploading.
-              Version strings are unique globally — re-uploading the same version updates that row in place.
+              Upload a new installer, or assign an already-uploaded build to Stable, Beta, or Both without re-uploading.
+              The same version can exist on both channels (twin rows sharing one MSI/URL). Re-upload updates matching twins.
             </p>
             <div class="storage-mode-toggle" style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
               <button type="button" id="storage-mode-upload" class="btn storage-mode-btn active" style="flex:1;min-width:140px;background:linear-gradient(135deg,#d946ef,#06b6d4);border:none;">Upload new</button>
@@ -1497,6 +1497,7 @@
                   <select id="upload-channel" class="form-input">
                     <option value="stable" selected>Stable (current users)</option>
                     <option value="beta">Beta (beta-tier keys only)</option>
+                    <option value="both">Both (stable + beta twins)</option>
                   </select>
                 </div>
                 <div class="form-group" style="display:flex;align-items:flex-end;">
@@ -1515,7 +1516,7 @@
 
             <div id="storage-panel-existing" style="display:none;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-                <p style="margin:0;font-size:0.85rem;color:#6b7280;">Pick a build, choose Stable or Beta, then activate. No file upload required.</p>
+                <p style="margin:0;font-size:0.85rem;color:#6b7280;">Pick a build, choose Stable / Beta / Both, then activate. No file upload required. Both makes the same MSI active for every license tier.</p>
                 <button type="button" id="refresh-storage-versions" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:6px 12px;font-size:0.82rem;">Refresh</button>
               </div>
               <div id="storage-versions-list">
@@ -2208,18 +2209,35 @@
           return;
         }
 
+      const twinVersions = new Set();
+      {
+        const byVer = {};
+        data.forEach(v => {
+          const key = String(v.version || "");
+          if (!byVer[key]) byVer[key] = new Set();
+          byVer[key].add((v.channel === "beta") ? "beta" : "stable");
+        });
+        Object.keys(byVer).forEach(k => {
+          if (byVer[k].has("stable") && byVer[k].has("beta")) twinVersions.add(k);
+        });
+      }
+
       listEl.innerHTML = data.map(ver => {
         const ch = (ver.channel === "beta") ? "beta" : "stable";
         const chBadge = ch === "beta"
           ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
           : '<span class="badge" style="background:#14532d;color:#86efac;">STABLE</span>';
+        const twinBadge = twinVersions.has(String(ver.version))
+          ? '<span class="badge" style="background:#3b0764;color:#e9d5ff;">BOTH CHANNELS</span>'
+          : "";
         return `
         <div class="announcement-item" style="flex-direction: column; align-items: flex-start; gap: 15px;">
-          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="announcement-info" style="flex: 1;">
               <h4 style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 v${ver.version}: ${ver.title}
                 ${chBadge}
+                ${twinBadge}
                 ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ''}
                 ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background: #2d1b4e;">INACTIVE</span>'}
               </h4>
@@ -2228,12 +2246,18 @@
                 ${ver.file_name} · Channel: ${ch} · Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
               </p>
             </div>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-              <input type="radio" name="active-version-${ch}" value="${ver.id}" ${ver.is_active ? 'checked' : ''}
-                onchange="setActiveVersion('${ver.id}')"
-                style="width: 20px; height: 20px; cursor: pointer;">
-              <span style="color: #22c55e; font-weight: 600;">Set Active (${ch})</span>
-            </label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label style="font-size:0.8rem;color:#9ca3af;">Activate as
+                <select class="form-input publish-activate-channel" data-id="${ver.id}" style="display:inline-block;width:auto;min-width:110px;margin-left:6px;padding:6px 10px;">
+                  <option value="stable" ${ch === "stable" ? "selected" : ""}>Stable</option>
+                  <option value="beta" ${ch === "beta" ? "selected" : ""}>Beta</option>
+                  <option value="both">Both</option>
+                </select>
+              </label>
+              <button type="button" class="btn publish-activate-btn" data-id="${ver.id}" style="background:#22c55e;border:none;padding:8px 14px;font-size:0.85em;">
+                Set Active
+              </button>
+            </div>
           </div>
           <div style="display: flex; gap: 10px; width: 100%;">
             <a href="${ver.download_url}" target="_blank" class="btn btn-outline" style="border-color: #06b6d4; color: #06b6d4; padding: 8px 16px; font-size: 0.85em; text-decoration: none;">
@@ -2246,6 +2270,21 @@
         </div>
       `;
       }).join("");
+
+      listEl.querySelectorAll(".publish-activate-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const sel = listEl.querySelector(`.publish-activate-channel[data-id="${id}"]`);
+          const raw = sel ? sel.value : "stable";
+          const channel = (raw === "beta" || raw === "both") ? raw : "stable";
+          btn.disabled = true;
+          try {
+            await window.setActiveVersion(id, channel);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
 
       // Add delete handlers
       document.querySelectorAll(".delete-version-btn").forEach(btn => {
@@ -2273,86 +2312,129 @@
     }
   }
 
-        window.setActiveVersion = async function(versionId, channelOverride) {
-      // Load the target first so we only touch its channel.
-      // Critical: never deactivate the other channel's active build.
-      const { data: target, error: targetErr } = await supabase
+        async function ensureR2ChannelTwin(source, channel) {
+      const ch = channel === "beta" ? "beta" : "stable";
+      const meta = {
+        title: source.title,
+        content: source.content,
+        file_name: source.file_name,
+        file_path: source.file_path,
+        download_url: source.download_url,
+        is_critical: !!source.is_critical
+      };
+
+      const { data: existing, error: findErr } = await supabase
         .from("r2_versions")
         .select("*")
-        .eq("id", versionId)
+        .eq("version", source.version)
+        .eq("channel", ch)
+        .maybeSingle();
+      if (findErr) throw findErr;
+
+      if (existing?.id) {
+        const { data: updated, error: updErr } = await supabase
+          .from("r2_versions")
+          .update(meta)
+          .eq("id", existing.id)
+          .select("*")
+          .single();
+        if (updErr) throw updErr;
+        return updated || existing;
+      }
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("r2_versions")
+        .insert([{
+          version: source.version,
+          ...meta,
+          channel: ch,
+          is_active: false,
+          uploaded_by: source.uploaded_by || null
+        }])
+        .select("*")
         .single();
+      if (insErr) throw insErr;
+      return inserted;
+    }
 
-      if (targetErr || !target) {
-        alert("Error loading version: " + (targetErr?.message || "not found"));
-        return;
-      }
-
-      let channel = (target.channel === "beta") ? "beta" : "stable";
-      const wantChannel = (channelOverride === "beta" || channelOverride === "stable")
-        ? channelOverride
-        : channel;
-
-      // Reassign channel safely before activating (version is globally unique).
-      if (wantChannel !== channel) {
-        const { error: clearErr } = await supabase
-          .from("r2_versions")
-          .update({ is_active: false })
-          .eq("id", versionId);
-        if (clearErr) {
-          alert("Error preparing channel change: " + clearErr.message);
-          return;
-        }
-        const { error: moveErr } = await supabase
-          .from("r2_versions")
-          .update({ channel: wantChannel })
-          .eq("id", versionId);
-        if (moveErr) {
-          alert("Error assigning channel: " + moveErr.message);
-          return;
-        }
-        channel = wantChannel;
-        target.channel = wantChannel;
-      }
-
-      // Deactivate other builds in THIS channel only
-      await supabase
+    async function activateR2ChannelRow(row, channel) {
+      const ch = channel === "beta" ? "beta" : "stable";
+      const { error: clearErr } = await supabase
         .from("r2_versions")
         .update({ is_active: false })
-        .eq("channel", channel)
-        .neq("id", versionId);
+        .eq("channel", ch)
+        .neq("id", row.id);
+      if (clearErr) throw clearErr;
 
-      const { error } = await supabase
+      const { error: actErr } = await supabase
         .from("r2_versions")
         .update({ is_active: true })
-        .eq("id", versionId);
+        .eq("id", row.id);
+      if (actErr) throw actErr;
+    }
 
-      if (error) {
-        alert("Error setting active version: " + error.message);
-        return;
+    async function syncStableAnnouncement(target) {
+      await supabase
+        .from("announcements")
+        .update({ active: false })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await supabase.from("announcements").upsert({
+        version: target.version,
+        title: target.title,
+        content: target.content,
+        download_url: target.download_url,
+        is_critical: target.is_critical,
+        active: true
+      }, { onConflict: "version" });
+    }
+
+    window.setActiveVersion = async function(versionId, channelOverride) {
+      // Twin-row model: unique (version, channel). Never move a row across channels.
+      // Activating the other channel (or Both) upserts a twin with the same MSI/URL.
+      // Deactivate other actives per channel only — leave the opposite channel alone unless Both.
+      try {
+        const { data: target, error: targetErr } = await supabase
+          .from("r2_versions")
+          .select("*")
+          .eq("id", versionId)
+          .single();
+
+        if (targetErr || !target) {
+          alert("Error loading version: " + (targetErr?.message || "not found"));
+          return;
+        }
+
+        const rowChannel = (target.channel === "beta") ? "beta" : "stable";
+        const want = (channelOverride === "beta" || channelOverride === "stable" || channelOverride === "both")
+          ? channelOverride
+          : rowChannel;
+
+        if (want === "both") {
+          const stableRow = await ensureR2ChannelTwin(target, "stable");
+          const betaRow = await ensureR2ChannelTwin(target, "beta");
+          await activateR2ChannelRow(stableRow, "stable");
+          await activateR2ChannelRow(betaRow, "beta");
+          await syncStableAnnouncement(stableRow);
+          loadVersions();
+          if (typeof loadStorageVersions === "function") loadStorageVersions();
+          alert(`Version ${target.version} is now the active build on BOTH channels (stable + beta)!`);
+          return;
+        }
+
+        const row = await ensureR2ChannelTwin(target, want);
+        await activateR2ChannelRow(row, want);
+        if (want === "stable") {
+          await syncStableAnnouncement(row);
+        }
+
+        loadVersions();
+        if (typeof loadStorageVersions === "function") loadStorageVersions();
+        alert(`Version ${target.version} is now the active ${want} build!`);
+      } catch (err) {
+        console.error("setActiveVersion failed:", err);
+        alert("Error setting active version: " + (err?.message || err));
       }
-
-      loadVersions();
-      if (typeof loadStorageVersions === "function") loadStorageVersions();
-
-      // Public announcements stay tied to STABLE only — activating beta
-      // must not overwrite what current/paid users see.
-      if (channel === "stable") {
-        await supabase
-          .from("announcements")
-          .update({ active: false })
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-
-        await supabase.from("announcements").upsert({
-          version: target.version,
-          title: target.title,
-          content: target.content,
-          download_url: target.download_url,
-          is_critical: target.is_critical,
-          active: true
-        }, { onConflict: "version" });
-      }
-
-      alert(`Version ${target.version} is now the active ${channel} build!`);
     };
 
     async function loadStorageVersions() {
@@ -2373,11 +2455,27 @@
           return;
         }
 
+        const twinVersions = new Set();
+        {
+          const byVer = {};
+          data.forEach(v => {
+            const key = String(v.version || "");
+            if (!byVer[key]) byVer[key] = new Set();
+            byVer[key].add((v.channel === "beta") ? "beta" : "stable");
+          });
+          Object.keys(byVer).forEach(k => {
+            if (byVer[k].has("stable") && byVer[k].has("beta")) twinVersions.add(k);
+          });
+        }
+
         listEl.innerHTML = data.map(ver => {
           const ch = (ver.channel === "beta") ? "beta" : "stable";
           const chBadge = ch === "beta"
             ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
             : '<span class="badge" style="background:#14532d;color:#86efac;">STABLE</span>';
+          const twinBadge = twinVersions.has(String(ver.version))
+            ? '<span class="badge" style="background:#3b0764;color:#e9d5ff;">BOTH CHANNELS</span>'
+            : "";
           const created = ver.created_at ? new Date(ver.created_at).toLocaleString() : "—";
           const shortUrl = ver.download_url
             ? (ver.download_url.length > 64 ? ver.download_url.slice(0, 64) + "…" : ver.download_url)
@@ -2389,6 +2487,7 @@
               <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
                 v${ver.version}: ${ver.title || ""}
                 ${chBadge}
+                ${twinBadge}
                 ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ""}
                 ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background:#2d1b4e;">INACTIVE</span>'}
               </h4>
@@ -2401,9 +2500,10 @@
             </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
               <label style="font-size:0.8rem;color:#9ca3af;">Activate as
-                <select class="form-input storage-activate-channel" data-id="${ver.id}" style="display:inline-block;width:auto;min-width:110px;margin-left:6px;padding:6px 10px;">
+                <select class="form-input storage-activate-channel" data-id="${ver.id}" style="display:inline-block;width:auto;min-width:110px;padding:6px 10px;margin-left:6px;">
                   <option value="stable" ${ch === "stable" ? "selected" : ""}>Stable</option>
                   <option value="beta" ${ch === "beta" ? "selected" : ""}>Beta</option>
+                  <option value="both">Both</option>
                 </select>
               </label>
               <button type="button" class="btn storage-activate-btn" data-id="${ver.id}" style="background:#22c55e;border:none;padding:8px 14px;font-size:0.85em;">
@@ -2420,7 +2520,8 @@
           btn.addEventListener("click", async () => {
             const id = btn.getAttribute("data-id");
             const sel = listEl.querySelector(`.storage-activate-channel[data-id="${id}"]`);
-            const channel = sel && sel.value === "beta" ? "beta" : "stable";
+            const raw = sel ? sel.value : "stable";
+            const channel = (raw === "beta" || raw === "both") ? raw : "stable";
             btn.disabled = true;
             try {
               await window.setActiveVersion(id, channel);
@@ -2741,18 +2842,25 @@
         
         const { data: userData } = await supabase.auth.getUser();
         
-                const channelEl = document.getElementById("upload-channel");
-        const channel = (channelEl && channelEl.value === "beta") ? "beta" : "stable";
+        const channelEl = document.getElementById("upload-channel");
+        const channelRaw = channelEl ? channelEl.value : "stable";
+        const targetChannels = channelRaw === "both"
+          ? ["stable", "beta"]
+          : [channelRaw === "beta" ? "beta" : "stable"];
 
-        // version is globally unique (r2_versions_version_key): update in place on re-upload
-        const { data: existingVer, error: existingErr } = await supabase
+        // Unique (version, channel): upsert each selected channel; also refresh any existing twin's artifact fields.
+        const { data: existingRows, error: existingErr } = await supabase
           .from("r2_versions")
           .select("id,channel,is_active")
-          .eq("version", version)
-          .maybeSingle();
+          .eq("version", version);
         if (existingErr) throw existingErr;
 
-        const payload = {
+        const byChannel = {};
+        (existingRows || []).forEach(r => {
+          byChannel[(r.channel === "beta") ? "beta" : "stable"] = r;
+        });
+
+        const artifact = {
           version,
           title,
           content,
@@ -2760,34 +2868,55 @@
           file_path: remotePath,
           download_url: downloadUrl,
           is_critical,
-          channel,
           uploaded_by: userData?.user?.id
         };
 
-        let versionError = null;
         let didUpdate = false;
-        if (existingVer?.id) {
-          didUpdate = true;
-          const prevChannel = (existingVer.channel === "beta") ? "beta" : "stable";
-          // Moving channels while active can collide with one-active-per-channel index
-          if (prevChannel !== channel) payload.is_active = false;
-          const { error } = await supabase
-            .from("r2_versions")
-            .update(payload)
-            .eq("id", existingVer.id);
-          versionError = error;
-        } else {
-          const { error } = await supabase.from("r2_versions").insert([{
-            ...payload,
-            is_active: false
-          }]);
-          versionError = error;
+        const upsertChannel = async (ch) => {
+          const existing = byChannel[ch];
+          if (existing?.id) {
+            didUpdate = true;
+            const { error } = await supabase
+              .from("r2_versions")
+              .update({ ...artifact, channel: ch })
+              .eq("id", existing.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase.from("r2_versions").insert([{
+              ...artifact,
+              channel: ch,
+              is_active: false
+            }]);
+            if (error) throw error;
+          }
+        };
+
+        for (const ch of targetChannels) {
+          await upsertChannel(ch);
         }
 
-        if (versionError) throw versionError;
+        // If uploading one channel but a twin already exists, keep twins in sync on re-upload.
+        if (targetChannels.length === 1) {
+          const other = targetChannels[0] === "beta" ? "stable" : "beta";
+          if (byChannel[other]?.id) {
+            didUpdate = true;
+            const { error } = await supabase
+              .from("r2_versions")
+              .update({
+                title: artifact.title,
+                content: artifact.content,
+                file_name: artifact.file_name,
+                file_path: artifact.file_path,
+                download_url: artifact.download_url,
+                is_critical: artifact.is_critical
+              })
+              .eq("id", byChannel[other].id);
+            if (error) throw error;
+          }
+        }
 
         statusEl.textContent = didUpdate
-          ? "✅ Re-uploaded — existing version row updated (same version string)."
+          ? "✅ Re-uploaded — matching version row(s) updated."
           : "✅ Successfully uploaded to R2!";
         statusEl.style.color = "var(--success)";
         
@@ -2806,8 +2935,8 @@
         if (typeof loadStorageVersions === "function") loadStorageVersions();
         
         alert(didUpdate
-          ? "Re-upload complete — version metadata/URL updated. Use Publish or Storage → Use existing to set active if needed."
-          : "Upload complete! Go to 'Publish Update' or Storage → Use existing to set it as active.");
+          ? "Re-upload complete — version metadata/URL updated on matching channel twin(s). Use Publish or Storage → Use existing to set active if needed."
+          : "Upload complete! Go to 'Publish Update' or Storage → Use existing to set it as active (Stable / Beta / Both).");
         
       } catch (err) {
         console.error(err);
