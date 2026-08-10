@@ -1,4 +1,4 @@
-# Supabase Blueprint — AiRi / viritts.com
+﻿# Supabase Blueprint — AiRi / viritts.com
 > Last mapped: Aug 6, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
@@ -137,7 +137,7 @@ RLS: enabled. Policies:
 ### Other tables
 - `announcements` — in-app announcements
 - `beta_signups` — beta waitlist (28 entries)
-- `r2_versions` — download versions/URLs from R2 storage. **Channels (2026-07-31):** `channel` text NOT NULL DEFAULT `stable` (`stable`|`beta`); partial unique index `r2_versions_one_active_per_channel` (one active per channel). Account page: beta-tier licenses get active beta build if present, else stable; all other tiers get stable. Activating beta does not overwrite public `announcements`.
+- `r2_versions` — download versions/URLs from R2 storage. **Unique:** `version` is globally unique (`r2_versions_version_key`) — same version string cannot exist on both channels; re-upload must update-in-place. **Channels (2026-07-31):** `channel` text NOT NULL DEFAULT `stable` (`stable`|`beta`); partial unique index `r2_versions_one_active_per_channel` (one active per channel). Account page: beta-tier licenses get active beta build if present, else stable; all other tiers get stable. Activating beta does not overwrite public `announcements`. Admin Storage: Upload new vs Use existing (assign/activate without re-upload).
 - `site_settings` — site-level config (see below for ToS-related keys)
 - `subscription_plans` — plan pricing reference
 - `tos_versions` — append-only store of legal document bodies, keyed by `(surface, version)`. Surfaces: `app`, `web`, `privacy`. `body_sha256` is computed by trigger; UPDATE/DELETE blocked by `tos_versions_block_mutations()`. Public SELECT allowed (legal docs are public by design).
