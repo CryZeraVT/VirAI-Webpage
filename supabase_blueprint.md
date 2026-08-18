@@ -1,5 +1,5 @@
 ﻿# Supabase Blueprint — AiRi / viritts.com
-> Last mapped: Aug 6, 2026. Update before schema changes.
+> Last mapped: Aug 16, 2026. Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -84,7 +84,7 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
   - `proxy_ai_provider` — prod AI config (provider, model, params)
   - `ai_api_keys` — provider API keys object
   - `tier_limits` — per-tier AI token allocation (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Added 2026-04-18. Written exclusively via `update_tier_limits()` RPC (admin-gated, validated, audited). Read by `admin.html` (via `get_tier_limits()`) and by `ai-proxy` / `get-quota` edge functions (direct table read, 60s in-memory cache).
-  - `beta_renewal_config` — beta activity keep-alive settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 30}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` and `ai-proxy` (direct table read, 60s in-memory cache). **Renew rule (2026-08):** for `tier='beta'` + `status='active'` on successful validate / authenticated AI use, if `expires_at` is past **or** remaining life `< renewal_days/2`, set `expires_at = now + renewal_days` and return/update accordingly (`beta_renewed: true` from validate-license). `grace_days` is retained in config for admin compatibility but is **not** used as the renew gate (superseded by activity keep-alive). Non-beta tiers unchanged (hard expiry). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
+  - `beta_renewal_config` — beta activity keep-alive settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 7}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` and `ai-proxy` (direct table read, 60s in-memory cache). **Renew rule (2026-08-16):** for `tier='beta'` + `status='active'` on successful validate / authenticated AI use, snap `expires_at = now + renewal_days` unless the current expiry is already within 24h of that target (coalesce). Idle keys are not touched. `grace_days` is retained in config for admin compatibility but is **not** used as the renew gate. Non-beta tiers unchanged (hard expiry). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
   - `alert_settings` — admin ops email alerting (jsonb). Added 2026-08-06. Shape: `{recipients[], enabled, enabled_classes:{p0_downtime,p1_failover,p1_stripe,p2_digest}, min_severity, mute_until, dedupe_window_sec}`. Written exclusively via `update_alert_settings()` (admin-gated, validated, audited). Read by admin UI via `get_alert_settings()` and by `notify-admin` (service role). **RLS:** included in the public SELECT deny-list alongside `ai_api_keys` / `ai_failover_chains` — recipients must never be anonymously readable.
 
 Public SELECT deny-list on `system_config`: `ai_api_keys`, `proxy_ai_provider`, `studio_ai_provider`, `builtin_ai_provider`, `ai_failover_chains`, `alert_settings`.
@@ -186,7 +186,7 @@ Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE
 > **Propagation semantics:** With `p_apply_to_existing = false`, changes reach existing customers lazily via `ai-proxy` → `increment_token_quota` on their next AI call (the RPC `ON CONFLICT DO UPDATE SET base_limit = p_base_limit` upserts the per-call tier value). New purchases get the new limit on their first call. With `true`, every active customer's row is backfilled immediately — use when a decrease might otherwise let existing customers exceed the new cap within the current period.
 
 ### `get_beta_renewal_config()`
-`SECURITY DEFINER` SQL function. Returns `jsonb` — the current `system_config.beta_renewal_config` row (`{grace_days, renewal_days}`), or the safe default `{"grace_days": 3, "renewal_days": 30}` if the row is missing. EXECUTE granted to `authenticated`, revoked from `anon`. Used by `admin.html` Beta Auto-Renewal section. Added 2026-05-12.
+`SECURITY DEFINER` SQL function. Returns `jsonb` — the current `system_config.beta_renewal_config` row (`{grace_days, renewal_days}`), or the safe default `{"grace_days": 3, "renewal_days": 7}` if the row is missing. EXECUTE granted to `authenticated`, revoked from `anon`. Used by `admin.html` Beta Auto-Renewal section. Added 2026-05-12. Default renewal length changed 30 → 7 on 2026-08-16.
 
 ### `update_beta_renewal_config(p_config jsonb)`
 `SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Validates: `grace_days` and `renewal_days` must be integers between 1 and 365. On success: upserts `system_config.beta_renewal_config`, writes an audit row to `system_config_audit`. Returns `{success, new_config}`. EXECUTE granted to `authenticated`. Added 2026-05-12.
@@ -242,7 +242,7 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 
 ## AI failover chains
 
-- `system_config.ai_failover_chains`: Core Gemini→OpenAI→Grok; Studio Grok→OpenAI→Gemini
+- `system_config.ai_failover_chains`: Core OpenAI `gpt-5.6-luna`→Gemini `gemini-3-flash-preview`→Grok `grok-4.3`; Studio Grok `grok-4.3`→OpenAI `gpt-5.6-luna`→Gemini `gemini-3-flash-preview`
 - Edge function `ai-proxy` retries retryable provider failures across hops
 - Admin probe requires Deno secret `AIRI_ADMIN_PROBE_SECRET` + header `x-airi-admin-probe`
 - See `AI_PROXY_FAILOVER.md` for ops steps

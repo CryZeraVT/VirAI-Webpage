@@ -10,8 +10,8 @@
 // config drift can never break live service.
 //
 // Failover: system_config key='ai_failover_chains' (or in-code fallback):
-//   Core (standard/test): Gemini → OpenAI → Grok
-//   Studio (studio/beta): Grok → OpenAI → Gemini
+//   Core (standard/test): OpenAI Luna → Gemini 3 Flash → Grok 4.3
+//   Studio (studio/beta): Grok 4.3 → OpenAI Luna → Gemini 3 Flash
 // Admin probe: header x-airi-admin-probe must match AIRI_ADMIN_PROBE_SECRET
 //   to allow test_api_key / test_provider / force_failover / chain_override.
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -58,8 +58,8 @@ type HopResult = {
 };
 
 const MODEL_DEFAULTS: Record<string, string> = {
-  openai: "gpt-4o-mini",
-  grok:   "grok-3",
+  openai: "gpt-5.6-luna",
+  grok:   "grok-4.3",
   gemini: "gemini-2.5-flash",
 };
 
@@ -74,14 +74,14 @@ const TIER_LIMITS_FALLBACK: Record<string, number> = {
 
 const FAILOVER_CHAINS_FALLBACK: FailoverChains = {
   core: [
-    { provider: "gemini", model: "" },
-    { provider: "openai", model: "gpt-4o-mini" },
-    { provider: "grok", model: "grok-3" },
+    { provider: "openai", model: "gpt-5.6-luna" },
+    { provider: "gemini", model: "gemini-3-flash-preview" },
+    { provider: "grok", model: "grok-4.3" },
   ],
   studio: [
     { provider: "grok", model: "" },
-    { provider: "openai", model: "gpt-4o-mini" },
-    { provider: "gemini", model: "gemini-2.5-flash" },
+    { provider: "openai", model: "gpt-5.6-luna" },
+    { provider: "gemini", model: "gemini-3-flash-preview" },
   ],
   retryable_status: [429, 500, 502, 503, 504],
   hop_timeout_ms: 20_000,
@@ -97,11 +97,18 @@ const TIER_CACHE_TTL_MS = 60_000;
 let FAILOVER_CACHE: FailoverChains = structuredClone(FAILOVER_CHAINS_FALLBACK);
 let FAILOVER_CACHE_AT = 0;
 
-// Beta activity keep-alive (same rule as validate-license): renew when
-// remaining life < renewal_days/2 (or already expired). Coalesced so AI
-// traffic does not rewrite expires_at on every token request.
+// Beta activity keep-alive (same rule as validate-license): on live AI use,
+// snap expires_at to now + renewal_days unless already within 24h of that
+// target. Coalesced so token traffic does not rewrite every request.
 interface BetaRenewalConfig { grace_days: number; renewal_days: number; }
-const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 30 };
+const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 7 };
+const BETA_RENEWAL_COALESCE_MS = 24 * 60 * 60 * 1000;
+
+function betaActivityShouldRenew(expiresAtMs: number, renewalMs: number, now = Date.now()): boolean {
+  const target = now + renewalMs;
+  return expiresAtMs < target - BETA_RENEWAL_COALESCE_MS
+      || expiresAtMs > target + BETA_RENEWAL_COALESCE_MS;
+}
 let _cachedBetaRenewal: BetaRenewalConfig | null = null;
 let _cachedBetaRenewalAt = 0;
 const BETA_RENEWAL_CACHE_TTL_MS = 60_000;
@@ -144,8 +151,7 @@ async function maybeRenewBetaLicense(
     const renewalCfg  = await getBetaRenewalConfig(supabase);
     const expiresAtMs = new Date(expiresAt).getTime();
     const renewalMs   = renewalCfg.renewal_days * 24 * 60 * 60 * 1000;
-    const remainingMs = expiresAtMs - Date.now();
-    if (remainingMs >= renewalMs / 2) return null;
+    if (!betaActivityShouldRenew(expiresAtMs, renewalMs)) return null;
     const newExpiry = new Date(Date.now() + renewalMs).toISOString();
     const { error } = await supabase
       .from("licenses")
@@ -342,7 +348,7 @@ function resolveHopModel(
   hopIndex: number,
   primaryCfg: AiCfg,
 ): string {
-  const fallback = MODEL_DEFAULTS[hop.provider] ?? "gpt-4o-mini";
+  const fallback = MODEL_DEFAULTS[hop.provider] ?? "gpt-5.6-luna";
   if (hop.model && hop.model.trim()) return sanitizeModelId(hop.model, fallback);
   const primaryProvider = normalizeProvider(primaryCfg.provider);
   const primaryModel = (primaryCfg.model && primaryCfg.model.trim()) ? primaryCfg.model.trim() : "";

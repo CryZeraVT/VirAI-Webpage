@@ -16,11 +16,18 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 // ── Beta renewal config cache ─────────────────────────────────────────────────
 // Reads system_config.beta_renewal_config (grace_days, renewal_days).
 // Cached for 60s — same TTL pattern as TOS version below.
-// Activity keep-alive (2026-08): renew when remaining life < renewal_days/2
-// (or already expired). grace_days is retained in config for admin/docs only
-// and is NOT used as a renew gate anymore.
+// Activity keep-alive (2026-08-16): on live validate, snap expires_at to
+// now + renewal_days (default 7). 24h coalesce so a freshly set window is
+// not rewritten on every open. grace_days is retained in config only.
 interface BetaRenewalConfig { grace_days: number; renewal_days: number; }
-const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 30 };
+const BETA_RENEWAL_DEFAULT: BetaRenewalConfig = { grace_days: 3, renewal_days: 7 };
+const BETA_RENEWAL_COALESCE_MS = 24 * 60 * 60 * 1000;
+
+function betaActivityShouldRenew(expiresAtMs: number, renewalMs: number, now = Date.now()): boolean {
+  const target = now + renewalMs;
+  return expiresAtMs < target - BETA_RENEWAL_COALESCE_MS
+      || expiresAtMs > target + BETA_RENEWAL_COALESCE_MS;
+}
 let _cachedBetaRenewal: BetaRenewalConfig | null = null;
 let _cachedBetaRenewalAt = 0;
 const BETA_RENEWAL_CACHE_TTL_MS = 60_000;
@@ -163,9 +170,9 @@ serve(async (req) => {
   }
 
   // ── Beta activity keep-alive ───────────────────────────────────────────────
-  // On successful validate for tier=beta with a finite expiry: if already past
-  // expires_at OR remaining life < renewal_days/2, set expires_at = now +
-  // renewal_days. Coalesce avoids a write on every open once freshly renewed.
+  // Live validate for tier=beta: snap expires_at to now + renewal_days unless
+  // it is already within 24h of that target (coalesce). Extends expired keys
+  // and pulls long leftover windows down to the configured activity window.
   // Non-fatal: a config read failure must never block a valid license check.
   let betaRenewed = false;
   if (data.tier === "beta" && data.expires_at) {
@@ -173,8 +180,7 @@ serve(async (req) => {
       const renewalCfg  = await getBetaRenewalConfig();
       const expiresAtMs = new Date(data.expires_at).getTime();
       const renewalMs   = renewalCfg.renewal_days * 24 * 60 * 60 * 1000;
-      const remainingMs = expiresAtMs - Date.now();
-      if (remainingMs < renewalMs / 2) {
+      if (betaActivityShouldRenew(expiresAtMs, renewalMs)) {
         const newExpiry = new Date(Date.now() + renewalMs);
         updates.expires_at = newExpiry.toISOString();
         betaRenewed = true;

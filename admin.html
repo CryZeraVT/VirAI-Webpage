@@ -744,33 +744,33 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
               <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);border-radius:10px;padding:14px;">
-                <div style="color:#06b6d4;font-weight:700;margin-bottom:10px;">Core ($10) — Gemini → OpenAI → Grok</div>
+                <div style="color:#06b6d4;font-weight:700;margin-bottom:10px;">Core ($10) — OpenAI Luna → Gemini 3 Flash → Grok 4.3</div>
                 <div class="form-group">
-                  <label>1. Gemini model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Gemini</span></label>
-                  <input id="fo-core-0-model" type="text" class="form-input" placeholder="blank = Prod primary model">
+                  <label>1. OpenAI model <span style="color:#4b5563;font-weight:400;">· key: API Keys → OpenAI</span></label>
+                  <input id="fo-core-0-model" type="text" class="form-input" placeholder="gpt-5.6-luna">
                 </div>
                 <div class="form-group">
-                  <label>2. OpenAI model <span style="color:#4b5563;font-weight:400;">· key: API Keys → OpenAI</span></label>
-                  <input id="fo-core-1-model" type="text" class="form-input" placeholder="gpt-4o-mini">
+                  <label>2. Gemini model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Gemini</span></label>
+                  <input id="fo-core-1-model" type="text" class="form-input" placeholder="gemini-3-flash-preview">
                 </div>
                 <div class="form-group">
                   <label>3. Grok model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Grok</span></label>
-                  <input id="fo-core-2-model" type="text" class="form-input" placeholder="grok-3">
+                  <input id="fo-core-2-model" type="text" class="form-input" placeholder="grok-4.3">
                 </div>
               </div>
               <div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.25);border-radius:10px;padding:14px;">
-                <div style="color:#a78bfa;font-weight:700;margin-bottom:10px;">Studio ($20) — Grok → OpenAI → Gemini</div>
+                <div style="color:#a78bfa;font-weight:700;margin-bottom:10px;">Studio ($20) — Grok 4.3 → OpenAI Luna → Gemini 3 Flash</div>
                 <div class="form-group">
                   <label>1. Grok model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Grok</span></label>
                   <input id="fo-studio-0-model" type="text" class="form-input" placeholder="blank = Studio primary model">
                 </div>
                 <div class="form-group">
                   <label>2. OpenAI model <span style="color:#4b5563;font-weight:400;">· key: API Keys → OpenAI</span></label>
-                  <input id="fo-studio-1-model" type="text" class="form-input" placeholder="gpt-4o-mini">
+                  <input id="fo-studio-1-model" type="text" class="form-input" placeholder="gpt-5.6-luna">
                 </div>
                 <div class="form-group">
                   <label>3. Gemini model <span style="color:#4b5563;font-weight:400;">· key: API Keys → Gemini</span></label>
-                  <input id="fo-studio-2-model" type="text" class="form-input" placeholder="gemini-2.5-flash">
+                  <input id="fo-studio-2-model" type="text" class="form-input" placeholder="gemini-3-flash-preview">
                 </div>
               </div>
             </div>
@@ -808,8 +808,8 @@
               <div class="form-group">
                 <label>Chain to probe</label>
                 <select id="fo-probe-chain" class="form-input">
-                  <option value="core">Core (Gemini → OpenAI → Grok)</option>
-                  <option value="studio">Studio (Grok → OpenAI → Gemini)</option>
+                  <option value="core">Core (OpenAI Luna → Gemini 3 Flash → Grok 4.3)</option>
+                  <option value="studio">Studio (Grok 4.3 → OpenAI Luna → Gemini 3 Flash)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -899,8 +899,8 @@
 
           <!-- Beta Auto-Renewal ───────────────────────────────────────────────
                Activity keep-alive for beta licenses. validate-license (app open)
-               and ai-proxy (authenticated AI use) extend expires_at when remaining
-               life < renewal_days/2 (or already expired). Written to
+               and ai-proxy (authenticated AI use) snap expires_at to
+               now + renewal_days on live activity (24h coalesce). Written to
                system_config.beta_renewal_config via update_beta_renewal_config()
                RPC; read with 60 s cache by those edge functions.
           -->
@@ -910,9 +910,9 @@
               <strong style="color:#d946ef;">Activity keep-alive</strong> for
               <strong style="color:#d946ef;">beta</strong> only: when a beta user
               successfully validates a license (app open) or hits
-              <code>ai-proxy</code>, if the key is already expired <em>or</em>
-              remaining life is under half of <em>Renewal Length</em>,
+              <code>ai-proxy</code>,
               <code>expires_at</code> is set to today + Renewal Length.
+              Idle keys are left alone until they show up again.
               Non-beta licenses are completely unchanged. Changes take effect
               within 60 seconds (edge-function cache TTL).
             </p>
@@ -928,19 +928,17 @@
                 </div>
                 <div class="form-group">
                   <label>Renewal Length <span style="color:#4b5563;font-weight:400;font-size:0.78rem;">(days set from today when keep-alive fires)</span></label>
-                  <input id="br-renewal" type="number" min="1" max="365" step="1" class="form-input" placeholder="30">
+                  <input id="br-renewal" type="number" min="1" max="365" step="1" class="form-input" placeholder="7">
                   <span id="br-renewal-hint" style="color:#6b7280;font-size:0.78rem;">—</span>
                 </div>
               </div>
 
               <div style="background:rgba(217,70,239,0.05);border:1px solid rgba(217,70,239,0.2);border-radius:8px;padding:12px;margin:14px 0;">
                 <span style="color:#d1d5db;font-size:0.85rem;">
-                  Example: Renewal = <strong style="color:#d946ef;" id="br-example-renewal">30</strong> days →
-                  a beta user who opens the app (or uses AI) while expired, or with
-                  fewer than <strong style="color:#d946ef;" id="br-example-grace">15</strong> days left
-                  (half of renewal), gets
-                  <strong style="color:#d946ef;" id="br-example-renewal2">30</strong> days from today.
-                  Writes are coalesced so a freshly renewed key is not rewritten on every request.
+                  Example: Renewal = <strong style="color:#d946ef;" id="br-example-renewal">7</strong> days →
+                  a beta user who opens the app or uses AI gets
+                  <strong style="color:#d946ef;" id="br-example-renewal2">7</strong> days from that moment.
+                  Writes are coalesced (~24h) so a freshly renewed key is not rewritten on every request.
                 </span>
               </div>
 
@@ -992,7 +990,7 @@
                 <input id="apikey-gemini" type="password" placeholder="AIza..." class="form-input" autocomplete="off">
                 <button type="button" id="toggle-gemini-key" class="btn btn-outline" style="border-color:#6b7280;color:#6b7280;white-space:nowrap;padding:10px 14px;">👁 Show</button>
               </div>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used for <strong style="color:#a78bfa;">Gemini</strong> primary and failover hops (Core hop 1 / Studio hop 3). Same key for every Gemini call.</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#4b5563;">Used for <strong style="color:#a78bfa;">Gemini</strong> hops (Core hop 2 / Studio hop 3). Same key for every Gemini call.</p>
             </div>
           </div>
 
@@ -2954,7 +2952,7 @@
     );
 
     // ── Failover chains + probe ───────────────────────────────────────
-    const FO_CORE_PROVIDERS = ["gemini", "openai", "grok"];
+    const FO_CORE_PROVIDERS = ["openai", "gemini", "grok"];
     const FO_STUDIO_PROVIDERS = ["grok", "openai", "gemini"];
 
     function readFailoverChainsFromUi() {
@@ -3017,14 +3015,14 @@
         else {
           applyFailoverChainsToUi({
             core: [
-              { provider: "gemini", model: "" },
-              { provider: "openai", model: "gpt-4o-mini" },
-              { provider: "grok", model: "grok-3" },
+              { provider: "openai", model: "gpt-5.6-luna" },
+              { provider: "gemini", model: "gemini-3-flash-preview" },
+              { provider: "grok", model: "grok-4.3" },
             ],
             studio: [
               { provider: "grok", model: "" },
-              { provider: "openai", model: "gpt-4o-mini" },
-              { provider: "gemini", model: "gemini-2.5-flash" },
+              { provider: "openai", model: "gpt-5.6-luna" },
+              { provider: "gemini", model: "gemini-3-flash-preview" },
             ],
             hop_timeout_ms: 20000,
           });
@@ -3349,11 +3347,11 @@
           // manual reactivation and auto-renewal stay in sync.
           btn.disabled = true;
           btn.textContent = "...";
-          let renewalDays = 30;
+          let renewalDays = 7;
           try {
             const { data: rCfg } = await supabase.rpc("get_beta_renewal_config");
             if (rCfg && rCfg.renewal_days > 0) renewalDays = rCfg.renewal_days;
-          } catch (_) { /* fallback to 30 */ }
+          } catch (_) { /* fallback to 7 */ }
           btn.disabled = false;
           btn.textContent = "🔄 Reactivate";
 
@@ -4081,11 +4079,9 @@
       function update() {
         const g = parseInt(graceEl?.value || "0", 10);
         const r = parseInt(renewalEl?.value || "0", 10);
-        const half = Number.isFinite(r) && r > 0 ? Math.floor(r / 2) : 0;
         if (graceHint)   graceHint.textContent   = Number.isFinite(g) && g > 0 ? `Stored only (unused by keep-alive gate)` : "—";
-        if (renewalHint) renewalHint.textContent = Number.isFinite(r) && r > 0 ? `+${r} day${r !== 1 ? "s" : ""} from today when remaining < ${half}d` : "—";
-        // Example "grace" slot now shows half-of-renewal threshold (active rule).
-        if (exGrace)    exGrace.textContent    = half > 0 ? String(half) : "—";
+        if (renewalHint) renewalHint.textContent = Number.isFinite(r) && r > 0 ? `+${r} day${r !== 1 ? "s" : ""} from today on live activity` : "—";
+        if (exGrace)    exGrace.textContent    = r > 0 ? String(r) : "—";
         if (exRenewal)  exRenewal.textContent  = r > 0 ? r : "—";
         if (exRenewal2) exRenewal2.textContent = r > 0 ? r : "—";
       }
@@ -4106,7 +4102,7 @@
 
         const cfg = (data && typeof data === "object") ? data : {};
         const g = Number(cfg.grace_days   ?? 3);
-        const r = Number(cfg.renewal_days ?? 30);
+        const r = Number(cfg.renewal_days ?? 7);
 
         document.getElementById("br-grace").value   = g;
         document.getElementById("br-renewal").value = r;
@@ -4142,7 +4138,7 @@
         return;
       }
 
-      if (!confirm(`Save beta auto-renewal settings?\n\n  • Renewal length: +${r} day${r !== 1 ? "s" : ""} from today (keep-alive)\n  • Renew when remaining < ${Math.floor(r / 2)} day${Math.floor(r / 2) !== 1 ? "s" : ""} (half of renewal) or already expired\n  • Grace window: ${g} day${g !== 1 ? "s" : ""} (legacy field, unused by gate)\n\nChanges propagate within 60 seconds. Continue?`)) return;
+      if (!confirm(`Save beta auto-renewal settings?\n\n  • Renewal length: +${r} day${r !== 1 ? "s" : ""} from today on live activity (app open or AI use)\n  • Idle keys are not touched until they show up again\n  • Grace window: ${g} day${g !== 1 ? "s" : ""} (legacy field, unused by gate)\n\nChanges propagate within 60 seconds. Continue?`)) return;
 
       btn.dataset.saving = "1";
       btn.disabled = true;

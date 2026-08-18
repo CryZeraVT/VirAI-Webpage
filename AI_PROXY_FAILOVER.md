@@ -1,8 +1,8 @@
 ﻿# AI Proxy Failover + Admin Probe
 
 ## Chains (live)
-- Core ($10 / standard / test): Gemini -> OpenAI -> Grok
-- Studio ($20 / studio / beta): Grok -> OpenAI -> Gemini
+- Core ($10 / standard / test): OpenAI Luna -> Gemini 3 Flash -> Grok 4.3
+- Studio ($20 / studio / beta): Grok 4.3 -> OpenAI Luna -> Gemini 3 Flash
 
 Config: `system_config.ai_failover_chains` (admin AI Engine tab). Edge also has in-code fallbacks if the row is missing.
 
