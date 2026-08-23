@@ -113,24 +113,25 @@
       max-width: 520px;
       margin: 0 auto;
       padding: 40px 16px 80px;
+      transition: max-width 0.25s ease;
     }
+    .account-wrap.is-dashboard { max-width: 680px; }
 
     .account-card {
-      background: rgba(15, 5, 30, 0.85);
-      border: 1px solid rgba(124, 58, 237, 0.25);
-      border-radius: 18px;
-      padding: 36px 32px;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      background: rgba(14, 11, 24, 0.88);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 32px 30px 36px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.45);
     }
 
     .account-card h2 {
-      font-size: 1.6rem;
-      font-weight: 800;
+      font-size: 1.55rem;
+      font-weight: 750;
       margin: 0 0 4px;
-      background: linear-gradient(135deg, #a78bfa, #06b6d4);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+      color: #f4f4f5;
     }
 
     .account-card .subtitle {
@@ -158,27 +159,36 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 0;
+      padding-bottom: 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-wrap: nowrap;
     }
     .signed-in-header .user-info {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      min-width: 0;
     }
     .avatar-circle {
       width: 40px; height: 40px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      background: linear-gradient(145deg, #7c3aed, #5b21b6);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 1rem; color: white;
+      font-weight: 700; font-size: 0.95rem; color: white;
       flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(167,139,250,0.25);
     }
     .signed-in-header .email-label {
-      font-size: 0.9rem;
-      color: #e2e8f0;
+      font-size: 0.92rem;
+      color: #f4f4f5;
       font-weight: 600;
+      letter-spacing: -0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 280px;
     }
     .signed-in-header .role-badge {
       font-size: 0.72rem;
@@ -187,6 +197,38 @@
       border: 1px solid rgba(6,182,212,0.3);
       border-radius: 20px;
       padding: 2px 8px;
+    }
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .btn-ghost {
+      background: transparent;
+      border-color: rgba(255,255,255,0.1);
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.16);
+      color: #f4f4f5;
+      box-shadow: none;
+    }
+    .btn-admin {
+      border-color: rgba(6,182,212,0.28);
+      color: #67e8f9;
+    }
+    .btn-admin:hover:not(:disabled) {
+      background: rgba(6,182,212,0.1);
+      border-color: rgba(6,182,212,0.45);
+      color: #a5f3fc;
+      box-shadow: none;
+    }
+    .btn-primary {
+      background: #7c3aed;
+      border-color: transparent;
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #6d28d9;
+      box-shadow: 0 6px 20px rgba(124,58,237,0.35);
     }
 
     /* ── Form fields ─────────────────────────────────────────── */
@@ -226,9 +268,7 @@
     .btn-row .btn { flex: 1; min-width: 120px; text-align: center; }
 
     .divider {
-      border: none;
-      border-top: 1px solid rgba(124,58,237,0.2);
-      margin: 28px 0;
+      display: none;
     }
 
     /* ── Reset / invite panel ────────────────────────────────── */
@@ -246,75 +286,119 @@
     }
 
     /* ── License cards ───────────────────────────────────────── */
-    .license-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin: 0 0 14px;
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+    }
+    .section-head h3,
+    .license-section h3,
+    .quota-section h3,
+    .billing-section h3,
+    .newsletter-section h3 {
+      font-size: 0.72rem;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #71717a;
+      margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
     }
+    .section-head .btn {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 5px 11px;
+    }
 
     .license-card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(124,58,237,0.2);
+      border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 12px;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
     }
-    .license-card:hover { border-color: rgba(167,139,250,0.4); }
+    .license-card:hover {
+      border-color: rgba(167,139,250,0.28);
+      background: rgba(255,255,255,0.04);
+    }
 
     .license-card .lc-top {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 12px;
       flex-wrap: wrap;
     }
 
+    .license-key-well {
+      flex: 1;
+      min-width: 0;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 8px 11px;
+    }
     .license-key-display {
-      font-family: "Courier New", monospace;
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      color: #a78bfa;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #ddd6fe;
       word-break: break-all;
+      line-height: 1.4;
     }
 
     .license-status-badge {
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      padding: 4px 9px;
+      border-radius: 999px;
       white-space: nowrap;
       flex-shrink: 0;
+      text-transform: capitalize;
     }
-    .badge-active    { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-    .badge-inactive  { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-    .badge-expired   { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
-    .badge-canceling { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-active    { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.22); }
+    .badge-inactive  { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.22); }
+    .badge-expired   { background: rgba(107,114,128,0.16); color: #9ca3af; border: 1px solid rgba(107,114,128,0.22); }
+    .badge-canceling { background: rgba(245,158,11,0.1);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.22); }
 
     .license-meta {
-      margin-top: 8px;
-      font-size: 0.82rem;
-      color: #6b7280;
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #a1a1aa;
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 8px 16px;
     }
-    .license-meta span { display: flex; align-items: center; gap: 4px; }
+    .license-meta span { display: flex; align-items: center; gap: 6px; }
+    .license-meta em {
+      font-style: normal;
+      color: #71717a;
+      font-weight: 500;
+    }
 
     .license-actions {
       display: flex;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 16px;
       flex-wrap: wrap;
     }
     .license-actions .btn {
-      font-size: 0.82rem;
-      padding: 7px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 8px 14px;
+    }
+    .license-actions .reset-btn:hover:not(:disabled) {
+      border-color: rgba(239,68,68,0.4);
+      color: #f87171;
+      background: rgba(239,68,68,0.08);
+      box-shadow: none;
     }
     .btn-danger { border-color: #ef4444 !important; color: #ef4444 !important; }
 
@@ -429,7 +513,7 @@
     }
 
     .account-card {
-      animation: cardPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+      animation: fadeSlideIn 0.35s ease both;
     }
 
     /* View transitions */
@@ -447,34 +531,13 @@
       overflow: hidden;
     }
 
-    /* Avatar entrance */
-    .avatar-circle {
-      animation: avatarPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
-    }
-
-    /* Shimmer on license key */
-    .license-key-display {
-      background: linear-gradient(90deg, #a78bfa 0%, #e2e8f0 40%, #a78bfa 60%, #06b6d4 100%);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: shimmer 4s linear infinite;
-    }
-
-    /* License card entrance (staggered) */
     .license-card {
-      animation: fadeSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+      animation: fadeSlideIn 0.28s ease both;
     }
-    .license-card:nth-child(1) { animation-delay: 0.05s; }
-    .license-card:nth-child(2) { animation-delay: 0.12s; }
-    .license-card:nth-child(3) { animation-delay: 0.19s; }
-    .license-card:nth-child(4) { animation-delay: 0.26s; }
-
-    /* Active license subtle pulse */
-    .license-card.active-license {
-      animation: fadeSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both,
-                 licensePulse 3s ease-in-out 0.8s infinite;
-    }
+    .license-card:nth-child(1) { animation-delay: 0.04s; }
+    .license-card:nth-child(2) { animation-delay: 0.08s; }
+    .license-card:nth-child(3) { animation-delay: 0.12s; }
+    .license-card:nth-child(4) { animation-delay: 0.16s; }
 
     /* Button hover lift handled by global .btn rules above */
 
@@ -597,20 +660,11 @@
 
     /* ── Token Quota Card ────────────────────────────────── */
     .quota-section {
-      margin-top: 24px;
-    }
-    .quota-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin: 0 0 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-top: 28px;
     }
     .quota-card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(124,58,237,0.2);
+      border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 12px;
@@ -624,10 +678,10 @@
       gap: 8px;
     }
     .quota-license-key {
-      font-family: "Courier New", monospace;
-      font-size: 0.82rem;
-      color: #7c3aed;
-      letter-spacing: 1px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      color: #a78bfa;
+      letter-spacing: 0.03em;
     }
     .quota-tier-badge {
       font-size: 0.72rem;
@@ -695,9 +749,9 @@
     .account-tabs {
       display: flex;
       gap: 4px;
-      margin-bottom: 22px;
+      margin: 22px 0 24px;
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(124,58,237,0.18);
+      border: 1px solid rgba(255,255,255,0.06);
       border-radius: 10px;
       padding: 4px;
     }
@@ -708,41 +762,34 @@
       border-radius: 7px;
       padding: 8px 12px;
       font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       font-weight: 600;
-      color: #6b7280;
+      color: #71717a;
       cursor: pointer;
-      transition: background 0.18s, color 0.18s;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 7px;
     }
-    .tab-btn:hover { color: #a78bfa; background: rgba(124,58,237,0.08); }
+    .tab-btn svg { width: 15px; height: 15px; opacity: 0.7; }
+    .tab-btn:hover { color: #e4e4e7; background: rgba(255,255,255,0.04); }
     .tab-btn.active {
-      background: rgba(124,58,237,0.18);
-      color: #a78bfa;
-      box-shadow: inset 0 0 0 1px rgba(124,58,237,0.3);
+      background: #7c3aed;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(124,58,237,0.32);
     }
+    .tab-btn.active svg { opacity: 1; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; animation: fadeSlideIn 0.25s cubic-bezier(0.22,1,0.36,1) both; }
 
     /* ── Newsletter Section ──────────────────────────────── */
     .newsletter-section {
-      margin-top: 24px;
-    }
-    .newsletter-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin: 0 0 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-top: 8px;
     }
     .newsletter-card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(124,58,237,0.2);
+      border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px;
       padding: 18px 20px;
       display: flex;
@@ -799,20 +846,11 @@
 
     /* ── Billing Section ─────────────────────────────────── */
     .billing-section {
-      margin-top: 24px;
-    }
-    .billing-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin: 0 0 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-top: 8px;
     }
     .billing-card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(124,58,237,0.2);
+      border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px;
       padding: 18px 20px;
       display: flex;
@@ -924,6 +962,34 @@
       margin-top: 10px;
       line-height: 1.5;
     }
+    .info-block {
+      background: rgba(124,58,237,0.06);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+    .info-block p:first-child {
+      margin: 0 0 6px;
+      font-size: 0.9rem;
+      font-weight: 650;
+      color: #f4f4f5;
+    }
+    .info-block p:last-child {
+      margin: 0;
+      font-size: 0.84rem;
+      color: #a1a1aa;
+      line-height: 1.6;
+    }
+    .quota-section h3,
+    .billing-section h3,
+    .newsletter-section h3 { margin-bottom: 12px; }
+    @media (max-width: 640px) {
+      .account-wrap.is-dashboard { max-width: 100%; }
+      .signed-in-header { flex-wrap: wrap; }
+      .signed-in-header .email-label { max-width: 180px; }
+      .license-actions .btn { flex: 1; min-width: 110px; }
+    }
   </style>
 </head>
 <body class="has-beta-ribbon">
@@ -978,7 +1044,7 @@
               <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
             </div>
 
-            <button id="sign-in" class="btn" style="width:100%;margin-top:4px;">Sign In</button>
+            <button id="sign-in" class="btn btn-primary" style="width:100%;margin-top:4px;">Sign In</button>
 
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:0.85rem;">
               <button class="text-link" id="reset-password">Forgot password?</button>
@@ -1029,7 +1095,7 @@
               <a href="privacy.html" target="_blank" rel="noopener" style="color:var(--cyan);">Privacy Notice</a>
             </div>
 
-            <button id="sign-up" class="btn" style="width:100%;margin-top:8px;" disabled>Create Account</button>
+            <button id="sign-up" class="btn btn-primary" style="width:100%;margin-top:8px;" disabled>Create Account</button>
 
             <div style="text-align:center;margin-top:14px;">
               <button class="text-link" id="goto-signin">← Back to Sign In</button>
@@ -1062,22 +1128,29 @@
               <div class="avatar-circle" id="avatar-initials">?</div>
               <div>
                 <div class="email-label" id="signed-in-email">—</div>
-                <div style="font-size:0.78rem;color:#6b7280;margin-top:1px;" id="signed-in-sub">AiRi Beta</div>
+                <div style="font-size:0.78rem;color:#71717a;margin-top:2px;" id="signed-in-sub">AiRi Beta</div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <a id="admin-link" href="admin.html" class="btn btn-outline hidden" style="border-color:#06b6d4;color:#06b6d4;font-size:0.82rem;padding:7px 14px;">⚙️ Admin</a>
-              <button id="sign-out" class="btn btn-outline" style="font-size:0.82rem;padding:7px 14px;">Sign Out</button>
+            <div class="header-actions">
+              <a id="admin-link" href="admin.html" class="btn btn-ghost btn-admin hidden" style="font-size:0.8rem;padding:7px 13px;">Admin</a>
+              <button id="sign-out" class="btn btn-ghost" style="font-size:0.8rem;padding:7px 13px;">Sign out</button>
             </div>
           </div>
 
-          <hr class="divider">
-
           <!-- ── Tab navigation ── -->
           <div class="account-tabs">
-            <button class="tab-btn active" data-tab="software">💻 Software</button>
-            <button class="tab-btn" data-tab="billing">💳 Billing</button>
-            <button class="tab-btn" data-tab="newsletter">📧 Newsletter</button>
+            <button class="tab-btn active" data-tab="software">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 20h8M12 17v3"/></svg>
+              Software
+            </button>
+            <button class="tab-btn" data-tab="billing">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Billing
+            </button>
+            <button class="tab-btn" data-tab="newsletter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              Newsletter
+            </button>
           </div>
 
           <!-- ── Software tab ── -->
@@ -1085,17 +1158,20 @@
 
             <!-- License keys section -->
             <div class="license-section">
-              <h3>🔑 Your Licenses <button id="load-keys" class="btn btn-outline" style="font-size:0.78rem;padding:5px 12px;margin-left:auto;">Refresh</button></h3>
+              <div class="section-head">
+                <h3>Licenses</h3>
+                <button id="load-keys" class="btn btn-ghost">Refresh</button>
+              </div>
               <div id="keys-list">
-                <div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>
+                <div class="empty-state">Loading your licenses…</div>
               </div>
             </div>
 
             <!-- Token Quota section -->
             <div class="quota-section" id="quota-section">
-              <h3>⚡ Token Usage</h3>
+              <h3>Token usage</h3>
               <div id="quota-list">
-                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage...</div>
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading usage…</div>
               </div>
             </div>
 
@@ -1104,20 +1180,18 @@
           <!-- ── Billing tab ── -->
           <div class="tab-panel" id="tab-billing">
 
-            <!-- Info block -->
-            <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
-              <p style="margin:0 0 6px;font-size:0.92rem;font-weight:700;color:#e2e8f0;">Manage Your Paid Subscription</p>
-              <p style="margin:0;font-size:0.85rem;color:#9ca3af;line-height:1.6;">
-                View your plan and manage billing in Stripe's portal: update payment methods,
-                download invoices, or cancel. Cancellations take effect at the end of your billing period (no refunds).
+            <div class="info-block">
+              <p>Manage your subscription</p>
+              <p>
+                Update payment methods, download invoices, or cancel in Stripe.
+                Cancellations take effect at the end of your billing period.
               </p>
             </div>
 
-            <!-- Billing status card -->
             <div class="billing-section" id="billing-section">
-              <h3>💳 Subscription</h3>
+              <h3>Subscription</h3>
               <div id="billing-card-wrap">
-                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading…</div>
               </div>
               <p class="billing-footnote">
                 You'll be redirected to Stripe to manage your subscription.
@@ -1130,20 +1204,18 @@
           <!-- ── Newsletter tab ── -->
           <div class="tab-panel" id="tab-newsletter">
 
-            <!-- Info block -->
-            <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.18);border-radius:12px;padding:18px 20px;margin-bottom:18px;">
-              <p style="margin:0 0 6px;font-size:0.92rem;font-weight:700;color:#e2e8f0;">AiRi Newsletter</p>
-              <p style="margin:0;font-size:0.85rem;color:#9ca3af;line-height:1.6;">
-                Get updates on new features, release notes, and AiRi news delivered to your inbox.
-                You can unsubscribe or re-subscribe at any time below.
+            <div class="info-block">
+              <p>AiRi newsletter</p>
+              <p>
+                Feature updates, release notes, and product news.
+                You can unsubscribe or re-subscribe at any time.
               </p>
             </div>
 
-            <!-- Newsletter status card -->
             <div class="newsletter-section" id="newsletter-section">
-              <h3>📧 Email Subscription</h3>
+              <h3>Email subscription</h3>
               <div id="newsletter-card-wrap">
-                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>
+                <div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading…</div>
               </div>
             </div>
 
@@ -1488,6 +1560,8 @@
       ["view-signed-out", "view-signed-in", "view-password-setup"].forEach(v => {
         $(v).classList.toggle("hidden", v !== name);
       });
+      const wrap = document.querySelector(".account-wrap");
+      if (wrap) wrap.classList.toggle("is-dashboard", name === "view-signed-in");
       const el = $(name);
       el.classList.remove("view-enter");
       void el.offsetWidth; // force reflow
@@ -1647,7 +1721,7 @@
         // Reset UI to clean state before populating
         $("admin-link").classList.add("hidden");
         $("signed-in-sub").textContent = "AiRi Beta";
-        $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
+        $("keys-list").innerHTML = `<div class="empty-state">Loading your licenses…</div>`;
 
         showView("view-signed-in");
         $("signed-in-email").textContent = user.email ?? "Unknown";
@@ -1683,7 +1757,7 @@
           $("signed-in-sub").textContent = "Admin · AiRi Beta";
         }
         if (profile?.twitch_username) {
-          $("signed-in-sub").textContent = `🎮 ${profile.twitch_username}`;
+          $("signed-in-sub").textContent = profile.twitch_username;
         }
 
         // Ensure we know what the *current* ToS version is before any
@@ -1728,7 +1802,7 @@
     // ── Load license keys ─────────────────────────────────────────
     async function loadKeys(user) {
       const keysList = $("keys-list");
-      keysList.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div>Loading licenses...</div>`;
+      keysList.innerHTML = `<div class="empty-state">Loading licenses…</div>`;
 
       try {
         // If no user passed in, restore from session
@@ -1873,10 +1947,10 @@
               ? "badge-active"
               : "badge-inactive";
         const badgeLabel = isExpired
-          ? "EXPIRED"
+          ? "Expired"
           : isCanceling
-            ? "CANCELING"
-            : row.status.toUpperCase();
+            ? "Canceling"
+            : (row.status || "inactive").replace(/^\w/, (c) => c.toUpperCase());
 
         // Build the date line. Priority:
         //   1. Legacy hard-expiry (admin keys, lifetime-with-expiry): "Expires DATE"
@@ -1896,17 +1970,17 @@
         );
         let dateLine;
         if (row.expires_at) {
-          dateLine = `📅 Expires ${fmtDate(row.expires_at)}`;
+          dateLine = `<em>Expires</em> ${fmtDate(row.expires_at)}`;
         } else if (isCanceling && row.current_period_end) {
-          dateLine = `📅 Ends ${fmtDate(row.current_period_end)}`;
+          dateLine = `<em>Ends</em> ${fmtDate(row.current_period_end)}`;
         } else if (isActive && row.current_period_end) {
-          dateLine = `🔄 Renews ${fmtDate(row.current_period_end)}`;
+          dateLine = `<em>Renews</em> ${fmtDate(row.current_period_end)}`;
         } else if (row.canceled_at) {
-          dateLine = `🛑 Ended ${fmtDate(row.canceled_at)}`;
+          dateLine = `<em>Ended</em> ${fmtDate(row.canceled_at)}`;
         } else if (!isActive && row.current_period_end) {
-          dateLine = `🛑 Ended ${fmtDate(row.current_period_end)}`;
+          dateLine = `<em>Ended</em> ${fmtDate(row.current_period_end)}`;
         } else {
-          dateLine = `♾️ Lifetime license`;
+          dateLine = `Lifetime`;
         }
 
         const created = row.created_at
@@ -1916,24 +1990,24 @@
         const rowDownloadUrl = downloadUrlForTier(row.tier);
         const dlChannel = String(row.tier || "").toLowerCase() === "beta" ? "beta" : "stable";
         const downloadBtn = isActive && rowDownloadUrl
-          ? `<a href="get-airi.html?channel=${dlChannel}" class="btn" style="background:linear-gradient(135deg,#d946ef,#06b6d4);color:#fff;text-decoration:none;font-size:0.82rem;padding:7px 14px;">⬇️ Download</a>`
+          ? `<a href="get-airi.html?channel=${dlChannel}" class="btn btn-primary">Download</a>`
           : "";
 
         return `
           <div class="license-card${isActive && !isExpired ? " active-license" : ""}">
             <div class="lc-top">
-              <div class="license-key-display">${row.license_key}</div>
+              <div class="license-key-well"><div class="license-key-display">${row.license_key}</div></div>
               <span class="license-status-badge ${badgeClass}">${badgeLabel}</span>
             </div>
             <div class="license-meta">
               <span>${dateLine}</span>
-              ${created ? `<span>🗓 Issued ${created}</span>` : ""}
-              <span>💻 1-PC License</span>
+              ${created ? `<span><em>Issued</em> ${created}</span>` : ""}
+              <span>1 PC</span>
             </div>
             <div class="license-actions">
               ${downloadBtn}
-              <button class="btn btn-outline copy-btn" data-key="${row.license_key}">📋 Copy Key</button>
-              <button class="btn btn-outline reset-btn btn-danger" data-key="${row.license_key}">🔄 Reset PC</button>
+              <button class="btn btn-ghost copy-btn" data-key="${row.license_key}">Copy key</button>
+              <button class="btn btn-ghost reset-btn" data-key="${row.license_key}">Reset PC</button>
             </div>
           </div>`;
       }).join("");
@@ -1941,8 +2015,8 @@
       document.querySelectorAll(".copy-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           navigator.clipboard.writeText(btn.getAttribute("data-key") || "");
-          btn.textContent = "✅ Copied!";
-          setTimeout(() => (btn.textContent = "📋 Copy Key"), 1500);
+          btn.textContent = "Copied";
+          setTimeout(() => (btn.textContent = "Copy key"), 1500);
         });
       });
 
@@ -1974,7 +2048,7 @@
             const data = await res.json().catch(() => ({}));
 
             if (res.ok && data.success) {
-              setStatus("✅ License reset — you can now activate on a new PC.", "success");
+              setStatus("License reset — you can now activate on a new PC.", "success");
               loadKeys();
             } else {
               setStatus(data.message || `Reset failed (${res.status}). Try again.`, "error");
@@ -1984,7 +2058,7 @@
             setStatus("Network error during reset. Please try again.", "error");
           } finally {
             btn.disabled = false;
-            btn.textContent = "🔄 Reset PC";
+            btn.textContent = "Reset PC";
           }
         });
       });
@@ -2032,7 +2106,7 @@
         // Reset signed-in view to clean state for next login
         $("admin-link").classList.add("hidden");
         $("signed-in-sub").textContent = "AiRi Beta";
-        $("keys-list").innerHTML = `<div class="empty-state"><div class="empty-icon">🔑</div>Loading your licenses...</div>`;
+        $("keys-list").innerHTML = `<div class="empty-state">Loading your licenses…</div>`;
         $("newsletter-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
         if ($("billing-card-wrap")) $("billing-card-wrap").innerHTML = `<div class="empty-state" style="padding:16px 0;font-size:0.85rem;">Loading...</div>`;
         // Reset tabs to Software on sign-out
@@ -2298,7 +2372,7 @@
       const fillClass = pct >= 100 ? "exhausted" : pct >= 80 ? "near-limit" : "";
 
       const boostRow = boost > 0
-        ? `<div class="quota-boost-row">⚡ Boost pool: <span class="boost-val">${fmtTokens(boost)}</span> remaining</div>`
+        ? `<div class="quota-boost-row">Boost pool: <span class="boost-val">${fmtTokens(boost)}</span> remaining</div>`
         : "";
 
       const boostPanel = _boostPaymentsEnabled ? `
