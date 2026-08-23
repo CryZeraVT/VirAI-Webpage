@@ -11,7 +11,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 16px; }
     :root {
-      --bg: #08060f; --primary: #7c3aed; --cyan: #06b6d4;
+      --bg: #08060f; --primary: #7c3aed;
       --text: #f4f4f5; --text-muted: #71717a;
       --border: rgba(255,255,255,0.07); --border-p: rgba(124,58,237,0.25);
     }
@@ -41,7 +41,7 @@
       background: rgba(15,5,30,0.85);
       border: 1px solid var(--border-p);
       border-radius: 20px; padding: 48px 40px;
-      max-width: 480px; width: 100%; text-align: center;
+      max-width: 440px; width: 100%; text-align: center;
     }
     .state { display: none; }
     .state.active { display: block; }
@@ -53,28 +53,24 @@
       margin: 0 auto 20px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .state-title { font-size: 1.45rem; font-weight: 800; margin-bottom: 8px; }
-    .state-sub { font-size: 0.9rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 20px; }
+    .dl-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(124,58,237,0.16);
+      border: 2px solid rgba(124,58,237,0.35);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; font-size: 1.8rem;
+    }
+    .state-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    .state-sub { font-size: 0.9rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 24px; }
     .btn-dl {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       width: 100%; padding: 14px 24px; border-radius: 12px;
       font-size: 0.95rem; font-weight: 700; font-family: inherit;
       text-decoration: none; color: #fff; border: none; cursor: pointer;
-      background: #7c3aed; margin-bottom: 10px;
+      background: #7c3aed;
     }
-    .btn-ghost {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 100%; padding: 10px 16px; border-radius: 10px;
-      font-size: 0.82rem; font-weight: 600; font-family: inherit;
-      background: transparent; color: #a78bfa; border: 1px solid var(--border-p);
-      cursor: pointer;
-    }
-    .hint { margin-top: 16px; font-size: 0.78rem; color: var(--text-muted); text-align: left; }
-    .hint code {
-      display: block; margin-top: 8px; padding: 10px;
-      background: rgba(0,0,0,0.35); border-radius: 8px;
-      color: #e4e4e7; font-size: 0.72rem; word-break: break-all;
-    }
+    .hint { margin-top: 16px; font-size: 0.78rem; color: var(--text-muted); }
+    .hint a { color: #a78bfa; text-decoration: none; }
     .error-title { font-size: 1.3rem; font-weight: 800; color: #f87171; margin-bottom: 8px; }
     @media (max-width: 480px) {
       .dl-card { padding: 32px 20px; }
@@ -99,23 +95,19 @@
     <div class="dl-card">
       <div id="state-loading" class="state active">
         <div class="spinner"></div>
-        <div class="state-title">Finding the installer</div>
-        <div class="state-sub">This stays on viritts.com. The file is about 1.6 GB.</div>
+        <div class="state-title">Preparing your download</div>
+        <div class="state-sub">This only takes a moment.</div>
       </div>
       <div id="state-ready" class="state">
+        <div class="dl-icon" aria-hidden="true">↓</div>
         <div class="state-title" id="ready-title">Download AiRi</div>
-        <div class="state-sub" id="ready-sub">If a new tab says the site cannot be reached, stay here and use the fallback below. That is a network path to the file host, not a missing installer.</div>
-        <a id="manual-dl-btn" class="btn-dl" href="#" target="_blank" rel="noopener">Download installer</a>
-        <button type="button" class="btn-ghost" id="copy-btn">Copy direct link</button>
-        <div class="hint" id="fallback" hidden>
-          If the new tab times out, your network is likely failing IPv6 to the file host.
-          Try another connection (phone hotspot), or run this in PowerShell:
-          <code id="curl-line"></code>
-        </div>
+        <div class="state-sub" id="ready-sub">The Windows installer is about 1.6 GB. Click below to start. If nothing happens, try again or switch networks.</div>
+        <button type="button" class="btn-dl" id="dl-btn">Download AiRi</button>
+        <div class="hint">Need your license key? It is in <a href="account.html">Your Licenses</a>.</div>
       </div>
       <div id="state-error" class="state">
-        <div class="error-title">Could not load the installer link</div>
-        <div class="state-sub">Go back to Your Licenses and try again, or contact support.</div>
+        <div class="error-title">Download unavailable</div>
+        <div class="state-sub">Please go back to Your Licenses and try again.</div>
         <a class="btn-dl" href="account.html">Back to account</a>
       </div>
     </div>
@@ -158,23 +150,15 @@
         if (!row) throw new Error("no active build");
 
         var url = row.download_url;
-        var name = row.file_name || "AiRi.msi";
-        document.getElementById("ready-title").textContent = "AiRi " + (row.version || "") + " (" + wanted + ")";
-        var btn = document.getElementById("manual-dl-btn");
-        btn.href = url;
-        btn.setAttribute("download", name);
-        document.getElementById("curl-line").textContent =
-          'curl.exe -4 -L --retry 3 -o "' + name + '" "' + url + '"';
-        document.getElementById("copy-btn").onclick = function () {
-          navigator.clipboard.writeText(url).then(function () {
-            document.getElementById("copy-btn").textContent = "Copied";
-          });
+        document.getElementById("ready-title").textContent = "AiRi " + (row.version || "");
+        document.getElementById("ready-sub").textContent = wanted === "beta"
+          ? "Beta installer for Windows. About 1.6 GB. Click below to start."
+          : "Windows installer. About 1.6 GB. Click below to start.";
+        document.getElementById("dl-btn").textContent = "Download AiRi";
+        document.getElementById("dl-btn").onclick = function () {
+          window.location.assign(url);
         };
         showState("state-ready");
-        window.open(url, "_blank", "noopener");
-        setTimeout(function () {
-          document.getElementById("fallback").hidden = false;
-        }, 4000);
       } catch (err) {
         showState("state-error");
       }
