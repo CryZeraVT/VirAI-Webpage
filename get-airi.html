@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download AiRi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="beta-ribbon.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    :root {
+      --bg: #08060f; --primary: #7c3aed; --cyan: #06b6d4;
+      --text: #f4f4f5; --text-muted: #71717a;
+      --border: rgba(255,255,255,0.07); --border-p: rgba(124,58,237,0.25);
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(8,6,15,0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { text-decoration: none; }
+    .nav-logo-text { height: 28px; }
+    .nav-links a {
+      color: #fff; text-decoration: none; font-size: 0.875rem; font-weight: 500;
+      padding: 7px 16px; border-radius: 8px; background: var(--primary);
+    }
+    .page-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 88px 24px 60px;
+    }
+    .dl-card {
+      background: rgba(15,5,30,0.85);
+      border: 1px solid var(--border-p);
+      border-radius: 20px; padding: 48px 40px;
+      max-width: 480px; width: 100%; text-align: center;
+    }
+    .state { display: none; }
+    .state.active { display: block; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(124,58,237,0.2);
+      border-top-color: #a78bfa; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state-title { font-size: 1.45rem; font-weight: 800; margin-bottom: 8px; }
+    .state-sub { font-size: 0.9rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 20px; }
+    .btn-dl {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 14px 24px; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 700; font-family: inherit;
+      text-decoration: none; color: #fff; border: none; cursor: pointer;
+      background: #7c3aed; margin-bottom: 10px;
+    }
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 100%; padding: 10px 16px; border-radius: 10px;
+      font-size: 0.82rem; font-weight: 600; font-family: inherit;
+      background: transparent; color: #a78bfa; border: 1px solid var(--border-p);
+      cursor: pointer;
+    }
+    .hint { margin-top: 16px; font-size: 0.78rem; color: var(--text-muted); text-align: left; }
+    .hint code {
+      display: block; margin-top: 8px; padding: 10px;
+      background: rgba(0,0,0,0.35); border-radius: 8px;
+      color: #e4e4e7; font-size: 0.72rem; word-break: break-all;
+    }
+    .error-title { font-size: 1.3rem; font-weight: 800; color: #f87171; margin-bottom: 8px; }
+    @media (max-width: 480px) {
+      .dl-card { padding: 32px 20px; }
+      .nav { padding: 0 20px; }
+    }
+  </style>
+</head>
+<body class="has-beta-ribbon">
+  <div class="beta-ribbon" role="status" aria-label="Closed beta notice">
+    <div class="beta-ribbon-inner">
+      <span class="beta-ribbon-pill">CLOSED BETA</span>
+      <span class="beta-ribbon-text">Expect bugs. Features will change. Feedback welcome.</span>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="index.html" class="nav-logo">
+      <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
+    </a>
+    <div class="nav-links"><a href="account.html">My Account</a></div>
+  </nav>
+  <div class="page-wrap">
+    <div class="dl-card">
+      <div id="state-loading" class="state active">
+        <div class="spinner"></div>
+        <div class="state-title">Finding the installer</div>
+        <div class="state-sub">This stays on viritts.com. The file is about 1.6 GB.</div>
+      </div>
+      <div id="state-ready" class="state">
+        <div class="state-title" id="ready-title">Download AiRi</div>
+        <div class="state-sub" id="ready-sub">If a new tab says the site cannot be reached, stay here and use the fallback below. That is a network path to the file host, not a missing installer.</div>
+        <a id="manual-dl-btn" class="btn-dl" href="#" target="_blank" rel="noopener">Download installer</a>
+        <button type="button" class="btn-ghost" id="copy-btn">Copy direct link</button>
+        <div class="hint" id="fallback" hidden>
+          If the new tab times out, your network is likely failing IPv6 to the file host.
+          Try another connection (phone hotspot), or run this in PowerShell:
+          <code id="curl-line"></code>
+        </div>
+      </div>
+      <div id="state-error" class="state">
+        <div class="error-title">Could not load the installer link</div>
+        <div class="state-sub">Go back to Your Licenses and try again, or contact support.</div>
+        <a class="btn-dl" href="account.html">Back to account</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaWd0cXBlc2FidXlhdW1pYmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTA2OTcsImV4cCI6MjA4NDMyNjY5N30.MaMvKpVPqCQONsNaYifkSvVFmYbT5c4HYpi_qieN4H0";
+
+    function showState(id) {
+      ["state-loading", "state-ready", "state-error"].forEach(function (s) {
+        document.getElementById(s).classList.toggle("active", s === id);
+      });
+    }
+
+    function pickUrl(rows, wanted) {
+      var match = null;
+      var fallback = null;
+      (rows || []).forEach(function (row) {
+        if (!row || !row.download_url) return;
+        var ch = row.channel === "beta" ? "beta" : "stable";
+        if (ch === wanted && !match) match = row;
+        if (!fallback) fallback = row;
+      });
+      return match || fallback;
+    }
+
+    async function init() {
+      var wanted = new URLSearchParams(location.search).get("channel") === "beta" ? "beta" : "stable";
+      try {
+        var params = new URLSearchParams({
+          select: "download_url,version,channel,file_name",
+          is_active: "eq.true",
+          order: "created_at.desc",
+        });
+        var res = await fetch(SUPABASE_URL + "/rest/v1/r2_versions?" + params.toString(), {
+          headers: { apikey: SUPABASE_ANON_KEY },
+        });
+        if (!res.ok) throw new Error("version lookup failed");
+        var row = pickUrl(await res.json(), wanted);
+        if (!row) throw new Error("no active build");
+
+        var url = row.download_url;
+        var name = row.file_name || "AiRi.msi";
+        document.getElementById("ready-title").textContent = "AiRi " + (row.version || "") + " (" + wanted + ")";
+        var btn = document.getElementById("manual-dl-btn");
+        btn.href = url;
+        btn.setAttribute("download", name);
+        document.getElementById("curl-line").textContent =
+          'curl.exe -4 -L --retry 3 -o "' + name + '" "' + url + '"';
+        document.getElementById("copy-btn").onclick = function () {
+          navigator.clipboard.writeText(url).then(function () {
+            document.getElementById("copy-btn").textContent = "Copied";
+          });
+        };
+        showState("state-ready");
+        window.open(url, "_blank", "noopener");
+        setTimeout(function () {
+          document.getElementById("fallback").hidden = false;
+        }, 4000);
+      } catch (err) {
+        showState("state-error");
+      }
+    }
+    init();
+  </script>
+</body>
+</html>
