@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="images/logo.png"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Token Usage — AiRi by VirForge Software</title>
+  <title>Usage — AiRi Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3@3.454.0/dist-browser/index.js"></script>
@@ -286,12 +286,14 @@
       border-bottom: 1px solid rgba(124,58,237,0.15);
     }
     .tab-header h3 {
-      font-size: 1.25rem;
-      font-weight: 800;
+      font-size: 0.72rem;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #71717a;
       margin: 0 0 4px;
-      color: #e2e8f0;
     }
-    .tab-header p { font-size: 0.85rem; color: #6b7280; margin: 0; }
+    .tab-header p { font-size: 0.88rem; color: #a1a1aa; margin: 0; }
     .tab-header-row {
       display: flex;
       justify-content: space-between;
@@ -399,12 +401,75 @@
       margin-bottom: 18px;
     }
     .usage-section-title {
-      font-size: 0.77rem;
-      font-weight: 700;
-      color: #7c3aed;
+      font-size: 0.72rem;
+      font-weight: 650;
+      color: #71717a;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.08em;
       margin: 0 0 14px;
+    }
+
+    .kind-badge {
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      text-transform: capitalize;
+    }
+    .kind-paid   { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.22); }
+    .kind-beta   { background: rgba(167,139,250,0.12); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.22); }
+    .kind-test   { background: rgba(107,114,128,0.16); color: #9ca3af; border: 1px solid rgba(107,114,128,0.22); }
+    .kind-orphan { background: rgba(245,158,11,0.1);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.22); }
+    .recency-online { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.22); }
+    .recency-today  { background: rgba(6,182,212,0.12); color: #67e8f9; border: 1px solid rgba(6,182,212,0.22); }
+    .recency-week   { background: rgba(167,139,250,0.12); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.22); }
+    .recency-month  { background: rgba(107,114,128,0.16); color: #a1a1aa; border: 1px solid rgba(107,114,128,0.22); }
+    .recency-stale,
+    .recency-never  { background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+
+    .kind-filter {
+      display: flex;
+      gap: 4px;
+      margin: 0 0 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 4px;
+      width: fit-content;
+    }
+    .kind-filter button {
+      background: none;
+      border: none;
+      border-radius: 7px;
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #71717a;
+      cursor: pointer;
+    }
+    .kind-filter button:hover { color: #e4e4e7; background: rgba(255,255,255,0.04); }
+    .kind-filter button.active {
+      background: #7c3aed;
+      color: #fff;
+    }
+
+    .user-twitch {
+      color: #e4e4e7;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .user-twitch:hover { color: #a78bfa; }
+    .user-plain { color: #a1a1aa; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem; }
+    .channel-extra { margin-left: 6px; font-size: 0.72rem; color: #71717a; }
+
+    .money-note {
+      font-size: 0.8rem;
+      color: #71717a;
+      line-height: 1.5;
+      margin: 0 0 16px;
     }
 
     /* ── Charts ─────────────────────────────────────────────── */
@@ -578,24 +643,24 @@
       <!-- ── Sidebar ── -->
       <aside class="usage-sidebar">
         <div class="sidebar-brand">
-          <h2>Usage Dashboard</h2>
-          <p>AiRi Analytics</p>
+          <h2>Usage</h2>
+          <p>Tokens and money</p>
         </div>
 
         <span class="sidebar-section-label">Analytics</span>
-        <button class="nav-tab active" data-tab="overview">📊 Overview</button>
-        <button class="nav-tab" data-tab="revenue">💰 Revenue</button>
-        <button class="nav-tab" data-tab="users">👤 By User</button>
-        <button class="nav-tab" data-tab="daily">📅 Daily Breakdown</button>
-        <button class="nav-tab" data-tab="models">🤖 By Model</button>
+        <button class="nav-tab active" data-tab="overview">Overview</button>
+        <button class="nav-tab" data-tab="revenue">Money</button>
+        <button class="nav-tab" data-tab="users">By license</button>
+        <button class="nav-tab" data-tab="daily">Daily</button>
+        <button class="nav-tab" data-tab="models">Models</button>
         <button class="nav-tab" data-tab="live" id="live-nav-btn">
-          <span class="live-dot"></span> Live Now
+          <span class="live-dot"></span> Live
           <span class="live-count-badge" id="live-count-badge" style="display:none;"></span>
         </button>
 
         <span class="sidebar-section-label" style="margin-top: 10px;">Settings</span>
-        <button class="nav-tab" data-tab="costs">💵 API Costs</button>
-        <button class="nav-tab" data-tab="pricing">⚙️ Pricing Config</button>
+        <button class="nav-tab" data-tab="costs">API costs</button>
+        <button class="nav-tab" data-tab="pricing">Pricing</button>
 
         <div class="sidebar-footer">
           <a href="admin.html">← Admin Dashboard</a>
@@ -613,8 +678,8 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3>📊 Usage Overview</h3>
-                <p>Top-level metrics across all users and AI models.</p>
+                <h3>Overview</h3>
+                <p>One row per license. Paid keys are purchased; beta keys are testers.</p>
               </div>
               <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
             </div>
@@ -650,51 +715,79 @@
           <div class="stats-grid" id="stats-grid">
             <div class="stat-card">
               <p class="stat-value" id="total-requests">-</p>
-              <p class="stat-delta neutral" id="delta-requests"></p>
-              <p class="stat-label">Total Requests</p>
+              <p class="stat-label">Requests</p>
             </div>
             <div class="stat-card">
               <p class="stat-value" id="total-tokens">-</p>
-              <p class="stat-delta neutral" id="delta-tokens"></p>
-              <p class="stat-label">Total Tokens</p>
+              <p class="stat-label">Tokens</p>
             </div>
             <div class="stat-card">
-              <p class="stat-value cost" id="total-cost">-</p>
-              <p class="stat-delta neutral" id="delta-cost"></p>
-              <p class="stat-label">Total Cost (USD)</p>
+              <p class="stat-value cost" id="paid-cost">-</p>
+              <p class="stat-label">Paid API cost</p>
             </div>
             <div class="stat-card">
-              <p class="stat-value" id="active-users">-</p>
-              <p class="stat-delta neutral" id="delta-users"></p>
-              <p class="stat-label">Active Users</p>
+              <p class="stat-value" id="beta-cost" style="color:#c4b5fd;">-</p>
+              <p class="stat-label">Beta API cost</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-value" id="seen-24h">-</p>
+              <p class="stat-label">Apps seen 24h</p>
+            </div>
+            <div class="stat-card">
+              <p class="stat-value" id="seen-7d">-</p>
+              <p class="stat-label">Apps seen 7d</p>
             </div>
           </div>
 
           <!-- Mini charts row -->
           <div class="chart-grid">
             <div class="chart-box">
-              <h4>📈 Daily Requests</h4>
+              <h4>Daily requests</h4>
               <div class="chart-wrap"><canvas id="overviewDailyChart"></canvas></div>
             </div>
             <div class="chart-box">
-              <h4>🤖 Tokens by Model</h4>
+              <h4>Tokens by model</h4>
               <div class="chart-wrap"><canvas id="overviewModelChart"></canvas></div>
+            </div>
+          </div>
+
+          <div class="usage-section">
+            <p class="usage-section-title">Who is running AiRi</p>
+            <p class="money-note">From the app heartbeat (license check), so people on their own API keys still show up. Built-in AI is the table below.</p>
+            <div class="table-container" style="max-height: 280px;">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Name</th>
+                  <th>Kind</th>
+                  <th>Status</th>
+                  <th>Last seen</th>
+                </tr></thead>
+                <tbody id="activity-body">
+                  <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
           <!-- Top users quick view -->
           <div class="usage-section">
-            <p class="usage-section-title">All Users by Token Usage</p>
-            <div class="table-container" style="max-height: 260px;">
+            <p class="usage-section-title">Licenses</p>
+            <div class="kind-filter" id="overview-kind-filter">
+              <button type="button" class="active" data-kind="all">All</button>
+              <button type="button" data-kind="paid">Paid</button>
+              <button type="button" data-kind="beta">Beta</button>
+            </div>
+            <div class="table-container" style="max-height: 320px;">
               <table class="data-table">
                 <thead><tr>
-                  <th>Twitch Channel</th>
+                  <th>License</th>
+                  <th>Kind</th>
                   <th>Requests</th>
-                  <th>Total Tokens</th>
-                  <th>Cost (USD)</th>
+                  <th>Tokens</th>
+                  <th>Cost</th>
                 </tr></thead>
                 <tbody id="overview-top-users-body">
-                  <tr><td colspan="4" class="loading">Loading...</td></tr>
+                  <tr><td colspan="5" class="loading">Loading...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -708,8 +801,8 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3 style="background: linear-gradient(135deg,#22c55e,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">💰 Business Metrics</h3>
-                <p>Revenue, costs, and profitability breakdown.</p>
+                <h3>Money</h3>
+                <p>Purchased keys vs beta testers. Gross only counts paying licenses.</p>
               </div>
               <button class="refresh-btn" id="refresh-revenue" style="border-color:#22c55e; color:#22c55e;">↻ Refresh</button>
             </div>
@@ -723,59 +816,64 @@
             <span id="billing-period-text" style="color:#4b5563; font-size:0.8rem; margin-left:8px;"></span>
           </div>
 
+          <p class="money-note">
+            Gross = active <strong>standard / studio</strong> keys × plan price.
+            Beta keys are free and only show as API spend. Net is paid book only (gross − paid API − tax).
+          </p>
+
           <div class="stats-grid" id="revenue-stats">
-            <div class="stat-card" style="border-color:#22c55e;">
-              <p class="stat-value" id="active-subs" style="color:#22c55e;">-</p>
-              <p class="stat-label">Active Subscribers</p>
+            <div class="stat-card">
+              <p class="stat-value" id="active-subs" style="color:#4ade80;">-</p>
+              <p class="stat-label">Paying keys</p>
             </div>
-            <div class="stat-card" style="border-color:#22c55e;">
+            <div class="stat-card">
+              <p class="stat-value" id="beta-subs" style="color:#c4b5fd;">-</p>
+              <p class="stat-label">Beta keys</p>
+            </div>
+            <div class="stat-card">
               <p class="stat-value cost" id="gross-revenue">-</p>
-              <p class="stat-label">Gross Revenue</p>
+              <p class="stat-label">Gross (paid)</p>
             </div>
-            <div class="stat-card" style="border-color:#ef4444;">
+            <div class="stat-card">
               <p class="stat-value" id="api-costs" style="color:#ef4444;">-</p>
-              <p class="stat-label">API Costs</p>
+              <p class="stat-label">Paid API cost</p>
             </div>
-            <div class="stat-card" style="border-color:#f59e0b;">
-              <p class="stat-value" id="tax-reserve" style="color:#f59e0b;">-</p>
-              <p class="stat-label">Tax Reserve (30%)</p>
+            <div class="stat-card">
+              <p class="stat-value" id="beta-api-costs" style="color:#c4b5fd;">-</p>
+              <p class="stat-label">Beta API cost</p>
             </div>
-            <div class="stat-card" style="border-color:#22c55e; background: linear-gradient(135deg,rgba(34,197,94,0.07),transparent);">
+            <div class="stat-card">
+              <p class="stat-value" id="tax-reserve" style="color:#fbbf24;">-</p>
+              <p class="stat-label">Tax reserve (30%)</p>
+            </div>
+            <div class="stat-card">
               <p class="stat-value cost" id="net-profit" style="font-size:1.6rem;">-</p>
-              <p class="stat-label">Net Profit (After Tax)</p>
+              <p class="stat-label">Net on paid</p>
             </div>
-            <div class="stat-card" style="border-color:#8b5cf6;">
-              <p class="stat-value" id="profit-margin" style="color:#8b5cf6;">-</p>
-              <p class="stat-label">Profit Margin</p>
-            </div>
-            <div class="stat-card" style="border-color:#06b6d4;">
-              <p class="stat-value" id="cost-per-user" style="color:#06b6d4;">-</p>
-              <p class="stat-label">API Cost / User</p>
-            </div>
-            <div class="stat-card" style="border-color:#f59e0b;">
-              <p class="stat-value" id="price-per-sub" style="color:#f59e0b;">-</p>
-              <p class="stat-label">Price / Sub</p>
+            <div class="stat-card">
+              <p class="stat-value" id="price-per-sub" style="color:#a78bfa;">-</p>
+              <p class="stat-label">Price / paid key</p>
             </div>
           </div>
 
           <div class="chart-grid">
             <div class="chart-box">
-              <h4>💰 Revenue Breakdown</h4>
+              <h4>Paid book</h4>
               <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
             </div>
             <div class="chart-box">
-              <h4 style="color:#06b6d4;">📈 Daily API Costs</h4>
+              <h4>Daily API cost</h4>
               <div class="chart-wrap"><canvas id="dailyCostsChart"></canvas></div>
             </div>
           </div>
 
           <div class="chart-grid">
             <div class="chart-box">
-              <h4 style="color:#f59e0b;">🤖 Cost by Model</h4>
+              <h4>Cost by model</h4>
               <div class="chart-wrap"><canvas id="modelCostsChart"></canvas></div>
             </div>
             <div class="chart-box">
-              <h4 style="color:#22c55e;">📊 Monthly Projection</h4>
+              <h4>Paid projection</h4>
               <ul class="proj-list" id="projection-summary">
                 <li>Current Revenue <span class="proj-val" id="proj-revenue" style="color:#22c55e;">-</span></li>
                 <li>Projected API Costs <span class="proj-val" id="proj-costs" style="color:#ef4444;">-</span></li>
@@ -788,7 +886,7 @@
 
           <!-- Plan settings -->
           <div class="usage-section" style="border-color:rgba(34,197,94,0.25); background:rgba(34,197,94,0.04);">
-            <p class="usage-section-title" style="color:#22c55e;">💡 Subscription Plan Settings</p>
+            <p class="usage-section-title">Plan price</p>
             <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
               <div>
                 <label style="display:block; color:#6b7280; font-size:0.78rem; margin-bottom:5px;">Plan Name</label>
@@ -798,18 +896,18 @@
                 <label style="display:block; color:#6b7280; font-size:0.78rem; margin-bottom:5px;">Monthly Price ($)</label>
                 <input type="number" id="plan-price" placeholder="9.99" step="0.01" class="form-input-sm" style="width:110px;">
               </div>
-              <button class="refresh-btn btn" id="save-plan" style="border-color:#22c55e; color:#22c55e;">💾 Update Plan</button>
+              <button class="refresh-btn btn" id="save-plan" style="border-color:#22c55e; color:#22c55e;">Save plan</button>
             </div>
             <p id="plan-id" style="display:none;"></p>
           </div>
 
           <!-- Daily table -->
           <div class="usage-section">
-            <p class="usage-section-title">Daily API Costs This Month</p>
+            <p class="usage-section-title">Daily API costs this month</p>
             <div class="table-container" style="max-height: 240px;">
               <table class="data-table">
                 <thead><tr>
-                  <th>Date</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th>
+                  <th>Date</th><th>Requests</th><th>Paid cost</th><th>Beta cost</th><th>Total</th>
                 </tr></thead>
                 <tbody id="revenue-daily-body">
                   <tr><td colspan="5" class="loading">Loading...</td></tr>
@@ -824,20 +922,25 @@
         ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-users">
           <div class="tab-header">
-            <h3>👤 Usage by User</h3>
-            <p>Token consumption and cost per Twitch channel.</p>
+            <h3>By license</h3>
+            <p>Grouped by license key. Blank Twitch calls stay on the same row.</p>
           </div>
 
-          <!-- Reuse the main filter bar values (overview) -->
+          <div class="kind-filter" id="users-kind-filter">
+            <button type="button" class="active" data-kind="all">All</button>
+            <button type="button" data-kind="paid">Paid</button>
+            <button type="button" data-kind="beta">Beta</button>
+          </div>
+
           <div class="table-container">
             <table class="data-table" id="user-table">
               <thead><tr>
-                <th>Twitch Channel</th>
+                <th>License</th>
+                <th>Kind</th>
+                <th>Tier</th>
                 <th>Requests</th>
-                <th>Prompt Tokens</th>
-                <th>Completion Tokens</th>
-                <th>Total Tokens</th>
-                <th>Cost (USD)</th>
+                <th>Tokens</th>
+                <th>Cost</th>
               </tr></thead>
               <tbody id="user-table-body">
                 <tr><td colspan="6" class="loading">Loading...</td></tr>
@@ -853,8 +956,8 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3>📅 Daily Breakdown</h3>
-                <p>Day-by-day usage across all users.</p>
+                <h3>Daily</h3>
+                <p>Day-by-day usage across licenses.</p>
               </div>
             </div>
           </div>
@@ -893,16 +996,16 @@
         ══════════════════════════════════════════════════════ -->
         <div class="tab-content" id="tab-models">
           <div class="tab-header">
-            <h3>🤖 Usage by Model</h3>
-            <p>Token distribution and cost split across AI providers.</p>
+            <h3>Models</h3>
+            <p>Tokens and cost by provider. Paid vs beta cost when the model ran for each kind.</p>
           </div>
           <div class="table-container">
             <table class="data-table" id="model-table">
               <thead><tr>
-                <th>Model</th><th>Provider</th><th>Requests</th><th>Total Tokens</th><th>Cost (USD)</th>
+                  <th>Model</th><th>Provider</th><th>Requests</th><th>Tokens</th><th>Paid</th><th>Beta</th><th>Total</th>
               </tr></thead>
               <tbody id="model-table-body">
-                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                <tr><td colspan="7" class="loading">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -915,8 +1018,8 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3 style="display:flex;align-items:center;gap:8px;"><span class="live-dot live-dot-lg"></span> Live Now</h3>
-                <p>Users who have made a request in the last 10 minutes.</p>
+                <h3>Live</h3>
+                <p>Built-in AI only (proxy calls in the last 10 minutes). Own-key users show on Overview → Who is running AiRi.</p>
               </div>
               <div style="display:flex;align-items:center;gap:12px;">
                 <span id="live-last-updated" style="font-size:0.72rem;color:#4b5563;"></span>
@@ -926,8 +1029,7 @@
           </div>
 
           <div id="live-empty" style="display:none;text-align:center;padding:60px 20px;">
-            <div style="font-size:2.5rem;margin-bottom:12px;">😴</div>
-            <p style="color:#6b7280;font-size:0.95rem;">No active users in the last 10 minutes.</p>
+            <p style="color:#6b7280;font-size:0.95rem;">No built-in AI in the last 10 minutes. Check Overview for the app heartbeat.</p>
           </div>
 
           <div id="live-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:4px 0;"></div>
@@ -940,29 +1042,29 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3 style="color:#06b6d4;">💵 API Cost Breakdown</h3>
-                <p>Real-time cost tracking from your VirAI application usage.</p>
+                <h3>API costs</h3>
+                <p>From logged proxy usage, split paid vs beta. Not the OpenAI org invoice.</p>
               </div>
               <button class="refresh-btn btn" id="refresh-costs" style="border-color:#06b6d4; color:#06b6d4;">↻ Refresh Costs</button>
             </div>
           </div>
 
           <div class="stats-grid" id="costs-stats">
-            <div class="stat-card" style="border-color:#06b6d4;">
+            <div class="stat-card">
               <p class="stat-value" id="costs-total-tokens" style="color:#06b6d4;">-</p>
-              <p class="stat-label">Total Tokens</p>
+              <p class="stat-label">Tokens</p>
             </div>
-            <div class="stat-card" style="border-color:#06b6d4;">
-              <p class="stat-value" id="costs-input-tokens" style="color:#06b6d4;">-</p>
-              <p class="stat-label">Input Tokens</p>
+            <div class="stat-card">
+              <p class="stat-value" id="costs-paid" style="color:#4ade80;">-</p>
+              <p class="stat-label">Paid API</p>
             </div>
-            <div class="stat-card" style="border-color:#06b6d4;">
-              <p class="stat-value" id="costs-output-tokens" style="color:#06b6d4;">-</p>
-              <p class="stat-label">Output Tokens</p>
+            <div class="stat-card">
+              <p class="stat-value" id="costs-beta" style="color:#c4b5fd;">-</p>
+              <p class="stat-label">Beta API</p>
             </div>
-            <div class="stat-card" style="border-color:#ef4444;">
+            <div class="stat-card">
               <p class="stat-value" id="costs-total-cost" style="color:#ef4444;">-</p>
-              <p class="stat-label">Total Cost (MTD)</p>
+              <p class="stat-label">Total API</p>
             </div>
           </div>
 
@@ -973,7 +1075,7 @@
             <div class="table-container">
               <table class="data-table" id="costs-table">
                 <thead><tr>
-                  <th>Model</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th>
+                  <th>Model</th><th>Requests</th><th>Paid</th><th>Beta</th><th>Total</th>
                 </tr></thead>
                 <tbody id="costs-table-body">
                   <tr><td colspan="5" class="loading">Loading...</td></tr>
@@ -992,12 +1094,12 @@
           <div class="tab-header">
             <div class="tab-header-row">
               <div>
-                <h3 style="color:#f59e0b;">⚙️ Pricing Configuration</h3>
-                <p>Update costs per 1M tokens. Changes affect cost calculations globally.</p>
+                <h3>Pricing</h3>
+                <p>Cost per 1M tokens. Used for the money and cost tables.</p>
               </div>
               <div style="display:flex; gap:8px;">
                 <button class="refresh-btn btn" id="refresh-pricing" style="border-color:#f59e0b; color:#f59e0b;">↻ Refresh</button>
-                <button class="refresh-btn btn" id="save-pricing" style="border-color:#22c55e; color:#22c55e;">💾 Save All</button>
+                <button class="refresh-btn btn" id="save-pricing" style="border-color:#22c55e; color:#22c55e;">Save all</button>
               </div>
             </div>
           </div>
@@ -1247,14 +1349,50 @@
       return inputCost + outputCost;
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function kindBadge(kind) {
+      const k = String(kind || "beta");
+      const label = k === "paid" ? "Paid" : k === "test" ? "Test" : k === "orphan" ? "Orphan" : "Beta";
+      return `<span class="kind-badge kind-${escapeHtml(k)}">${label}</span>`;
+    }
+
+    function kindCost(summary, kind) {
+      const row = (summary.by_kind || []).find((k) => k.kind === kind);
+      return asNumber(row?.cost);
+    }
+
     function renderUserName(u) {
-      const keyBadge = asNumber(u.license_count) > 1
-        ? `<span class="key-badge" title="${u.license_count} license keys">🔑 ×${u.license_count}</span>`
+      const name = u.display_name || u.twitch_channel || `${String(u.license_key || "").substring(0, 12)}…`;
+      const extra = asNumber(u.channel_count) > 1
+        ? `<span class="channel-extra">+${asNumber(u.channel_count) - 1}</span>`
         : "";
       if (u.twitch_channel) {
-        return `<a href="https://twitch.tv/${u.twitch_channel}" target="_blank" style="color:#9146FF;text-decoration:none;font-weight:600;">📺 ${u.twitch_channel}</a>${keyBadge}`;
+        return `<a class="user-twitch" href="https://twitch.tv/${encodeURIComponent(u.twitch_channel)}" target="_blank" rel="noopener">${escapeHtml(name)}</a>${extra}`;
       }
-      return `<span class="license-key" title="${u.license_key}">${String(u.license_key||"").substring(0,15)}…</span>${keyBadge}`;
+      return `<span class="user-plain" title="${escapeHtml(u.license_key || "")}">${escapeHtml(name)}</span>${extra}`;
+    }
+
+    function renderLicenseRow(u, extraCells) {
+      return `<tr>
+        <td>${renderUserName(u)}</td>
+        <td>${kindBadge(u.kind)}</td>
+        ${extraCells}
+      </tr>`;
+    }
+
+    let userKindFilter = "all";
+    let overviewKindFilter = "all";
+
+    function filterByKind(rows, kind) {
+      if (kind === "all") return rows;
+      return rows.filter((u) => u.kind === kind);
     }
 
     // ─── Aggregated summary fetch (bypasses all row caps) ────────────────────
@@ -1295,30 +1433,27 @@
       const byUser  = summary.by_user  || [];
       const byDay   = summary.by_day   || [];
       const byModel = summary.by_model || [];
+      const paidApi = kindCost(summary, "paid");
+      const betaApi = kindCost(summary, "beta");
 
       const totalRequests = byUser.reduce((s, u) => s + asNumber(u.requests), 0);
       const totalTokens   = byUser.reduce((s, u) => s + asNumber(u.tokens),   0);
-      const totalCost     = byModel.reduce((s, m) =>
-        s + computeCostFromPricing(m.provider, m.model, m.prompt_tokens, m.completion_tokens, m.cost), 0);
-      const uniqueUsers   = byUser.length;
 
       document.getElementById("total-requests").textContent = totalRequests.toLocaleString();
       document.getElementById("total-tokens").textContent   = totalTokens.toLocaleString();
-      document.getElementById("total-cost").textContent     = "$" + totalCost.toFixed(4);
-      document.getElementById("active-users").textContent   = uniqueUsers;
+      document.getElementById("paid-cost").textContent      = "$" + paidApi.toFixed(4);
+      document.getElementById("beta-cost").textContent      = "$" + betaApi.toFixed(4);
 
-      // Overview all-users table
       const topBody = document.getElementById("overview-top-users-body");
-      if (!byUser.length) {
-        topBody.innerHTML = `<tr><td colspan="4" class="loading">No data for selected range.</td></tr>`;
+      const shown = filterByKind(byUser, overviewKindFilter);
+      if (!shown.length) {
+        topBody.innerHTML = `<tr><td colspan="5" class="loading">No data for selected range.</td></tr>`;
       } else {
-        topBody.innerHTML = byUser.map(u => `
-          <tr>
-            <td>${renderUserName(u)}</td>
-            <td>${asNumber(u.requests).toLocaleString()}</td>
-            <td>${asNumber(u.tokens).toLocaleString()}</td>
-            <td>$${asNumber(u.cost).toFixed(4)}</td>
-          </tr>`).join("");
+        topBody.innerHTML = shown.map(u => renderLicenseRow(u, `
+          <td>${asNumber(u.requests).toLocaleString()}</td>
+          <td>${asNumber(u.tokens).toLocaleString()}</td>
+          <td>$${asNumber(u.cost).toFixed(4)}</td>
+        `)).join("");
       }
 
       buildOverviewDailyChart(byDay);
@@ -1334,19 +1469,16 @@
       catch (e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; return; }
       await loadPricingMap();
 
-      const byUser = summary.by_user || [];
+      const byUser = filterByKind(summary.by_user || [], userKindFilter);
       if (!byUser.length) { tbody.innerHTML = `<tr><td colspan="6">No usage data found.</td></tr>`; return; }
 
       const sorted = [...byUser].sort((a, b) => asNumber(b.cost) - asNumber(a.cost));
-      tbody.innerHTML = sorted.map(u => `
-        <tr>
-          <td>${renderUserName(u)}</td>
+      tbody.innerHTML = sorted.map(u => renderLicenseRow(u, `
+          <td>${escapeHtml(u.tier || "")}</td>
           <td>${asNumber(u.requests).toLocaleString()}</td>
-          <td>${asNumber(u.prompt_tokens).toLocaleString()}</td>
-          <td>${asNumber(u.completion_tokens).toLocaleString()}</td>
           <td>${asNumber(u.tokens).toLocaleString()}</td>
           <td>$${asNumber(u.cost).toFixed(4)}</td>
-        </tr>`).join("");
+        `)).join("");
     }
 
     // ─── Daily breakdown (independent filter) ────────────────────────────────
@@ -1376,19 +1508,21 @@
       const tbody = document.getElementById("model-table-body");
       let summary = { by_model: [] };
       try { summary = await fetchUsageSummary(startIso, endIso); }
-      catch (e) { tbody.innerHTML = `<tr><td colspan="5">Error: ${e.message}</td></tr>`; return; }
+      catch (e) { tbody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`; return; }
       await loadPricingMap();
 
       const byModel = summary.by_model || [];
-      if (!byModel.length) { tbody.innerHTML = `<tr><td colspan="5">No usage data found.</td></tr>`; return; }
+      if (!byModel.length) { tbody.innerHTML = `<tr><td colspan="7">No usage data found.</td></tr>`; return; }
 
       tbody.innerHTML = byModel.map(m => {
         const cost = computeCostFromPricing(m.provider, m.model, m.prompt_tokens, m.completion_tokens, m.cost);
         return `<tr>
-          <td><span class="model-badge">${m.model || "unknown"}</span></td>
-          <td>${m.provider || "unknown"}</td>
+          <td><span class="model-badge">${escapeHtml(m.model || "unknown")}</span></td>
+          <td>${escapeHtml(m.provider || "unknown")}</td>
           <td>${asNumber(m.requests).toLocaleString()}</td>
           <td>${asNumber(m.tokens).toLocaleString()}</td>
+          <td>$${asNumber(m.cost_paid).toFixed(4)}</td>
+          <td>$${asNumber(m.cost_beta).toFixed(4)}</td>
           <td>$${cost.toFixed(4)}</td>
         </tr>`;
       }).join("");
@@ -1399,6 +1533,7 @@
       clearSummaryCache();
       await Promise.all([
         loadStats(),
+        loadLicenseActivity(),
         loadUserUsage(),
         loadModelUsage(),
         loadRevenue()
@@ -1409,6 +1544,7 @@
       clearSummaryCache();
       await Promise.all([
         loadStats(),
+        loadLicenseActivity(),
         loadUserUsage(),
         loadDailyUsage(),
         loadModelUsage(),
@@ -1513,7 +1649,9 @@
           requests: asNumber(d.requests),
           input:    asNumber(d.prompt_tokens),
           output:   asNumber(d.completion_tokens),
-          cost:     asNumber(d.cost)
+          cost:     asNumber(d.cost),
+          cost_paid: asNumber(d.cost_paid),
+          cost_beta: asNumber(d.cost_beta)
         };
       });
 
@@ -1522,11 +1660,21 @@
         const outTok = asNumber(m.completion_tokens);
         const c = computeCostFromPricing(m.provider, m.model, inTok, outTok, m.cost);
         const modelKey = `${m.provider || "unknown"}/${m.model || "unknown"}`;
-        byModel[modelKey] = { requests: asNumber(m.requests), input: inTok, output: outTok, cost: c };
+        byModel[modelKey] = {
+          requests: asNumber(m.requests),
+          input: inTok,
+          output: outTok,
+          cost: c,
+          cost_paid: asNumber(m.cost_paid),
+          cost_beta: asNumber(m.cost_beta)
+        };
         inputTokens  += inTok;
         outputTokens += outTok;
         totalCost    += c;
       });
+
+      const paidApiCost = kindCost(summary, "paid");
+      const betaApiCost = kindCost(summary, "beta");
 
       const { data: plans } = await supabase
         .from("subscription_plans")
@@ -1541,31 +1689,36 @@
         document.getElementById("plan-id").textContent = activePlan.id || "";
       }
 
-      const { count: activeSubs } = await supabase
+      const { count: payingKeys } = await supabase
         .from("licenses")
         .select("id", { count: "exact", head: true })
-        .eq("status", "active");
+        .eq("status", "active")
+        .in("tier", ["standard", "studio"]);
 
-      const grossRevenue = asNumber(activeSubs) * planPrice;
-      const profitBeforeTax = grossRevenue - totalCost;
+      const { count: betaKeys } = await supabase
+        .from("licenses")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .eq("tier", "beta");
+
+      const grossRevenue = asNumber(payingKeys) * planPrice;
+      const profitBeforeTax = grossRevenue - paidApiCost;
       const taxReserve = Math.max(0, profitBeforeTax * 0.3);
       const netProfitAfterTax = profitBeforeTax - taxReserve;
-      const profitMargin = grossRevenue > 0 ? (netProfitAfterTax / grossRevenue) * 100 : 0;
-      const costPerUser = asNumber(activeSubs) > 0 ? totalCost / asNumber(activeSubs) : 0;
 
-      document.getElementById("active-subs").textContent = asNumber(activeSubs).toLocaleString();
+      document.getElementById("active-subs").textContent = asNumber(payingKeys).toLocaleString();
+      document.getElementById("beta-subs").textContent = asNumber(betaKeys).toLocaleString();
       document.getElementById("gross-revenue").textContent = "$" + grossRevenue.toFixed(2);
-      document.getElementById("api-costs").textContent = "-$" + totalCost.toFixed(4);
+      document.getElementById("api-costs").textContent = "-$" + paidApiCost.toFixed(4);
+      document.getElementById("beta-api-costs").textContent = "-$" + betaApiCost.toFixed(4);
       document.getElementById("tax-reserve").textContent = "-$" + taxReserve.toFixed(2);
       document.getElementById("net-profit").textContent = "$" + netProfitAfterTax.toFixed(2);
-      document.getElementById("profit-margin").textContent = profitMargin.toFixed(1) + "%";
-      document.getElementById("cost-per-user").textContent = "$" + costPerUser.toFixed(4);
       document.getElementById("price-per-sub").textContent = "$" + planPrice.toFixed(2);
       document.getElementById("billing-period-text").textContent =
-        `${monthStart.toLocaleString("en-US", { month: "long" })} • Fallback mode`;
+        monthStart.toLocaleString("en-US", { month: "long", year: "numeric" });
 
       document.getElementById("proj-revenue").textContent = "$" + grossRevenue.toFixed(2);
-      document.getElementById("proj-costs").textContent = "$" + totalCost.toFixed(4);
+      document.getElementById("proj-costs").textContent = "$" + paidApiCost.toFixed(4);
       document.getElementById("proj-tax").textContent = "$" + taxReserve.toFixed(2);
       document.getElementById("proj-takehome").textContent = "$" + netProfitAfterTax.toFixed(2);
 
@@ -1575,24 +1728,24 @@
       } else {
         tbody.innerHTML = daily.map(d => `
           <tr>
-            <td>${new Date(d.date).toLocaleDateString()}</td>
+            <td>${new Date(d.date + "T00:00:00").toLocaleDateString()}</td>
             <td>${d.requests.toLocaleString()}</td>
-            <td>${d.input.toLocaleString()}</td>
-            <td>${d.output.toLocaleString()}</td>
-            <td style="color: #ef4444;">$${d.cost.toFixed(4)}</td>
+            <td>$${d.cost_paid.toFixed(4)}</td>
+            <td>$${d.cost_beta.toFixed(4)}</td>
+            <td>$${d.cost.toFixed(4)}</td>
           </tr>
         `).join("");
       }
 
-      buildRevenueChart(grossRevenue, totalCost, taxReserve, netProfitAfterTax);
+      buildRevenueChart(grossRevenue, paidApiCost, taxReserve, netProfitAfterTax);
       buildDailyCostsChart(daily);
       buildModelCostsChart(byModel);
       updateCostsTab({
         totals: {
           total_tokens: inputTokens + outputTokens,
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-          cost_usd: totalCost
+          cost_usd: totalCost,
+          cost_paid: paidApiCost,
+          cost_beta: betaApiCost
         },
         by_model: byModel,
         billing_period: {
@@ -1603,132 +1756,10 @@
       });
     }
 
-    // Load Revenue & Business Metrics
     async function loadRevenue(monthsAgo = 0) {
       const tbody = document.getElementById("revenue-daily-body");
       tbody.innerHTML = `<tr><td colspan="5" class="loading">Loading...</td></tr>`;
-
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=usage&month=${monthsAgo}`, {
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || result.error) {
-          console.warn("Revenue edge-function failed, using fallback:", result?.error || response.statusText);
-          await loadRevenueFallback(monthsAgo);
-          return;
-        }
-        await loadPricingMap();
-
-        const rawByModel = result.by_model || {};
-        const adjustedByModel = {};
-        let adjustedApiCosts = 0;
-        let adjustedInputTokens = 0;
-        let adjustedOutputTokens = 0;
-        Object.entries(rawByModel).forEach(([modelKey, stats]) => {
-          const splitIdx = String(modelKey).indexOf("/");
-          const provider = splitIdx >= 0 ? modelKey.slice(0, splitIdx) : "";
-          const model = splitIdx >= 0 ? modelKey.slice(splitIdx + 1) : modelKey;
-          const input = asNumber(stats?.input);
-          const output = asNumber(stats?.output);
-          const cost = computeCostFromPricing(provider, model, input, output, stats?.cost);
-          adjustedByModel[modelKey] = { ...(stats || {}), input, output, cost };
-          adjustedInputTokens += input;
-          adjustedOutputTokens += output;
-          adjustedApiCosts += cost;
-        });
-
-        // Calculate with 30% tax
-        const TAX_RATE = 0.30;
-        const rev = result.revenue || {};
-        const grossRevenue = rev.gross_monthly || 0;
-        const apiCosts = adjustedApiCosts || rev.api_costs || 0;
-        const profitBeforeTax = grossRevenue - apiCosts;
-        const taxReserve = profitBeforeTax * TAX_RATE;
-        const netProfitAfterTax = profitBeforeTax - taxReserve;
-        const profitMargin = grossRevenue > 0 ? (netProfitAfterTax / grossRevenue) * 100 : 0;
-
-        // Update revenue stats
-        document.getElementById("active-subs").textContent = rev.active_subscribers || 0;
-        document.getElementById("gross-revenue").textContent = "$" + grossRevenue.toFixed(2);
-        document.getElementById("api-costs").textContent = "-$" + apiCosts.toFixed(4);
-        document.getElementById("tax-reserve").textContent = "-$" + taxReserve.toFixed(2);
-        document.getElementById("net-profit").textContent = "$" + netProfitAfterTax.toFixed(2);
-        document.getElementById("profit-margin").textContent = profitMargin.toFixed(1) + "%";
-        document.getElementById("cost-per-user").textContent = "$" + (rev.cost_per_user || 0).toFixed(4);
-        document.getElementById("price-per-sub").textContent = "$" + (rev.price_per_sub || 0).toFixed(2);
-        
-        // Update billing period
-        const period = result.billing_period;
-        document.getElementById("billing-period-text").textContent = 
-          `${period?.month_name || ""} • ${period?.days_elapsed || 0} of ${period?.days_total || 30} days`;
-        
-        // Update projection summary
-        document.getElementById("proj-revenue").textContent = "$" + grossRevenue.toFixed(2);
-        document.getElementById("proj-costs").textContent = "$" + apiCosts.toFixed(4);
-        document.getElementById("proj-tax").textContent = "$" + taxReserve.toFixed(2);
-        document.getElementById("proj-takehome").textContent = "$" + netProfitAfterTax.toFixed(2);
-        
-        // Load plan settings
-        const { data: plans } = await supabase
-          .from("subscription_plans")
-          .select("*")
-          .eq("is_active", true)
-          .limit(1);
-        
-        if (plans?.length) {
-          document.getElementById("plan-name").value = plans[0].name || "";
-          document.getElementById("plan-price").value = plans[0].price_monthly || "";
-          document.getElementById("plan-id").textContent = plans[0].id;
-        }
-
-        // Daily breakdown table
-        const daily = result.daily || [];
-        if (daily.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5">No usage data for this period.</td></tr>`;
-        } else {
-          tbody.innerHTML = daily.map(d => `
-            <tr>
-              <td>${new Date(d.date).toLocaleDateString()}</td>
-              <td>${d.requests.toLocaleString()}</td>
-              <td>${d.input.toLocaleString()}</td>
-              <td>${d.output.toLocaleString()}</td>
-              <td style="color: #ef4444;">$${d.cost.toFixed(4)}</td>
-            </tr>
-          `).join("");
-        }
-        
-        // Build charts
-        buildRevenueChart(grossRevenue, apiCosts, taxReserve, netProfitAfterTax);
-        buildDailyCostsChart(daily);
-        buildModelCostsChart(adjustedByModel);
-        
-        // Also update costs tab data
-        updateCostsTab({
-          ...result,
-          by_model: adjustedByModel,
-          totals: {
-            ...(result.totals || {}),
-            input_tokens: adjustedInputTokens || result?.totals?.input_tokens || 0,
-            output_tokens: adjustedOutputTokens || result?.totals?.output_tokens || 0,
-            total_tokens: (adjustedInputTokens + adjustedOutputTokens) || result?.totals?.total_tokens || 0,
-            cost_usd: apiCosts
-          }
-        });
-        
-      } catch (err) {
-        console.warn("Revenue request failed, using fallback:", err);
-        await loadRevenueFallback(monthsAgo);
-      }
+      await loadRevenueFallback(monthsAgo);
     }
     
     // Revenue Breakdown Bar Chart
@@ -1741,7 +1772,7 @@
       revenueChart = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['Gross Revenue', 'API Costs', 'Tax (30%)', 'Net Profit'],
+          labels: ['Gross (paid)', 'Paid API', 'Tax (30%)', 'Net on paid'],
           datasets: [{
             data: [gross, costs, tax, net],
             backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#10b981'],
@@ -1878,38 +1909,37 @@
     function updateCostsTab(result) {
       const totals = result.totals || {};
       const costsTbody = document.getElementById("costs-table-body");
-      
-      document.getElementById("costs-total-tokens").textContent = (totals.total_tokens || 0).toLocaleString();
-      document.getElementById("costs-input-tokens").textContent = (totals.input_tokens || 0).toLocaleString();
-      document.getElementById("costs-output-tokens").textContent = (totals.output_tokens || 0).toLocaleString();
-      document.getElementById("costs-total-cost").textContent = "$" + (totals.cost_usd || 0).toFixed(4);
-      
+
+      document.getElementById("costs-total-tokens").textContent = asNumber(totals.total_tokens).toLocaleString();
+      document.getElementById("costs-paid").textContent = "$" + asNumber(totals.cost_paid).toFixed(4);
+      document.getElementById("costs-beta").textContent = "$" + asNumber(totals.cost_beta).toFixed(4);
+      document.getElementById("costs-total-cost").textContent = "$" + asNumber(totals.cost_usd).toFixed(4);
+
       const period = result.billing_period;
-      document.getElementById("costs-period").textContent = 
+      document.getElementById("costs-period").textContent =
         `${period?.month_name || ""} (${period?.days_elapsed || 0} days)`;
-      
-      // Model breakdown
+
       const models = result.by_model || {};
       const rows = Object.entries(models)
-        .sort((a, b) => b[1].cost - a[1].cost)
+        .sort((a, b) => asNumber(b[1].cost) - asNumber(a[1].cost))
         .map(([model, stats]) => ({
           model,
-          requests: stats.requests,
-          input: stats.input,
-          output: stats.output,
-          cost: stats.cost
+          requests: asNumber(stats.requests),
+          cost_paid: asNumber(stats.cost_paid),
+          cost_beta: asNumber(stats.cost_beta),
+          cost: asNumber(stats.cost)
         }));
-      
+
       if (rows.length === 0) {
         costsTbody.innerHTML = `<tr><td colspan="5">No cost data yet.</td></tr>`;
       } else {
         costsTbody.innerHTML = rows.map(r => `
           <tr>
-            <td><span class="model-badge">${r.model}</span></td>
+            <td><span class="model-badge">${escapeHtml(r.model)}</span></td>
             <td>${r.requests.toLocaleString()}</td>
-            <td>${r.input.toLocaleString()}</td>
-            <td>${r.output.toLocaleString()}</td>
-            <td style="color: #ef4444;">$${r.cost.toFixed(4)}</td>
+            <td>$${r.cost_paid.toFixed(4)}</td>
+            <td>$${r.cost_beta.toFixed(4)}</td>
+            <td>$${r.cost.toFixed(4)}</td>
           </tr>
         `).join("");
       }
@@ -2049,10 +2079,53 @@
     let _liveInterval = null;
 
     function timeAgo(isoString) {
+      if (!isoString) return "Never";
       const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+      if (diff < 0) return "just now";
       if (diff < 60)  return `${diff}s ago`;
       if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-      return `${Math.floor(diff / 3600)}h ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+      return `${Math.floor(diff / 2592000)}mo ago`;
+    }
+
+    const RECENCY_LABEL = {
+      online: "Online",
+      today: "Today",
+      week: "This week",
+      month: "This month",
+      stale: "Stale",
+      never: "Never"
+    };
+
+    async function loadLicenseActivity() {
+      const tbody = document.getElementById("activity-body");
+      const seen24 = document.getElementById("seen-24h");
+      const seen7d = document.getElementById("seen-7d");
+      try {
+        const { data, error } = await supabase.rpc("get_license_activity");
+        if (error) throw error;
+        const payload = data && typeof data === "object" ? data : {};
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        if (seen24) seen24.textContent = asNumber(payload.seen_24h).toLocaleString();
+        if (seen7d) seen7d.textContent = asNumber(payload.seen_7d).toLocaleString();
+        if (!rows.length) {
+          tbody.innerHTML = `<tr><td colspan="4" class="loading">No active licenses.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = rows.map((r) => `
+          <tr>
+            <td>${escapeHtml(r.display_name || "Unknown")}</td>
+            <td>${kindBadge(r.kind)}</td>
+            <td><span class="kind-badge recency-${escapeHtml(r.recency || "never")}">${escapeHtml(RECENCY_LABEL[r.recency] || r.recency || "Never")}</span></td>
+            <td>${timeAgo(r.last_seen)}</td>
+          </tr>`).join("");
+      } catch (e) {
+        console.error("License activity error:", e);
+        if (seen24) seen24.textContent = "\u2014";
+        if (seen7d) seen7d.textContent = "\u2014";
+        tbody.innerHTML = `<tr><td colspan="4">Error: ${escapeHtml(e.message)}</td></tr>`;
+      }
     }
 
     async function loadLiveUsers() {
@@ -2092,7 +2165,8 @@
                 ${renderUserName(u)}
               </div>
               <div class="live-card-meta">
-                <span><strong>${asNumber(u.requests)}</strong>requests</span>
+                ${kindBadge(u.kind)}
+                <span><strong>${asNumber(u.requests)}</strong> requests</span>
               </div>
               <div class="live-card-lastseen">Last seen ${timeAgo(u.last_seen)}</div>
             </div>`).join("");
@@ -2154,25 +2228,23 @@
     document.getElementById("save-pricing").addEventListener("click", savePricing);
     document.getElementById("add-model").addEventListener("click", addModelPricing);
 
+    function bindKindFilter(id, onChange) {
+      const wrap = document.getElementById(id);
+      if (!wrap) return;
+      wrap.querySelectorAll("button[data-kind]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          wrap.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          onChange(btn.dataset.kind);
+        });
+      });
+    }
+    bindKindFilter("overview-kind-filter", (kind) => { overviewKindFilter = kind; loadStats(); });
+    bindKindFilter("users-kind-filter", (kind) => { userKindFilter = kind; loadUserUsage(); });
+
     // ─── Month selector ───────────────────────────────────────────────────────
     async function loadMonthSelector() {
       const select = document.getElementById("revenue-month");
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-usage?action=months`, {
-          headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${token}` }
-        });
-        const result = await response.json();
-        if (result.months?.length) {
-          select.innerHTML = result.months.map(m =>
-            `<option value="${m.value}">${m.label}${m.is_current ? " (Current)" : ""}</option>`
-          ).join("");
-          return;
-        }
-      } catch (_) { /* fall through */ }
-
-      // Local fallback
       const opts = [];
       for (let i = 0; i < 12; i++) {
         const d = new Date(); d.setMonth(d.getMonth() - i);
