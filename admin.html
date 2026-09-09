@@ -158,6 +158,7 @@
       border-radius: 0;
       position: relative;
     }
+    a.nav-tab { text-decoration: none; }
     .nav-tab .tab-icon { font-size: 1rem; flex-shrink: 0; }
     .nav-tab .tab-label { flex: 1; }
 
@@ -451,6 +452,7 @@
       <img src="images/airittstextonly.png" alt="AiRi" class="nav-logo-text">
     </a>
     <div class="nav-links">
+      <a href="admin-launcher.html" class="nav-green">Launcher</a>
       <a href="admin-usage.html" class="nav-green">Token Usage</a>
       <a href="account.html">Account</a>
       <a href="changelog.html">Changelog</a>
@@ -500,6 +502,11 @@
           <span class="tab-icon">☁️</span><span class="tab-label">Storage (R2)</span>
         </button>
 
+        <span class="sidebar-section-label">Distribution</span>
+        <a class="nav-tab" href="admin-launcher.html">
+          <span class="tab-icon">📦</span><span class="tab-label">Launcher / Stream</span>
+        </a>
+
         <span class="sidebar-section-label">Users</span>
         <button class="nav-tab" data-tab="licenses">
           <span class="tab-icon">🔑</span><span class="tab-label">Licenses</span>
@@ -522,6 +529,7 @@
         </button>
 
         <div class="sidebar-footer">
+          <a href="admin-launcher.html">Launcher catalog</a>
           <a href="admin-usage.html">📊 Token Usage Dashboard</a>
           <a href="account.html" style="color:#6b7280;">← Back to Account</a>
         </div>
@@ -1277,6 +1285,7 @@
                     <option value="app">In-App EULA (forces re-accept on next launch)</option>
                     <option value="web">Website ToS (forces re-accept at next sign-in)</option>
                     <option value="privacy">Privacy Notice (no acceptance; informational)</option>
+                    <option value="aup">Unlocked Terms (re-gates Unlocked only; Default still works)</option>
                   </select>
                   <p id="tos-publish-surface-hint" style="font-size:0.78rem;color:#6b7280;margin-top:4px;">
                     Publishes to <code>tos_versions</code> + flips <code>site_settings.app_tos_current_version</code>.
@@ -1719,6 +1728,7 @@
     //   app     → app_tos_current_version
     //   web     → web_current_version
     //   privacy → privacy_current_version
+    //   aup     → aup_current_version
     //
     // These values are loaded on every audit refresh so the UI never
     // drifts from truth (no more hardcoded WEB_TOS_CURRENT_VERSION).
@@ -1726,8 +1736,9 @@
       app:     "app_tos_current_version",
       web:     "web_current_version",
       privacy: "privacy_current_version",
+      aup:     "aup_current_version",
     };
-    const TOS_CURRENT_VERSIONS = { app: "", web: "", privacy: "" };
+    const TOS_CURRENT_VERSIONS = { app: "", web: "", privacy: "", aup: "" };
 
     function _tosEscape(s) {
       return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -1812,6 +1823,7 @@
         TOS_CURRENT_VERSIONS.app     = byKey[TOS_POINTER_KEYS.app]     || "";
         TOS_CURRENT_VERSIONS.web     = byKey[TOS_POINTER_KEYS.web]     || "";
         TOS_CURRENT_VERSIONS.privacy = byKey[TOS_POINTER_KEYS.privacy] || "";
+        TOS_CURRENT_VERSIONS.aup     = byKey[TOS_POINTER_KEYS.aup]     || "";
       } catch (e) {
         console.warn("Could not read ToS pointers:", e);
       }
@@ -2019,6 +2031,7 @@
           app:     "Every active license will be forced to re-accept on next app launch.",
           web:     "Every profile whose tos_version != new version will be gated on next sign-in.",
           privacy: "No acceptance is tracked — this just updates the published document.",
+          aup:     "Re-gates Unlocked only. Default AI still works. Users must accept the new Unlocked Terms + 18+ before Unlocked turns back on.",
         };
         hintEl.innerHTML =
           `Publishes to <code>tos_versions</code> + flips ` +
@@ -2095,11 +2108,13 @@
         app:     "In-App EULA",
         web:     "Website Terms of Service",
         privacy: "Privacy Notice",
+        aup:     "Unlocked Terms",
       }[surface] || surface.toUpperCase();
       const impactLine = {
         app:     "• Every active license will be blocked at next app launch until the user re-accepts.",
         web:     "• Every profile with tos_version != new version will be gated at next sign-in.",
         privacy: "• Informational update only — no re-acceptance is triggered.",
+        aup:     "• Unlocked re-gates on the next validate. Default AI is not blocked.",
       }[surface] || "";
       if (!window.confirm(
         `Publish new ${surfaceLabel} version ${version}?\n\n` +
@@ -3308,6 +3323,11 @@
             <button class="btn reactivate-license-btn"
               data-key="${lic.license_key}" data-email="${lic.email}" data-expires="${lic.expires_at || ""}" data-tier="${lic.tier || ""}"
               style="background:#22c55e;color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">🔄 Reactivate</button>
+            <button class="btn toggle-unlocked-btn"
+              data-key="${lic.license_key}" data-revoked="${lic.unlocked_revoked ? "1" : "0"}"
+              style="background:${lic.unlocked_revoked ? '#22c55e' : '#a855f7'};color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">
+              ${lic.unlocked_revoked ? "Restore Unlocked" : "Revoke Unlocked"}
+            </button>
             <button class="btn delete-license-btn" data-key="${lic.license_key}"
               style="background:#ef4444;color:#fff;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">Revoke</button>
           </div>
@@ -3321,6 +3341,25 @@
           const newStatus = btn.getAttribute("data-status") === "active" ? "inactive" : "active";
           const { error } = await supabase.from("licenses").update({ status: newStatus }).eq("license_key", key);
           if (error) alert("Error: " + error.message);
+          else loadAdminLicenses();
+        });
+      });
+
+      listEl.querySelectorAll(".toggle-unlocked-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-key");
+          const currentlyRevoked = btn.getAttribute("data-revoked") === "1";
+          const nextRevoked = !currentlyRevoked;
+          const label = nextRevoked
+            ? `Turn Unlocked off for ${key}? Default AI stays on.`
+            : `Restore Unlocked for ${key}? They still need a current Unlocked Terms accept.`;
+          if (!confirm(label)) return;
+          const { data, error } = await supabase.rpc("set_unlocked_revoked", {
+            p_license_key: key,
+            p_revoked: nextRevoked,
+          });
+          if (error) alert(error.message);
+          else if (data && data.ok === false) alert(data.message || "Unlock toggle failed.");
           else loadAdminLicenses();
         });
       });
