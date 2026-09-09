@@ -1560,6 +1560,9 @@
                 <option value="">Loading…</option>
               </select>
             </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;">
+              <button type="button" class="btn btn-outline" id="ls-hash-r2">Create checksum from this build</button>
+            </div>
             <div class="form-group" style="margin-top:12px;">
               <label>HTTPS file URL</label>
               <input id="ls-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/1.4.2/AiRi_1.4.2_x64_en-US.msi" autocomplete="off">
@@ -3054,6 +3057,54 @@
     function lsHashButtons(disabled) {
       document.getElementById("ls-hash-btn").disabled = disabled;
       document.getElementById("ls-hash-btn-top").disabled = disabled;
+      document.getElementById("ls-hash-r2").disabled = disabled;
+    }
+
+    async function lsHashRemoteUrl(url, onProgress) {
+      const res = await fetch(url, { redirect: "error" });
+      if (!res.ok || !res.body) throw new Error("Could not read that R2 file (" + res.status + ").");
+      const total = Number(res.headers.get("content-length")) || 0;
+      const hasher = await createSHA256();
+      hasher.init();
+      const reader = res.body.getReader();
+      let doneBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        hasher.update(value);
+        doneBytes += value.byteLength;
+        if (onProgress) onProgress(doneBytes, total || doneBytes);
+      }
+      return { hex: hasher.digest("hex"), bytes: doneBytes };
+    }
+
+    async function lsRunRemoteHash() {
+      const url = (document.getElementById("ls-existing").value || document.getElementById("ls-url").value || "").trim();
+      if (!url.startsWith("https://")) {
+        lsHashStatus("Pick an Existing R2 build (or paste its HTTPS URL) first.");
+        return;
+      }
+      lsHashButtons(true);
+      lsHashStatus("Streaming that R2 file to create the checksum. This reads the whole object.");
+      try {
+        const { hex, bytes } = await lsHashRemoteUrl(url, (done, total) => {
+          const pct = total ? Math.round((done / total) * 100) : 0;
+          lsHashStatus(`Hashing R2 build… ${pct}% · ${done.toLocaleString()} bytes`);
+        });
+        document.getElementById("ls-airi-sha").value = hex;
+        document.getElementById("ls-airi-bytes").value = String(bytes);
+        document.getElementById("ls-sha").value = hex;
+        if (!document.getElementById("ls-url").value.trim()) document.getElementById("ls-url").value = url;
+        document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
+        lsHashStatus(`SHA-256 ready · ${bytes.toLocaleString()} bytes`);
+      } catch (err) {
+        const msg = (err && err.message) || "Hash failed.";
+        lsHashStatus(/failed to fetch|networkerror|cors/i.test(msg)
+          ? "R2 blocked the browser read (CORS). Enable GET on this bucket for https://viritts.com, or Create checksum from a local copy of the same file."
+          : msg);
+      } finally {
+        lsHashButtons(false);
+      }
     }
     function lsHashStatus(text) {
       document.getElementById("ls-hash-status").textContent = text;
@@ -3099,6 +3150,9 @@
     document.getElementById("ls-hash-file-top").addEventListener("change", () => {
       const file = document.getElementById("ls-hash-file-top").files[0];
       if (file) lsRunHash(file);
+    });
+    document.getElementById("ls-hash-r2").addEventListener("click", () => {
+      lsRunRemoteHash();
     });
 
     document.getElementById("ls-publish").addEventListener("click", async () => {
