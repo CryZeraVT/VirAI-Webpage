@@ -3032,21 +3032,35 @@
       const file = document.getElementById("ls-up-file").files[0];
       const keyEl = document.getElementById("ls-up-key");
       if (file) keyEl.value = lsUploadKeyFromFile(file);
-      const base = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
+      const base = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
       const key = keyEl.value.trim().replace(/^\/+/, "");
       const preview = document.getElementById("ls-up-public-preview");
       preview.textContent = base && key
         ? `${base}/${key}`
         : "Public file URL appears here after you pick a file and paste the launcherstream pub- base.";
     }
+    function lsNormalizePublicBase(raw) {
+      let s = String(raw || "")
+        .replace(/^\uFEFF/, "")
+        .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, "")
+        .trim()
+        .replace(/^[“”"']+|[“”"']+$/g, "");
+      try {
+        const u = new URL(s);
+        return `${u.protocol}//${u.host}`.replace(/\/+$/, "");
+      } catch {
+        return s.replace(/\/+$/, "");
+      }
+    }
     async function lsRememberUploadTarget() {
       const status = document.getElementById("ls-up-save-status");
       const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
-      const public_url = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
+      const public_url = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
       if (!public_url) {
         status.textContent = "Paste the launcherstream pub- URL first.";
         return null;
       }
+      document.getElementById("ls-up-public").value = public_url;
       status.textContent = "Saving URL…";
       const { data, error } = await supabase.rpc("update_virforge_launcher_r2", {
         p_config: { bucket, public_url },
@@ -3063,7 +3077,7 @@
     function lsUpCreds() {
       const accountId = r2AccountIdEl.value.trim();
       const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
-      const publicBase = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
+      const publicBase = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
       const credentials = {
         accessKeyId: r2AccessKeyEl.value.trim(),
         secretAccessKey: r2SecretKeyEl.value.trim(),
