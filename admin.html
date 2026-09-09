@@ -2960,7 +2960,13 @@
     async function initLauncherTab() {
       if (lsReady) return;
       lsReady = true;
-      try { if (typeof loadR2Config === "function") loadR2Config(); } catch {}
+      try { if (typeof loadR2Config === "function") await loadR2Config(); } catch {}
+      if (!document.getElementById("ls-up-bucket").value.trim()) {
+        document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim();
+      }
+      if (!document.getElementById("ls-up-public").value.trim()) {
+        document.getElementById("ls-up-public").value = r2PublicUrlEl.value.trim();
+      }
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
         if (error) throw error;
