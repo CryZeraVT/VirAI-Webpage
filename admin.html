@@ -1544,7 +1544,7 @@
 
           <div class="admin-section">
             <div class="admin-section-title">Upload package to R2</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Stream the 3 GB file in parts. This does not install anything, and it does not publish the retail 1.6 GB MSI. Uses the R2 keys from Storage. Default path is <code>packagestream/</code> on that same bucket.</p>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Stream the 3 GB file in parts into the <code>launcherstream</code> bucket, prefix <code>packagestream/</code>. That stays off the retail <code>viri-releases</code> MSI path. Uses the R2 keys from Storage. Enable <strong>Public Development URL</strong> on <code>launcherstream</code> and paste that <code>pub-….r2.dev</code> base here — not the S3 API host, and not the viri-releases pub URL.</p>
             <div class="form-group">
               <label>Local package</label>
               <input id="ls-up-file" type="file" class="form-input">
@@ -1555,11 +1555,11 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Bucket <span style="font-weight:400;text-transform:none;color:#4b5563;">(blank = Storage tab)</span></label>
-                <input id="ls-up-bucket" type="text" class="form-input" placeholder="same as Storage" autocomplete="off">
+                <label>Bucket</label>
+                <input id="ls-up-bucket" type="text" class="form-input" value="launcherstream" autocomplete="off">
               </div>
               <div class="form-group">
-                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">(blank = Storage tab)</span></label>
+                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">launcherstream pub- URL only</span></label>
                 <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
               </div>
             </div>
@@ -2962,10 +2962,7 @@
       lsReady = true;
       try { if (typeof loadR2Config === "function") await loadR2Config(); } catch {}
       if (!document.getElementById("ls-up-bucket").value.trim()) {
-        document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim();
-      }
-      if (!document.getElementById("ls-up-public").value.trim()) {
-        document.getElementById("ls-up-public").value = r2PublicUrlEl.value.trim();
+        document.getElementById("ls-up-bucket").value = "launcherstream";
       }
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
@@ -2999,14 +2996,20 @@
 
     function lsUpCreds() {
       const accountId = r2AccountIdEl.value.trim();
-      const bucket = (document.getElementById("ls-up-bucket").value.trim() || r2BucketNameEl.value.trim());
-      const publicBase = (document.getElementById("ls-up-public").value.trim() || r2PublicUrlEl.value.trim()).replace(/\/$/, "");
+      const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
+      const publicBase = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
       const credentials = {
         accessKeyId: r2AccessKeyEl.value.trim(),
         secretAccessKey: r2SecretKeyEl.value.trim(),
       };
-      if (!accountId || !bucket || !credentials.accessKeyId || !credentials.secretAccessKey || !publicBase) {
-        throw new Error("Save R2 Account ID, bucket, keys, and Public Download URL in Storage first.");
+      if (!accountId || !credentials.accessKeyId || !credentials.secretAccessKey) {
+        throw new Error("Save R2 Account ID and API keys in Storage first. Those keys can write to launcherstream.");
+      }
+      if (!publicBase || /cloudflarestorage\.com/i.test(publicBase)) {
+        throw new Error("Paste the launcherstream Public Development URL (https://pub-….r2.dev). That is not the S3 API host.");
+      }
+      if (publicBase.includes("dc3c6d7c6ae448c5b0c3fdf2830f7664")) {
+        throw new Error("That pub URL is viri-releases. Use the Public Development URL from the launcherstream bucket Settings.");
       }
       return { accountId, bucket, publicBase, credentials };
     }
