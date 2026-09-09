@@ -1,5 +1,5 @@
 ﻿# Supabase Blueprint — AiRi / viritts.com
-> Last mapped: Aug 25, 2026 (`get_usage_summary` / `get_live_users` / `get_license_activity`; kind=paid|beta|test|orphan; admin-only execute). Update before schema changes.
+> Last mapped: Aug 30, 2026 (Unlocked Terms / `aup` surface + `accept-unlocked-aup` + license Unlocked columns). Update before schema changes.
 >
 > **Stripe mode:** LIVE (cutover 2026-04-18). `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BOOST_PRICE_ID` all on live values. Test-mode webhook endpoint retained disabled in Stripe for rollback.
 
@@ -27,6 +27,11 @@
 | `current_period_end` | timestamptz | null | Mirror of Stripe `subscription.current_period_end`. The date a subscriber's paid access runs through; read by `account.html` Billing tab for the "ending on X" banner. Written by `stripe-webhook` on `customer.subscription.updated`. Added 2026-04-17. |
 | `canceled_at` | timestamptz | null | Audit-only: timestamp of `customer.subscription.deleted` (the moment access actually ended). Remains `null` while active. Added 2026-04-17. |
 | `product` | text | `'retail'` | **retail** (sold MSI) or **alwayson** (24/7 showcase SKU). Keys do not cross-activate. Missing/empty client `product` is treated as retail so 1.4.2 MSI still validates. Added 2026-08-21. |
+| `unlocked_aup_version` | text | null | Last accepted Unlocked Terms version. Local `content_tier` is a wish only. Added 2026-08-30. |
+| `unlocked_aup_accepted_at` | timestamptz | null | When Unlocked Terms were accepted. |
+| `unlocked_aup_machine_id` | text | null | Machine that accepted Unlocked Terms. |
+| `unlocked_age_affirmed` | boolean | `false` | 18+ checkbox. Not KYC. |
+| `unlocked_revoked` | boolean | `false` | Admin can turn Unlocked off on one key. Default AI still works. RPC `set_unlocked_revoked`. |
 
 **Tier logic:**
 - `beta` — free testers. Tokens logged in `token_usage` for cost; **not** counted against `token_quotas`.
@@ -107,8 +112,9 @@ RLS: `SELECT` own row via policy `"Users can read own profile"` (`id = auth.uid(
   - `tier_limits` — per-tier AI token allocation (jsonb, e.g. `{"standard": 3000000, "test": 50000}`). Added 2026-04-18. Written exclusively via `update_tier_limits()` RPC (admin-gated, validated, audited). Read by `admin.html` (via `get_tier_limits()`) and by `ai-proxy` / `get-quota` edge functions (direct table read, 60s in-memory cache).
   - `beta_renewal_config` — beta activity keep-alive settings (jsonb, e.g. `{"grace_days": 3, "renewal_days": 7}`). Added 2026-05-12. Written exclusively via `update_beta_renewal_config()` RPC (admin-gated, validated, audited). Read by `validate-license` and `ai-proxy` (direct table read, 60s in-memory cache). **Renew rule (2026-08-16):** for `tier='beta'` + `status='active'` on successful validate / authenticated AI use, snap `expires_at = now + renewal_days` unless the current expiry is already within 24h of that target (coalesce). Idle keys are not touched. `grace_days` is retained in config for admin compatibility but is **not** used as the renew gate. Non-beta tiers unchanged (hard expiry). Configurable in `admin.html` Tier Limits tab → "Beta Auto-Renewal" section.
   - `alert_settings` — admin ops email alerting (jsonb). Added 2026-08-06. Shape: `{recipients[], enabled, enabled_classes:{p0_downtime,p1_failover,p1_stripe,p2_digest}, min_severity, mute_until, dedupe_window_sec}`. Written exclusively via `update_alert_settings()` (admin-gated, validated, audited). Read by admin UI via `get_alert_settings()` and by `notify-admin` (service role). **RLS:** included in the public SELECT deny-list alongside `ai_api_keys` / `ai_failover_chains` — recipients must never be anonymously readable.
+  - `virforge_launcher_r2` — launcherstream target `{bucket, public_url}`. Added 2026-09-09. Written exclusively via `update_virforge_launcher_r2()` (admin-gated, validates `https://pub-….r2.dev`, rejects the retail viri-releases pub URL, audited). Read by Admin via `get_virforge_launcher_r2()`. Not used by the desktop launcher — that reads `get_virforge_catalog`. **RLS:** on the public SELECT deny-list.
 
-Public SELECT deny-list on `system_config`: `ai_api_keys`, `proxy_ai_provider`, `studio_ai_provider`, `builtin_ai_provider`, `ai_failover_chains`, `alert_settings`.
+Public SELECT deny-list on `system_config`: `ai_api_keys`, `proxy_ai_provider`, `studio_ai_provider`, `builtin_ai_provider`, `ai_failover_chains`, `alert_settings`, `virforge_launcher_r2`.
 
 ### `alert_dedupe`
 > Storm-control timestamps for `notify-admin`. Added 2026-08-06. PK `dedupe_key`, `last_sent_at`. RLS enabled; no anon/authenticated grants — service role only.
@@ -167,7 +173,7 @@ RLS: enabled. Policies:
 - `r2_versions` — download versions/URLs from R2 storage. **Unique (2026-08-09):** `(version, channel)` via `r2_versions_version_channel_key` — same version string can exist on both channels as twin rows sharing one MSI/URL. (Dropped former global `r2_versions_version_key`.) **Channels (2026-07-31):** `channel` text NOT NULL DEFAULT `stable` (`stable`|`beta`); partial unique index `r2_versions_one_active_per_channel` (one active per channel). Admin can activate a build as Stable, Beta, or Both (Both upserts/activates twins). Re-upload upserts by `(version, channel)` and syncs artifact fields to any existing twin. Account page: beta-tier licenses get active beta build if present, else stable; all other tiers get stable. Activating beta does not overwrite public `announcements` (stable activate still does). Admin Storage: Upload new vs Use existing (assign/activate without re-upload).
 - `site_settings` — site-level config (see below for ToS-related keys)
 - `subscription_plans` — plan pricing reference
-- `tos_versions` — append-only store of legal document bodies, keyed by `(surface, version)`. Surfaces: `app`, `web`, `privacy`. `body_sha256` is computed by trigger; UPDATE/DELETE blocked by `tos_versions_block_mutations()`. Public SELECT allowed (legal docs are public by design).
+- `tos_versions` — append-only store of legal document bodies, keyed by `(surface, version)`. Surfaces: `app`, `web`, `privacy`, `aup` (Unlocked Terms). `body_sha256` is computed by trigger; UPDATE/DELETE blocked by `tos_versions_block_mutations()`. Public SELECT allowed (legal docs are public by design). Seeded `aup` `1.0` on 2026-08-30.
 
 ### `site_settings` keys used by ToS surfaces
 | key | purpose |
@@ -175,6 +181,7 @@ RLS: enabled. Policies:
 | `app_tos_current_version`     | Pointer → current In-App EULA version. Read by `validate-license` edge function, written by `publish_tos_version('app', …)` RPC. |
 | `web_current_version`         | Pointer → current Website Terms version. Read by `account.html` + `terms.html` + `admin.html`. |
 | `privacy_current_version`     | Pointer → current Privacy Notice version. Read by `privacy.html` + `admin.html`. Privacy is a *notice*, not a contract — no acceptance tracked. |
+| `aup_current_version`         | Pointer → current Unlocked Terms version. Read by `validate-license` (`unlocked_aup_current_version` / `unlocked_ready`). Written by `publish_tos_version('aup', …)`. Bump re-gates Unlocked only. |
 
 ---
 
@@ -227,6 +234,12 @@ Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE
 ### `update_alert_settings(p_settings jsonb)`
 `SECURITY DEFINER` RPC. **Admin-only**. Validates recipients (≤20 emails), classes, `min_severity` ∈ {P0,P1,P2}, `dedupe_window_sec` 60–86400, optional `mute_until`. Upserts `alert_settings`, writes `system_config_audit`. Returns `{success, new_config}`. EXECUTE granted to `authenticated`; revoked from `anon`. Added 2026-08-06.
 
+### `get_virforge_launcher_r2()`
+`SECURITY DEFINER` RPC. **Admin-only**. Returns `system_config.virforge_launcher_r2` or `{bucket:"launcherstream", public_url:""}`. EXECUTE granted to `authenticated`; revoked from `anon`. Added 2026-09-09.
+
+### `update_virforge_launcher_r2(p_config jsonb)`
+`SECURITY DEFINER` RPC. **Admin-only**. Validates `bucket` and `https://pub-….r2.dev` (rejects S3 API host and the retail viri-releases pub URL). Upserts `virforge_launcher_r2`, writes `system_config_audit`. Returns `{success, new_config}`. EXECUTE granted to `authenticated`; revoked from `anon`. Added 2026-09-09.
+
 ### `publish_tos_version(p_surface text, p_version text, p_body_markdown text)`
 `SECURITY DEFINER` RPC. **Admin-only** (checks `profiles.is_admin = true`). Atomically:
 1. INSERTs a new row into `public.tos_versions` (append-only; `body_sha256` auto-computed by trigger `tos_versions_set_sha()` which qualifies `extensions.digest()` explicitly because pgcrypto lives in the `extensions` schema),
@@ -234,8 +247,12 @@ Returns `{success, new_config, customers_updated, applied_to_existing}`. EXECUTE
    - `app`     → `app_tos_current_version`
    - `web`     → `web_current_version`
    - `privacy` → `privacy_current_version`
+   - `aup`     → `aup_current_version`
 
-Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a table CHECK constraint); version must match `^\d+(\.\d+)*$` and be strictly greater than the current version; body ≤ 64 KB; `(surface, version)` must not already exist. Returns `{ok, surface, version, sha256}`. EXECUTE granted to `authenticated` only (`anon` explicitly revoked). Called by the "Publish New … Version" panel in `admin.html` with a typed-confirmation UI guard and a surface dropdown on top.
+Validation: surface must be `'app' | 'web' | 'privacy' | 'aup'` (also enforced by a table CHECK constraint); version must match `^\d+(\.\d+)*$` and be strictly greater than the current version; body ≤ 64 KB; `(surface, version)` must not already exist. Returns `{ok, surface, version, sha256}`. EXECUTE granted to `authenticated` only (`anon` explicitly revoked). Called by the "Publish New … Version" panel in `admin.html` with a typed-confirmation UI guard and a surface dropdown on top.
+
+### `set_unlocked_revoked(p_license_key text, p_revoked boolean)`
+`SECURITY DEFINER` RPC. **Admin-only**. Sets `licenses.unlocked_revoked`. Default AI is not affected. Added 2026-08-30.
 
 ---
 
@@ -248,7 +265,8 @@ Validation: surface must be `'app' | 'web' | 'privacy'` (also enforced by a tabl
 | `stripe-webhook` | Handles Stripe `checkout.session.completed` (new license + purchase record), `customer.subscription.updated` (syncs `cancel_at_period_end` + `current_period_end` to `licenses`), `customer.subscription.deleted` (flips `status='inactive'` + sets `canceled_at`), `invoice.payment_failed` (deactivates only when Stripe gives up retrying). Signature-verified. `verify_jwt=false` (called by Stripe, not by user). **Updated 2026-08-06 (v40):** Fire-and-forget alerts — P0 license/purchase insert failures, P1 signature spikes + payment-failure deactivation — via `notify-admin`. |
 | `notify-admin` | Ops email alerts via Resend (`RESEND_API_KEY`, from `AiRi Alerts <noreply@virflowsocial.com>`, subject prefix `[AiRi ALERT]`). Auth: header `x-airi-alert-secret` === Deno secret `ALERT_INTERNAL_SECRET` (edge→edge) **or** admin JWT + `profiles.is_admin` (Test send). `verify_jwt=false` (custom auth). GET / `{action:"health"}` = health ping (no email). Reads `alert_settings`, respects enabled/mute/classes/min_severity, dedupes via `alert_dedupe`. Added 2026-08-06 (v1). |
 | `create-billing-portal-session` | User-facing. Requires Supabase JWT. Resolves `stripe_customer_id` server-side via `purchases.email ilike auth.email()`. Calls `stripe.billingPortal.sessions.create` and returns `{ success, url }`. Client redirects to the returned Stripe-hosted portal (cancel/reactivate/invoices/payment methods). Added 2026-04-17. |
-| `validate-license` | Validates license key for app activation. **Beta activity keep-alive (2026-08):** skips hard `"License expired"` reject for `tier='beta'`; on successful validate, if expired or remaining life `< renewal_days/2`, sets `expires_at = now + renewal_days`, updates `last_seen`, returns `beta_renewed: true`. Non-beta hard expiry unchanged. Config cached 60 s. **Updated 2026-08-22:** `last_seen` writes coalesce to once per hour. Empty update skipped. |
+| `validate-license` | Validates license key for app activation. **Beta activity keep-alive (2026-08):** skips hard `"License expired"` reject for `tier='beta'`; on successful validate, if expired or remaining life `< renewal_days/2`, sets `expires_at = now + renewal_days`, updates `last_seen`, returns `beta_renewed: true`. Non-beta hard expiry unchanged. Config cached 60 s. **Updated 2026-08-22:** `last_seen` writes coalesce to once per hour. Empty update skipped. **Updated 2026-08-30:** returns `unlocked_aup_current_version`, `unlocked_aup_accepted_version`, `unlocked_aup_accepted_at`, `unlocked_revoked`, `unlocked_ready`. Does **not** send Unlocked Terms body. |
+| `accept-unlocked-aup` | Records Unlocked Terms + 18+ for a license. Auth: `license_key` + `machine_id` (`verify_jwt=false`). Rejects if `unlocked_revoked` or version ≠ `aup_current_version`. Added 2026-08-30. |
 | `reset-license` | Clears `machine_id` to allow new PC binding |
 | `admin-users` | Admin: list/manage users |
 | `beta-signup` | Handles beta waitlist form submission |

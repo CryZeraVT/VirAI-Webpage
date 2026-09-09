@@ -1570,8 +1570,12 @@
                 <input id="ls-up-bucket" type="text" class="form-input" value="launcherstream" autocomplete="off">
               </div>
               <div class="form-group">
-                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">launcherstream pub- URL only</span></label>
+                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">saved for admins only</span></label>
                 <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">
+                  <button type="button" class="btn btn-outline" id="ls-up-save">Save URL</button>
+                  <span id="ls-up-save-status" class="ls-meta">Paste once, Save URL. It reloads from the database next time.</span>
+                </div>
               </div>
             </div>
             <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
@@ -2977,10 +2981,16 @@
         document.getElementById("ls-up-bucket").value = "launcherstream";
       }
       try {
-        const { data } = await supabase.from("system_config").select("value").eq("key", "virforge_launcher_r2").maybeSingle();
-        if (data?.value?.bucket) document.getElementById("ls-up-bucket").value = data.value.bucket;
-        if (data?.value?.public_url) document.getElementById("ls-up-public").value = data.value.public_url;
-      } catch {}
+        const { data, error } = await supabase.rpc("get_virforge_launcher_r2");
+        if (error) throw error;
+        if (data?.bucket) document.getElementById("ls-up-bucket").value = data.bucket;
+        if (data?.public_url) {
+          document.getElementById("ls-up-public").value = data.public_url;
+          document.getElementById("ls-up-save-status").textContent = "Loaded saved launcherstream URL.";
+        }
+      } catch (err) {
+        document.getElementById("ls-up-save-status").textContent = err.message || "Could not load saved URL.";
+      }
       lsSyncUploadKey();
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
@@ -3030,14 +3040,24 @@
         : "Public file URL appears here after you pick a file and paste the launcherstream pub- base.";
     }
     async function lsRememberUploadTarget() {
+      const status = document.getElementById("ls-up-save-status");
       const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
       const public_url = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
-      if (!public_url) return;
-      await supabase.from("system_config").upsert({
-        key: "virforge_launcher_r2",
-        value: { bucket, public_url },
-        updated_at: new Date().toISOString(),
+      if (!public_url) {
+        status.textContent = "Paste the launcherstream pub- URL first.";
+        return null;
+      }
+      status.textContent = "Saving URL…";
+      const { data, error } = await supabase.rpc("update_virforge_launcher_r2", {
+        p_config: { bucket, public_url },
       });
+      if (error) throw error;
+      const saved = data && data.new_config ? data.new_config : { bucket, public_url };
+      if (saved.bucket) document.getElementById("ls-up-bucket").value = saved.bucket;
+      if (saved.public_url) document.getElementById("ls-up-public").value = saved.public_url;
+      status.textContent = "Saved. This URL will be here next time you open Admin.";
+      lsSyncUploadKey();
+      return saved;
     }
 
     function lsUpCreds() {
@@ -3145,7 +3165,10 @@
 
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
     document.getElementById("ls-up-public").addEventListener("input", lsSyncUploadKey);
-    document.getElementById("ls-up-public").addEventListener("change", () => { lsRememberUploadTarget().catch(() => {}); });
+    document.getElementById("ls-up-save").addEventListener("click", async () => {
+      try { await lsRememberUploadTarget(); }
+      catch (err) { document.getElementById("ls-up-save-status").textContent = err.message || "Save failed."; }
+    });
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
       if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local 3 GB package first."; return; }
@@ -3154,8 +3177,9 @@
       lsUpAbort = false;
       document.getElementById("ls-up-start").disabled = true;
       document.getElementById("ls-up-abort").disabled = false;
-      document.getElementById("ls-up-meta").textContent = "Starting streamed upload…";
+      document.getElementById("ls-up-meta").textContent = "Saving URL, then starting streamed upload…";
       try {
+        await lsRememberUploadTarget();
         const result = await lsUploadToR2(file, key);
         document.getElementById("ls-url").value = result.publicUrl;
         document.getElementById("ls-airi-url").value = result.publicUrl;
@@ -3164,7 +3188,6 @@
         document.getElementById("ls-airi-bytes").value = String(result.bytes);
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
         document.getElementById("ls-up-bar").style.width = "100%";
-        lsRememberUploadTarget().catch(() => {});
         document.getElementById("ls-up-meta").textContent = `Uploaded. ${result.bytes.toLocaleString()} bytes. Publish catalog to send this to the launcher.`;
       } catch (err) {
         document.getElementById("ls-up-meta").textContent = lsFetchError(err);
@@ -3181,6 +3204,7 @@
       const meta = document.getElementById("ls-up-meta");
       meta.textContent = "Testing a 1-byte write to launcherstream…";
       try {
+        await lsRememberUploadTarget();
         const { accountId, bucket, credentials } = lsUpCreds();
         const key = "packagestream/.write-test";
         const probe = new Uint8Array([1]);
