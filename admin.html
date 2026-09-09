@@ -215,6 +215,9 @@
 
     .storage-mode-btn { opacity: 0.75; }
     .storage-mode-btn.active { opacity: 1; box-shadow: 0 0 0 1px rgba(167,139,250,0.35); }
+    .ls-bar-wrap { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin: 12px 0; }
+    .ls-bar { height: 100%; width: 0; background: linear-gradient(90deg,#7c3aed,#06b6d4); transition: width 0.15s linear; }
+    .ls-meta { font-size: 0.82rem; color: #9ca3af; font-family: ui-monospace, Consolas, monospace; }
 
     /* Tab header */
     .tab-header {
@@ -503,9 +506,9 @@
         </button>
 
         <span class="sidebar-section-label">Distribution</span>
-        <a class="nav-tab" href="admin-launcher.html">
+        <button class="nav-tab" data-tab="launcher">
           <span class="tab-icon">📦</span><span class="tab-label">Launcher / Stream</span>
-        </a>
+        </button>
 
         <span class="sidebar-section-label">Users</span>
         <button class="nav-tab" data-tab="licenses">
@@ -529,7 +532,7 @@
         </button>
 
         <div class="sidebar-footer">
-          <a href="admin-launcher.html">Launcher catalog</a>
+          <a href="admin.html#launcher">Launcher / Stream</a>
           <a href="admin-usage.html">📊 Token Usage Dashboard</a>
           <a href="account.html" style="color:#6b7280;">← Back to Account</a>
         </div>
@@ -1533,6 +1536,73 @@
           </div>
         </div>
 
+        <div class="tab-content" id="tab-launcher">
+          <div class="tab-header">
+            <h3>📦 Launcher / Stream</h3>
+            <p>Separate from Publish Update and the 1.6 GB account download. Stream a package here to prove the HTTPS file works, then publish those URLs for the desktop launcher.</p>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Stream test</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
+            <div class="form-group">
+              <label>Existing R2 build</label>
+              <select id="ls-existing" class="form-input">
+                <option value="">Loading…</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>HTTPS file URL</label>
+              <input id="ls-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/1.4.2/AiRi_1.4.2_x64_en-US.msi" autocomplete="off">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Expected SHA-256 <span style="font-weight:400;text-transform:none;color:#4b5563;">(optional — checked after the stream)</span></label>
+              <input id="ls-sha" type="text" maxlength="64" class="form-input" placeholder="64-character checksum" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="ls-bar-wrap"><div id="ls-bar" class="ls-bar"></div></div>
+            <div id="ls-meta" class="ls-meta">Idle.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn" id="ls-start">Start stream</button>
+              <button type="button" class="btn btn-outline" id="ls-pause" disabled>Pause</button>
+              <button type="button" class="btn btn-outline" id="ls-open">Open in browser download</button>
+            </div>
+            <p style="font-size:0.8rem;color:#6b7280;margin:12px 0 0;">If Start stream fails with a CORS error, add GET/HEAD/Range on the R2 bucket for https://viritts.com, or use Open in browser download.</p>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Publish launcher catalog</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Desktop VirForge reads this when Stream Mode is off. Homepage and get-airi.html stay on the slim retail MSI.</p>
+            <div class="form-group">
+              <label>Launcher installer URL</label>
+              <input id="ls-launcher-url" type="url" class="form-input" placeholder="https://….r2.dev/staging/launcher/VirForge-Setup-0.1.5.exe" autocomplete="off">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>AiRi full package URL (~3 GB)</label>
+              <input id="ls-airi-url" type="url" class="form-input" placeholder="https://….r2.dev/staging/airi/1.4.3/AiRi_1.4.3_x64-setup.exe" autocomplete="off">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>AiRi SHA-256</label>
+                <input id="ls-airi-sha" type="text" maxlength="64" class="form-input" placeholder="64-character checksum" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="form-group">
+                <label>AiRi bytes</label>
+                <input id="ls-airi-bytes" type="text" inputmode="numeric" class="form-input" value="3306303279" autocomplete="off">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>VirCast URL (optional)</label>
+              <input id="ls-vircast-url" type="url" class="form-input" placeholder="https://….r2.dev/staging/vircast/…" autocomplete="off">
+            </div>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;">
+              <button type="button" class="btn" id="ls-publish">Publish catalog</button>
+              <button type="button" class="btn btn-outline" id="ls-use-stream">Use stream URL in catalog</button>
+              <span id="ls-publish-status" style="font-size:0.84rem;color:#6b7280;"></span>
+            </div>
+            <pre id="ls-preview" style="margin-top:14px;background:#05040a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px;font-size:0.75rem;color:#d4d4d8;white-space:pre-wrap;"></pre>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -1677,6 +1747,7 @@
         loadSiteSettings();
         loadBetaSignups();
         loadUsers();
+        if (location.hash === "#launcher") openLauncherTab();
       } catch (err) {
         console.error("Unexpected error in checkAdmin:", err);
         statusEl.textContent = "❌ Unexpected error: " + err.message;
@@ -2740,6 +2811,10 @@
       }
     });
 
+    window.addEventListener("hashchange", () => {
+      if (location.hash === "#launcher") openLauncherTab();
+    });
+
     // Tab switching logic
     document.querySelectorAll(".nav-tab").forEach(tab => {
       tab.addEventListener("click", () => {
@@ -2763,6 +2838,229 @@
             loadStorageVersions();
           }
         }
+        if (tab.dataset.tab === "launcher") {
+          history.replaceState(null, "", "#launcher");
+          initLauncherTab();
+        }
+      });
+    });
+
+    const LS_EMPTY = {
+      licenseEndpoint: "",
+      launcherUrl: "",
+      products: {
+        airi: { version: "1.4.3", url: "", sha256: "", bytes: 3306303279 },
+        vircast: { version: null, url: "", sha256: "", bytes: 0 },
+      },
+    };
+    let lsReady = false;
+    let lsCtl = null;
+    let lsReceived = 0;
+    let lsTotal = 0;
+    let lsStarted = 0;
+
+    function openLauncherTab() {
+      const tab = document.querySelector('.nav-tab[data-tab="launcher"]');
+      if (tab) tab.click();
+    }
+
+    function lsCatalogFromForm() {
+      const bytes = Number((document.getElementById("ls-airi-bytes").value || "").replace(/[^\d]/g, ""));
+      return {
+        licenseEndpoint: "",
+        launcherUrl: document.getElementById("ls-launcher-url").value.trim(),
+        products: {
+          airi: {
+            version: "1.4.3",
+            url: document.getElementById("ls-airi-url").value.trim(),
+            sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
+            bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 3306303279,
+          },
+          vircast: {
+            version: null,
+            url: document.getElementById("ls-vircast-url").value.trim(),
+            sha256: "",
+            bytes: 0,
+          },
+        },
+      };
+    }
+
+    function lsPaintCatalog(catalog) {
+      const airi = catalog.products?.airi || LS_EMPTY.products.airi;
+      const vircast = catalog.products?.vircast || LS_EMPTY.products.vircast;
+      document.getElementById("ls-launcher-url").value = catalog.launcherUrl || "";
+      document.getElementById("ls-airi-url").value = airi.url || "";
+      document.getElementById("ls-airi-sha").value = airi.sha256 || "";
+      document.getElementById("ls-airi-bytes").value = airi.bytes || 3306303279;
+      document.getElementById("ls-vircast-url").value = vircast.url || "";
+      document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
+    }
+
+    function lsSetMeta(text) {
+      document.getElementById("ls-meta").textContent = text;
+    }
+
+    function lsSetBar(received, total) {
+      const pct = total > 0 ? Math.min(100, (received / total) * 100) : 0;
+      document.getElementById("ls-bar").style.width = pct.toFixed(1) + "%";
+    }
+
+    function lsFmt(n) {
+      if (!Number.isFinite(n) || n <= 0) return "0 B";
+      if (n < 1024) return n + " B";
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+      if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(2) + " MB";
+      return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+    }
+
+    async function initLauncherTab() {
+      if (lsReady) return;
+      lsReady = true;
+      try {
+        const { data, error } = await supabase.rpc("get_virforge_catalog");
+        if (error) throw error;
+        lsPaintCatalog(data && data.products ? data : LS_EMPTY);
+      } catch (err) {
+        lsPaintCatalog(LS_EMPTY);
+        document.getElementById("ls-publish-status").textContent = err.message || "Catalog load failed.";
+      }
+      try {
+        const { data, error } = await supabase
+          .from("r2_versions")
+          .select("version,channel,file_name,download_url,is_active")
+          .order("created_at", { ascending: false })
+          .limit(16);
+        if (error) throw error;
+        const select = document.getElementById("ls-existing");
+        const rows = (data || []).filter((row) => row.download_url && String(row.download_url).startsWith("https://"));
+        select.innerHTML = `<option value="">Select a retail R2 build to stream…</option>` + rows.map((row) => {
+          const live = row.is_active ? " · live" : "";
+          const label = `${row.file_name || row.version} · ${row.channel}${live}`;
+          return `<option value="${String(row.download_url).replace(/"/g, "")}">${label.replace(/[<>&]/g, "")}</option>`;
+        }).join("");
+      } catch (err) {
+        document.getElementById("ls-existing").innerHTML = `<option value="">${err.message || "Could not load builds"}</option>`;
+      }
+    }
+
+    async function lsHashFile(file) {
+      const hash = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function lsStartStream() {
+      const url = document.getElementById("ls-url").value.trim();
+      if (!url.startsWith("https://")) {
+        lsSetMeta("Paste an HTTPS URL first.");
+        return;
+      }
+      if (typeof window.showSaveFilePicker !== "function") {
+        lsSetMeta("This browser cannot stream to a picked file. Use Open in browser download.");
+        return;
+      }
+      const expected = document.getElementById("ls-sha").value.trim().toLowerCase();
+      const name = decodeURIComponent(url.split("/").pop() || "package.bin").split("?")[0] || "package.bin";
+      let handle;
+      try {
+        handle = await window.showSaveFilePicker({ suggestedName: name });
+      } catch (err) {
+        if (err && err.name === "AbortError") { lsSetMeta("Save canceled."); return; }
+        throw err;
+      }
+      const writable = await handle.createWritable();
+      lsCtl = new AbortController();
+      lsReceived = 0;
+      lsStarted = Date.now();
+      document.getElementById("ls-start").disabled = true;
+      document.getElementById("ls-pause").disabled = false;
+      lsSetMeta("Connecting…");
+      try {
+        const res = await fetch(url, { signal: lsCtl.signal, redirect: "error" });
+        if (!res.ok || !res.body) throw new Error("Server returned " + res.status);
+        lsTotal = Number(res.headers.get("content-length")) || 0;
+        const reader = res.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await writable.write(value);
+          lsReceived += value.byteLength;
+          const elapsed = Math.max(0.001, (Date.now() - lsStarted) / 1000);
+          const speed = lsReceived / elapsed;
+          lsSetBar(lsReceived, lsTotal);
+          lsSetMeta(`${lsFmt(lsReceived)}${lsTotal ? " / " + lsFmt(lsTotal) : ""} · ${lsFmt(speed)}/s`);
+        }
+        await writable.close();
+        lsSetBar(lsTotal || lsReceived, lsTotal || lsReceived);
+        if (expected && /^[a-f0-9]{64}$/.test(expected)) {
+          const file = await handle.getFile();
+          if (file.size > 80 * 1024 * 1024) {
+            lsSetMeta("Stream finished. SHA-256 is checked in the desktop launcher for large files.");
+          } else {
+            lsSetMeta("Stream finished. Checking SHA-256…");
+            const digest = await lsHashFile(file);
+            lsSetMeta(digest === expected ? "Stream finished. SHA-256 matches." : "Stream finished. SHA-256 mismatch.");
+          }
+        } else {
+          lsSetMeta("Stream finished.");
+        }
+      } catch (err) {
+        try { await writable.abort(); } catch {}
+        if (err && err.name === "AbortError") lsSetMeta(`Paused at ${lsFmt(lsReceived)}.`);
+        else lsSetMeta((err && err.message) || "Stream failed. Try Open in browser download if this is CORS.");
+      } finally {
+        lsCtl = null;
+        document.getElementById("ls-start").disabled = false;
+        document.getElementById("ls-pause").disabled = true;
+      }
+    }
+
+    document.getElementById("ls-existing").addEventListener("change", () => {
+      const url = document.getElementById("ls-existing").value;
+      if (url) document.getElementById("ls-url").value = url;
+    });
+    document.getElementById("ls-start").addEventListener("click", () => {
+      lsStartStream().catch((err) => lsSetMeta(err.message || "Stream failed."));
+    });
+    document.getElementById("ls-pause").addEventListener("click", () => {
+      if (lsCtl) lsCtl.abort();
+    });
+    document.getElementById("ls-open").addEventListener("click", () => {
+      const url = document.getElementById("ls-url").value.trim();
+      if (!url.startsWith("https://")) { lsSetMeta("Paste an HTTPS URL first."); return; }
+      window.open(url, "_blank", "noopener");
+    });
+    document.getElementById("ls-use-stream").addEventListener("click", () => {
+      const url = document.getElementById("ls-url").value.trim();
+      const sha = document.getElementById("ls-sha").value.trim();
+      if (url) document.getElementById("ls-airi-url").value = url;
+      if (sha) document.getElementById("ls-airi-sha").value = sha;
+      if (lsTotal > 0) document.getElementById("ls-airi-bytes").value = String(lsTotal);
+      document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
+    });
+    document.getElementById("ls-publish").addEventListener("click", async () => {
+      const status = document.getElementById("ls-publish-status");
+      const catalog = lsCatalogFromForm();
+      status.textContent = "Saving…";
+      try {
+        if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
+        if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
+        if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
+        const { error } = await supabase.from("system_config").upsert({
+          key: "virforge_launcher_catalog",
+          value: catalog,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        lsPaintCatalog(catalog);
+        status.textContent = "Published.";
+      } catch (err) {
+        status.textContent = err.message || "Publish failed.";
+      }
+    });
+    ["ls-launcher-url", "ls-airi-url", "ls-airi-sha", "ls-airi-bytes", "ls-vircast-url"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", () => {
+        document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
       });
     });
 
