@@ -2881,7 +2881,7 @@
         products: {
           airi: {
             version: "1.4.3",
-            url: document.getElementById("ls-airi-url").value.trim(),
+            url: document.getElementById("ls-airi-url").value.trim() || document.getElementById("ls-url").value.trim(),
             sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
             bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 3306303279,
           },
@@ -3094,7 +3094,8 @@
         document.getElementById("ls-airi-sha").value = hex;
         document.getElementById("ls-airi-bytes").value = String(bytes);
         document.getElementById("ls-sha").value = hex;
-        if (!document.getElementById("ls-url").value.trim()) document.getElementById("ls-url").value = url;
+        document.getElementById("ls-url").value = url;
+        document.getElementById("ls-airi-url").value = url;
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
         lsHashStatus(`SHA-256 ready · ${bytes.toLocaleString()} bytes`);
       } catch (err) {
