@@ -1543,6 +1543,35 @@
           </div>
 
           <div class="admin-section">
+            <div class="admin-section-title">Upload package to R2</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Stream the 3 GB file in parts. This does not install anything, and it does not publish the retail 1.6 GB MSI. Uses the R2 keys from Storage. Default path is <code>packagestream/</code> on that same bucket.</p>
+            <div class="form-group">
+              <label>Local package</label>
+              <input id="ls-up-file" type="file" class="form-input">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Object key</label>
+              <input id="ls-up-key" type="text" class="form-input" value="packagestream/AiRi_1.4.3_x64-setup.exe" autocomplete="off">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Bucket <span style="font-weight:400;text-transform:none;color:#4b5563;">(blank = Storage tab)</span></label>
+                <input id="ls-up-bucket" type="text" class="form-input" placeholder="same as Storage" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">(blank = Storage tab)</span></label>
+                <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
+              </div>
+            </div>
+            <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
+            <div id="ls-up-meta" class="ls-meta">Idle. Pick AiRi_1.4.3_x64-setup.exe, then Start upload.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn" id="ls-up-start">Start upload</button>
+              <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
             <div class="admin-section-title">Stream test</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
             <div class="form-group">
@@ -1648,10 +1677,14 @@
       const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${datetime}\n`;
       const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
       
+      const canonicalQuery = [...urlObj.searchParams.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join("&");
       const canonicalRequest = [
         method,
         urlObj.pathname,
-        urlObj.search.slice(1),
+        canonicalQuery,
         canonicalHeaders,
         signedHeaders,
         payloadHash
@@ -1679,6 +1712,15 @@
         "x-amz-content-sha256": payloadHash,
         "Authorization": `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
       };
+    }
+
+    function r2ObjectUrl(accountId, bucket, key, query) {
+      const cleanKey = String(key || "").replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+      const url = new URL(`https://${bucket}.${accountId}.r2.cloudflarestorage.com/${cleanKey}`);
+      if (query && typeof query === "object") {
+        for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value == null ? "" : String(value));
+      }
+      return url.toString();
     }
 
     const SUPABASE_URL = "https://rgigtqpesabuyaumibaj.supabase.co";
@@ -2918,6 +2960,7 @@
     async function initLauncherTab() {
       if (lsReady) return;
       lsReady = true;
+      try { if (typeof loadR2Config === "function") loadR2Config(); } catch {}
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
         if (error) throw error;
@@ -2944,6 +2987,124 @@
         document.getElementById("ls-existing").innerHTML = `<option value="">${err.message || "Could not load builds"}</option>`;
       }
     }
+
+    let lsUpAbort = false;
+    const LS_PART = 16 * 1024 * 1024;
+
+    function lsUpCreds() {
+      const accountId = r2AccountIdEl.value.trim();
+      const bucket = (document.getElementById("ls-up-bucket").value.trim() || r2BucketNameEl.value.trim());
+      const publicBase = (document.getElementById("ls-up-public").value.trim() || r2PublicUrlEl.value.trim()).replace(/\/$/, "");
+      const credentials = {
+        accessKeyId: r2AccessKeyEl.value.trim(),
+        secretAccessKey: r2SecretKeyEl.value.trim(),
+      };
+      if (!accountId || !bucket || !credentials.accessKeyId || !credentials.secretAccessKey || !publicBase) {
+        throw new Error("Save R2 Account ID, bucket, keys, and Public Download URL in Storage first.");
+      }
+      return { accountId, bucket, publicBase, credentials };
+    }
+
+    async function lsR2Send(method, url, body, credentials, extraHeaders) {
+      const auth = await signRequest(method, url, {}, body || "", credentials);
+      const res = await fetch(url, {
+        method,
+        headers: { ...auth, ...(extraHeaders || {}) },
+        body: body || undefined,
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`R2 ${method} ${res.status}: ${text.slice(0, 240)}`);
+      return { res, text };
+    }
+
+    function lsParseUploadId(xml) {
+      const match = String(xml).match(/<UploadId>([^<]+)<\/UploadId>/);
+      if (!match) throw new Error("R2 did not return an upload id.");
+      return match[1];
+    }
+
+    async function lsUploadToR2(file, key) {
+      const { accountId, bucket, publicBase, credentials } = lsUpCreds();
+      const hasher = await createSHA256();
+      hasher.init();
+      const objectUrl = r2ObjectUrl(accountId, bucket, key);
+      const publicUrl = `${publicBase}/${key.replace(/^\/+/, "")}`;
+      const bar = document.getElementById("ls-up-bar");
+      const meta = document.getElementById("ls-up-meta");
+      const setProg = (done) => {
+        bar.style.width = (file.size ? Math.min(100, (done / file.size) * 100) : 0).toFixed(1) + "%";
+        meta.textContent = `Uploading ${lsFmt(done)} / ${lsFmt(file.size)}`;
+      };
+
+      if (file.size <= LS_PART) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        hasher.update(bytes);
+        await lsR2Send("PUT", objectUrl, bytes, credentials, { "Content-Type": file.type || "application/octet-stream" });
+        setProg(file.size);
+        return { publicUrl, sha256: hasher.digest("hex"), bytes: file.size };
+      }
+
+      const created = await lsR2Send("POST", r2ObjectUrl(accountId, bucket, key, { uploads: "" }), "", credentials);
+      const uploadId = lsParseUploadId(created.text);
+      const parts = [];
+      try {
+        let offset = 0;
+        let partNumber = 1;
+        while (offset < file.size) {
+          if (lsUpAbort) throw new Error("Upload aborted.");
+          const end = Math.min(offset + LS_PART, file.size);
+          const bytes = new Uint8Array(await file.slice(offset, end).arrayBuffer());
+          hasher.update(bytes);
+          const partUrl = r2ObjectUrl(accountId, bucket, key, { partNumber: String(partNumber), uploadId });
+          const sent = await lsR2Send("PUT", partUrl, bytes, credentials, { "Content-Type": "application/octet-stream" });
+          const etag = sent.res.headers.get("etag") || sent.res.headers.get("ETag");
+          if (!etag) throw new Error("R2 part was missing an ETag.");
+          parts.push({ partNumber, etag });
+          offset = end;
+          partNumber += 1;
+          setProg(offset);
+        }
+        const xml = `<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>${
+          parts.map((p) => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag}</ETag></Part>`).join("")
+        }</CompleteMultipartUpload>`;
+        await lsR2Send("POST", r2ObjectUrl(accountId, bucket, key, { uploadId }), xml, credentials, { "Content-Type": "application/xml" });
+      } catch (err) {
+        try { await lsR2Send("DELETE", r2ObjectUrl(accountId, bucket, key, { uploadId }), "", credentials); } catch {}
+        throw err;
+      }
+      return { publicUrl, sha256: hasher.digest("hex"), bytes: file.size };
+    }
+
+    document.getElementById("ls-up-start").addEventListener("click", async () => {
+      const file = document.getElementById("ls-up-file").files[0];
+      const key = document.getElementById("ls-up-key").value.trim().replace(/^\/+/, "");
+      if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local 3 GB package first."; return; }
+      if (!key) { document.getElementById("ls-up-meta").textContent = "Enter an object key."; return; }
+      lsUpAbort = false;
+      document.getElementById("ls-up-start").disabled = true;
+      document.getElementById("ls-up-abort").disabled = false;
+      document.getElementById("ls-up-meta").textContent = "Starting streamed upload…";
+      try {
+        const result = await lsUploadToR2(file, key);
+        document.getElementById("ls-url").value = result.publicUrl;
+        document.getElementById("ls-airi-url").value = result.publicUrl;
+        document.getElementById("ls-sha").value = result.sha256;
+        document.getElementById("ls-airi-sha").value = result.sha256;
+        document.getElementById("ls-airi-bytes").value = String(result.bytes);
+        document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
+        document.getElementById("ls-up-bar").style.width = "100%";
+        document.getElementById("ls-up-meta").textContent = `Uploaded. ${result.bytes.toLocaleString()} bytes. Publish catalog to send this to the launcher.`;
+      } catch (err) {
+        document.getElementById("ls-up-meta").textContent = err.message || "Upload failed.";
+      } finally {
+        document.getElementById("ls-up-start").disabled = false;
+        document.getElementById("ls-up-abort").disabled = true;
+      }
+    });
+    document.getElementById("ls-up-abort").addEventListener("click", () => {
+      lsUpAbort = true;
+      document.getElementById("ls-up-meta").textContent = "Aborting after this part…";
+    });
 
     async function lsHashFile(file) {
       const hash = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
