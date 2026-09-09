@@ -1546,12 +1546,13 @@
             <div class="admin-section-title">Stream test</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
             <div class="form-group">
-              <label>SHA-256</label>
+              <label>64-character checksum (SHA-256)</label>
               <input id="ls-sha" type="text" maxlength="64" class="form-input" placeholder="64-character checksum" autocomplete="off" spellcheck="false">
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 16px;">
-              <button type="button" class="btn btn-outline" id="ls-hash-btn-top">Generate hash</button>
-              <span id="ls-hash-status-top" style="font-size:0.82rem;color:#6b7280;">Hash the local package first. Same file you uploaded to R2.</span>
+              <input id="ls-hash-file-top" type="file">
+              <button type="button" class="btn" id="ls-hash-btn-top">Create checksum</button>
+              <span id="ls-hash-status-top" style="font-size:0.82rem;color:#6b7280;">Select the local package, then Create checksum. Fills this box and the catalog SHA below.</span>
             </div>
             <div class="form-group">
               <label>Existing R2 build</label>
@@ -3058,17 +3059,11 @@
       document.getElementById("ls-hash-status").textContent = text;
       document.getElementById("ls-hash-status-top").textContent = text;
     }
-    document.getElementById("ls-hash-btn").addEventListener("click", () => {
-      document.getElementById("ls-hash-file").click();
-    });
-    document.getElementById("ls-hash-btn-top").addEventListener("click", () => {
-      document.getElementById("ls-hash-file").click();
-    });
-    document.getElementById("ls-hash-file").addEventListener("change", async () => {
-      const input = document.getElementById("ls-hash-file");
-      const file = input.files && input.files[0];
-      input.value = "";
-      if (!file) return;
+    async function lsRunHash(file) {
+      if (!file) {
+        lsHashStatus("Select a local package file first.");
+        return;
+      }
       lsHashButtons(true);
       lsHashStatus(`Hashing ${file.name}…`);
       try {
@@ -3086,6 +3081,24 @@
       } finally {
         lsHashButtons(false);
       }
+    }
+    document.getElementById("ls-hash-btn").addEventListener("click", () => {
+      const picked = document.getElementById("ls-hash-file").files[0] || document.getElementById("ls-hash-file-top").files[0];
+      if (picked) lsRunHash(picked);
+      else document.getElementById("ls-hash-file").click();
+    });
+    document.getElementById("ls-hash-btn-top").addEventListener("click", () => {
+      const picked = document.getElementById("ls-hash-file-top").files[0] || document.getElementById("ls-hash-file").files[0];
+      if (picked) lsRunHash(picked);
+      else document.getElementById("ls-hash-file-top").click();
+    });
+    document.getElementById("ls-hash-file").addEventListener("change", () => {
+      const file = document.getElementById("ls-hash-file").files[0];
+      if (file) lsRunHash(file);
+    });
+    document.getElementById("ls-hash-file-top").addEventListener("change", () => {
+      const file = document.getElementById("ls-hash-file-top").files[0];
+      if (file) lsRunHash(file);
     });
 
     document.getElementById("ls-publish").addEventListener("click", async () => {
