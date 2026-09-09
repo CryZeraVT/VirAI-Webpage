@@ -1546,6 +1546,14 @@
             <div class="admin-section-title">Stream test</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
             <div class="form-group">
+              <label>SHA-256</label>
+              <input id="ls-sha" type="text" maxlength="64" class="form-input" placeholder="64-character checksum" autocomplete="off" spellcheck="false">
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 16px;">
+              <button type="button" class="btn btn-outline" id="ls-hash-btn-top">Generate hash</button>
+              <span id="ls-hash-status-top" style="font-size:0.82rem;color:#6b7280;">Hash the local package first. Same file you uploaded to R2.</span>
+            </div>
+            <div class="form-group">
               <label>Existing R2 build</label>
               <select id="ls-existing" class="form-input">
                 <option value="">Loading…</option>
@@ -1554,10 +1562,6 @@
             <div class="form-group" style="margin-top:12px;">
               <label>HTTPS file URL</label>
               <input id="ls-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/1.4.2/AiRi_1.4.2_x64_en-US.msi" autocomplete="off">
-            </div>
-            <div class="form-group" style="margin-top:12px;">
-              <label>Expected SHA-256 <span style="font-weight:400;text-transform:none;color:#4b5563;">(optional — checked after the stream)</span></label>
-              <input id="ls-sha" type="text" maxlength="64" class="form-input" placeholder="64-character checksum" autocomplete="off" spellcheck="false">
             </div>
             <div class="ls-bar-wrap"><div id="ls-bar" class="ls-bar"></div></div>
             <div id="ls-meta" class="ls-meta">Idle.</div>
@@ -3046,7 +3050,18 @@
       return hasher.digest("hex");
     }
 
+    function lsHashButtons(disabled) {
+      document.getElementById("ls-hash-btn").disabled = disabled;
+      document.getElementById("ls-hash-btn-top").disabled = disabled;
+    }
+    function lsHashStatus(text) {
+      document.getElementById("ls-hash-status").textContent = text;
+      document.getElementById("ls-hash-status-top").textContent = text;
+    }
     document.getElementById("ls-hash-btn").addEventListener("click", () => {
+      document.getElementById("ls-hash-file").click();
+    });
+    document.getElementById("ls-hash-btn-top").addEventListener("click", () => {
       document.getElementById("ls-hash-file").click();
     });
     document.getElementById("ls-hash-file").addEventListener("change", async () => {
@@ -3054,24 +3069,22 @@
       const file = input.files && input.files[0];
       input.value = "";
       if (!file) return;
-      const status = document.getElementById("ls-hash-status");
-      const btn = document.getElementById("ls-hash-btn");
-      btn.disabled = true;
-      status.textContent = `Hashing ${file.name}…`;
+      lsHashButtons(true);
+      lsHashStatus(`Hashing ${file.name}…`);
       try {
         const hex = await lsHashLocalFile(file, (done, total) => {
           const pct = total ? Math.round((done / total) * 100) : 0;
-          status.textContent = `Hashing ${file.name}… ${pct}%`;
+          lsHashStatus(`Hashing ${file.name}… ${pct}%`);
         });
         document.getElementById("ls-airi-sha").value = hex;
         document.getElementById("ls-airi-bytes").value = String(file.size);
         document.getElementById("ls-sha").value = hex;
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
-        status.textContent = `SHA-256 ready · ${file.size.toLocaleString()} bytes`;
+        lsHashStatus(`SHA-256 ready · ${file.size.toLocaleString()} bytes`);
       } catch (err) {
-        status.textContent = err.message || "Hash failed.";
+        lsHashStatus(err.message || "Hash failed.");
       } finally {
-        btn.disabled = false;
+        lsHashButtons(false);
       }
     });
 
