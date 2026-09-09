@@ -1545,6 +1545,16 @@
           <div class="admin-section">
             <div class="admin-section-title">Upload package to R2</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Stream the 3 GB file in parts into the <code>launcherstream</code> bucket, prefix <code>packagestream/</code>. That stays off the retail <code>viri-releases</code> MSI path. Uses the R2 keys from Storage. Enable <strong>Public Development URL</strong> on <code>launcherstream</code> and paste that <code>pub-….r2.dev</code> base here — not the S3 API host, and not the viri-releases pub URL.</p>
+            <p style="font-size:0.82rem;color:#9ca3af;margin:0 0 14px;"><strong style="color:#d1d5db;">Failed to fetch</strong> means the browser never got a reply from R2. On Cloudflare → R2 → <code>launcherstream</code> → Settings → CORS, add the policy below. Also make sure the Storage API token is allowed on <code>launcherstream</code>, not only <code>viri-releases</code>.</p>
+            <pre id="ls-up-cors" style="font-size:0.75rem;color:#c4b5fd;background:rgba(0,0,0,0.25);padding:10px 12px;border-radius:8px;overflow:auto;margin:0 0 14px;white-space:pre;">[
+  {
+    "AllowedOrigins": ["https://viritts.com", "https://www.viritts.com"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Length"],
+    "MaxAgeSeconds": 3600
+  }
+]</pre>
             <div class="form-group">
               <label>Local package</label>
               <input id="ls-up-file" type="file" class="form-input">
@@ -1567,6 +1577,7 @@
             <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
             <div id="ls-up-meta" class="ls-meta">Idle. Pick AiRi_1.4.3_x64-setup.exe, then Start upload.</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn btn-outline" id="ls-up-test">Test write</button>
               <button type="button" class="btn" id="ls-up-start">Start upload</button>
               <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
             </div>
@@ -3049,13 +3060,26 @@
       return { accountId, bucket, publicBase, credentials };
     }
 
+    function lsFetchError(err) {
+      const msg = (err && err.message) || String(err || "");
+      if (/failed to fetch|networkerror|cors/i.test(msg)) {
+        return "Failed to fetch: launcherstream blocked the browser (CORS or a token that cannot write that bucket). Cloudflare → R2 → launcherstream → Settings → CORS, paste the JSON above, then Test write. If that still fails, edit the R2 API token so it includes launcherstream.";
+      }
+      return msg;
+    }
+
     async function lsR2Send(method, url, body, credentials, extraHeaders) {
       const auth = await signRequest(method, url, {}, body || "", credentials);
-      const res = await fetch(url, {
-        method,
-        headers: { ...auth, ...(extraHeaders || {}) },
-        body: body || undefined,
-      });
+      let res;
+      try {
+        res = await fetch(url, {
+          method,
+          headers: { ...auth, ...(extraHeaders || {}) },
+          body: body || undefined,
+        });
+      } catch (err) {
+        throw new Error(lsFetchError(err));
+      }
       const text = await res.text();
       if (!res.ok) throw new Error(`R2 ${method} ${res.status}: ${text.slice(0, 240)}`);
       return { res, text };
@@ -3143,7 +3167,7 @@
         lsRememberUploadTarget().catch(() => {});
         document.getElementById("ls-up-meta").textContent = `Uploaded. ${result.bytes.toLocaleString()} bytes. Publish catalog to send this to the launcher.`;
       } catch (err) {
-        document.getElementById("ls-up-meta").textContent = err.message || "Upload failed.";
+        document.getElementById("ls-up-meta").textContent = lsFetchError(err);
       } finally {
         document.getElementById("ls-up-start").disabled = false;
         document.getElementById("ls-up-abort").disabled = true;
@@ -3152,6 +3176,20 @@
     document.getElementById("ls-up-abort").addEventListener("click", () => {
       lsUpAbort = true;
       document.getElementById("ls-up-meta").textContent = "Aborting after this part…";
+    });
+    document.getElementById("ls-up-test").addEventListener("click", async () => {
+      const meta = document.getElementById("ls-up-meta");
+      meta.textContent = "Testing a 1-byte write to launcherstream…";
+      try {
+        const { accountId, bucket, credentials } = lsUpCreds();
+        const key = "packagestream/.write-test";
+        const probe = new Uint8Array([1]);
+        await lsR2Send("PUT", r2ObjectUrl(accountId, bucket, key), probe, credentials, { "Content-Type": "application/octet-stream" });
+        try { await lsR2Send("DELETE", r2ObjectUrl(accountId, bucket, key), "", credentials); } catch {}
+        meta.textContent = "Write test ok. Start upload.";
+      } catch (err) {
+        meta.textContent = lsFetchError(err);
+      }
     });
 
     async function lsHashFile(file) {
