@@ -1590,6 +1590,11 @@
                 <input id="ls-airi-bytes" type="text" inputmode="numeric" class="form-input" value="3306303279" autocomplete="off">
               </div>
             </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;">
+              <input id="ls-hash-file" type="file" hidden>
+              <button type="button" class="btn btn-outline" id="ls-hash-btn">Generate hash</button>
+              <span id="ls-hash-status" style="font-size:0.82rem;color:#6b7280;">Pick the same local file you uploaded (or will upload). Hashes in chunks so a 3 GB file will not freeze the tab.</span>
+            </div>
             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;">
               <button type="button" class="btn" id="ls-publish">Publish catalog</button>
               <button type="button" class="btn btn-outline" id="ls-use-stream">Use stream URL in catalog</button>
@@ -1605,6 +1610,7 @@
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    import { createSHA256 } from "https://esm.sh/hash-wasm@4.12.0";
     
     // Helper function to sign AWS requests (S3/R2 compatible)
     async function signRequest(method, url, headers, body, credentials) {
@@ -3025,6 +3031,50 @@
       if (lsTotal > 0) document.getElementById("ls-airi-bytes").value = String(lsTotal);
       document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
     });
+    async function lsHashLocalFile(file, onProgress) {
+      const hasher = await createSHA256();
+      hasher.init();
+      const reader = file.stream().getReader();
+      let doneBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        hasher.update(value);
+        doneBytes += value.byteLength;
+        if (onProgress) onProgress(doneBytes, file.size);
+      }
+      return hasher.digest("hex");
+    }
+
+    document.getElementById("ls-hash-btn").addEventListener("click", () => {
+      document.getElementById("ls-hash-file").click();
+    });
+    document.getElementById("ls-hash-file").addEventListener("change", async () => {
+      const input = document.getElementById("ls-hash-file");
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      const status = document.getElementById("ls-hash-status");
+      const btn = document.getElementById("ls-hash-btn");
+      btn.disabled = true;
+      status.textContent = `Hashing ${file.name}…`;
+      try {
+        const hex = await lsHashLocalFile(file, (done, total) => {
+          const pct = total ? Math.round((done / total) * 100) : 0;
+          status.textContent = `Hashing ${file.name}… ${pct}%`;
+        });
+        document.getElementById("ls-airi-sha").value = hex;
+        document.getElementById("ls-airi-bytes").value = String(file.size);
+        document.getElementById("ls-sha").value = hex;
+        document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
+        status.textContent = `SHA-256 ready · ${file.size.toLocaleString()} bytes`;
+      } catch (err) {
+        status.textContent = err.message || "Hash failed.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     document.getElementById("ls-publish").addEventListener("click", async () => {
       const status = document.getElementById("ls-publish-status");
       const catalog = lsCatalogFromForm();
