@@ -1550,9 +1550,10 @@
               <input id="ls-up-file" type="file" class="form-input">
             </div>
             <div class="form-group" style="margin-top:12px;">
-              <label>Object key</label>
-              <input id="ls-up-key" type="text" class="form-input" value="packagestream/AiRi_1.4.3_x64-setup.exe" autocomplete="off">
+              <label>Object key <span style="font-weight:400;text-transform:none;color:#4b5563;">set from the file you pick</span></label>
+              <input id="ls-up-key" type="text" class="form-input" value="" placeholder="packagestream/your-file.exe" autocomplete="off" readonly>
             </div>
+            <p id="ls-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file and paste the launcherstream pub- base.</p>
             <div class="form-row">
               <div class="form-group">
                 <label>Bucket</label>
@@ -2965,6 +2966,12 @@
         document.getElementById("ls-up-bucket").value = "launcherstream";
       }
       try {
+        const { data } = await supabase.from("system_config").select("value").eq("key", "virforge_launcher_r2").maybeSingle();
+        if (data?.value?.bucket) document.getElementById("ls-up-bucket").value = data.value.bucket;
+        if (data?.value?.public_url) document.getElementById("ls-up-public").value = data.value.public_url;
+      } catch {}
+      lsSyncUploadKey();
+      try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
         if (error) throw error;
         lsPaintCatalog(data && data.products ? data : LS_EMPTY);
@@ -2993,6 +3000,34 @@
 
     let lsUpAbort = false;
     const LS_PART = 16 * 1024 * 1024;
+
+    function lsSafeFileName(name) {
+      return String(name || "package.bin").replace(/[/\\?%*:|"<>]/g, "_");
+    }
+    function lsUploadKeyFromFile(file) {
+      return "packagestream/" + lsSafeFileName(file && file.name);
+    }
+    function lsSyncUploadKey() {
+      const file = document.getElementById("ls-up-file").files[0];
+      const keyEl = document.getElementById("ls-up-key");
+      if (file) keyEl.value = lsUploadKeyFromFile(file);
+      const base = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
+      const key = keyEl.value.trim().replace(/^\/+/, "");
+      const preview = document.getElementById("ls-up-public-preview");
+      preview.textContent = base && key
+        ? `${base}/${key}`
+        : "Public file URL appears here after you pick a file and paste the launcherstream pub- base.";
+    }
+    async function lsRememberUploadTarget() {
+      const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
+      const public_url = document.getElementById("ls-up-public").value.trim().replace(/\/$/, "");
+      if (!public_url) return;
+      await supabase.from("system_config").upsert({
+        key: "virforge_launcher_r2",
+        value: { bucket, public_url },
+        updated_at: new Date().toISOString(),
+      });
+    }
 
     function lsUpCreds() {
       const accountId = r2AccountIdEl.value.trim();
@@ -3084,11 +3119,14 @@
       return { publicUrl, sha256: hasher.digest("hex"), bytes: file.size };
     }
 
+    document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
+    document.getElementById("ls-up-public").addEventListener("input", lsSyncUploadKey);
+    document.getElementById("ls-up-public").addEventListener("change", () => { lsRememberUploadTarget().catch(() => {}); });
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
-      const key = document.getElementById("ls-up-key").value.trim().replace(/^\/+/, "");
       if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local 3 GB package first."; return; }
-      if (!key) { document.getElementById("ls-up-meta").textContent = "Enter an object key."; return; }
+      lsSyncUploadKey();
+      const key = document.getElementById("ls-up-key").value.trim().replace(/^\/+/, "") || lsUploadKeyFromFile(file);
       lsUpAbort = false;
       document.getElementById("ls-up-start").disabled = true;
       document.getElementById("ls-up-abort").disabled = false;
@@ -3102,6 +3140,7 @@
         document.getElementById("ls-airi-bytes").value = String(result.bytes);
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
         document.getElementById("ls-up-bar").style.width = "100%";
+        lsRememberUploadTarget().catch(() => {});
         document.getElementById("ls-up-meta").textContent = `Uploaded. ${result.bytes.toLocaleString()} bytes. Publish catalog to send this to the launcher.`;
       } catch (err) {
         document.getElementById("ls-up-meta").textContent = err.message || "Upload failed.";
