@@ -1590,10 +1590,6 @@
                 <input id="ls-airi-bytes" type="text" inputmode="numeric" class="form-input" value="3306303279" autocomplete="off">
               </div>
             </div>
-            <div class="form-group" style="margin-top:12px;">
-              <label>VirCast URL (optional)</label>
-              <input id="ls-vircast-url" type="url" class="form-input" placeholder="https://….r2.dev/staging/vircast/…" autocomplete="off">
-            </div>
             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;">
               <button type="button" class="btn" id="ls-publish">Publish catalog</button>
               <button type="button" class="btn btn-outline" id="ls-use-stream">Use stream URL in catalog</button>
@@ -2850,7 +2846,6 @@
       launcherUrl: "",
       products: {
         airi: { version: "1.4.3", url: "", sha256: "", bytes: 3306303279 },
-        vircast: { version: null, url: "", sha256: "", bytes: 0 },
       },
     };
     let lsReady = false;
@@ -2876,24 +2871,16 @@
             sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
             bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 3306303279,
           },
-          vircast: {
-            version: null,
-            url: document.getElementById("ls-vircast-url").value.trim(),
-            sha256: "",
-            bytes: 0,
-          },
         },
       };
     }
 
     function lsPaintCatalog(catalog) {
       const airi = catalog.products?.airi || LS_EMPTY.products.airi;
-      const vircast = catalog.products?.vircast || LS_EMPTY.products.vircast;
       document.getElementById("ls-launcher-url").value = catalog.launcherUrl || "";
       document.getElementById("ls-airi-url").value = airi.url || "";
       document.getElementById("ls-airi-sha").value = airi.sha256 || "";
       document.getElementById("ls-airi-bytes").value = airi.bytes || 3306303279;
-      document.getElementById("ls-vircast-url").value = vircast.url || "";
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
     }
 
@@ -3058,7 +3045,7 @@
         status.textContent = err.message || "Publish failed.";
       }
     });
-    ["ls-launcher-url", "ls-airi-url", "ls-airi-sha", "ls-airi-bytes", "ls-vircast-url"].forEach((id) => {
+    ["ls-launcher-url", "ls-airi-url", "ls-airi-sha", "ls-airi-bytes"].forEach((id) => {
       document.getElementById(id).addEventListener("input", () => {
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
       });
