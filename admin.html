@@ -1544,9 +1544,22 @@
 
           <div class="admin-section">
             <div class="admin-section-title">Upload package to R2</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Stream the 3 GB file in parts into the <code>launcherstream</code> bucket, prefix <code>packagestream/</code>. That stays off the retail <code>viri-releases</code> MSI path. Uses the R2 keys from Storage. Enable <strong>Public Development URL</strong> on <code>launcherstream</code> and paste that <code>pub-….r2.dev</code> base here — not the S3 API host, and not the viri-releases pub URL.</p>
-            <p style="font-size:0.82rem;color:#9ca3af;margin:0 0 14px;"><strong style="color:#d1d5db;">Failed to fetch</strong> means the browser never got a reply from R2. On Cloudflare → R2 → <code>launcherstream</code> → Settings → CORS, add the policy below. Also make sure the Storage API token is allowed on <code>launcherstream</code>, not only <code>viri-releases</code>.</p>
-            <pre id="ls-up-cors" style="font-size:0.75rem;color:#c4b5fd;background:rgba(0,0,0,0.25);padding:10px 12px;border-radius:8px;overflow:auto;margin:0 0 14px;white-space:pre;">[
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick the 3 GB package. It streams into <code>launcherstream/packagestream/</code>. The public URL is remembered after the first save.</p>
+            <div class="form-group">
+              <label>Local package</label>
+              <input id="ls-up-file" type="file" class="form-input">
+            </div>
+            <p id="ls-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file.</p>
+            <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
+            <div id="ls-up-meta" class="ls-meta">Idle. Pick the package, then Start upload.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn" id="ls-up-start">Start upload</button>
+              <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
+            </div>
+            <details style="margin-top:16px;">
+              <summary style="cursor:pointer;color:#9ca3af;font-size:0.82rem;">Advanced — public URL, CORS, test write</summary>
+              <p style="font-size:0.82rem;color:#9ca3af;margin:12px 0;">If Start upload says Failed to fetch, add this CORS policy on the <code>launcherstream</code> bucket and make sure the Storage API token can write that bucket.</p>
+              <pre id="ls-up-cors" style="font-size:0.75rem;color:#c4b5fd;background:rgba(0,0,0,0.25);padding:10px 12px;border-radius:8px;overflow:auto;margin:0 0 14px;white-space:pre;">[
   {
     "AllowedOrigins": ["https://viritts.com", "https://www.viritts.com"],
     "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
@@ -1555,36 +1568,26 @@
     "MaxAgeSeconds": 3600
   }
 ]</pre>
-            <div class="form-group">
-              <label>Local package</label>
-              <input id="ls-up-file" type="file" class="form-input">
-            </div>
-            <div class="form-group" style="margin-top:12px;">
-              <label>Object key <span style="font-weight:400;text-transform:none;color:#4b5563;">set from the file you pick</span></label>
-              <input id="ls-up-key" type="text" class="form-input" value="" placeholder="packagestream/your-file.exe" autocomplete="off" readonly>
-            </div>
-            <p id="ls-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file and paste the launcherstream pub- base.</p>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Bucket</label>
-                <input id="ls-up-bucket" type="text" class="form-input" value="launcherstream" autocomplete="off">
+              <div class="form-group" style="margin-top:12px;">
+                <label>Object key</label>
+                <input id="ls-up-key" type="text" class="form-input" value="" placeholder="packagestream/your-file.exe" autocomplete="off" readonly>
               </div>
-              <div class="form-group">
-                <label>Public base URL <span style="font-weight:400;text-transform:none;color:#4b5563;">saved for admins only</span></label>
-                <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
-                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">
-                  <button type="button" class="btn btn-outline" id="ls-up-save">Save URL</button>
-                  <span id="ls-up-save-status" class="ls-meta">Paste once, Save URL. It reloads from the database next time.</span>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Bucket</label>
+                  <input id="ls-up-bucket" type="text" class="form-input" value="launcherstream" autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label>Public base URL</label>
+                  <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">
+                    <button type="button" class="btn btn-outline" id="ls-up-save">Save URL</button>
+                    <button type="button" class="btn btn-outline" id="ls-up-test">Test write</button>
+                    <span id="ls-up-save-status" class="ls-meta">Paste the launcherstream pub- URL once if it is not already saved.</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
-            <div id="ls-up-meta" class="ls-meta">Idle. Pick AiRi_1.4.3_x64-setup.exe, then Start upload.</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
-              <button type="button" class="btn btn-outline" id="ls-up-test">Test write</button>
-              <button type="button" class="btn" id="ls-up-start">Start upload</button>
-              <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
-            </div>
+            </details>
           </div>
 
           <div class="admin-section">
@@ -2987,6 +2990,9 @@
         if (data?.public_url) {
           document.getElementById("ls-up-public").value = data.public_url;
           document.getElementById("ls-up-save-status").textContent = "Loaded saved launcherstream URL.";
+        } else {
+          const extras = document.querySelector("#tab-launcher details");
+          if (extras) extras.open = true;
         }
       } catch (err) {
         document.getElementById("ls-up-save-status").textContent = err.message || "Could not load saved URL.";
