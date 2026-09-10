@@ -3165,7 +3165,12 @@
       box.querySelectorAll(".ls-hist-apply").forEach((btn) => {
         btn.addEventListener("click", () => {
           const row = lsBuilds[Number(btn.getAttribute("data-ls-idx"))];
-          if (row) lsApplyUrlToChannel(row.download_url, btn.getAttribute("data-ls-ch"));
+          if (!row) return;
+          lsApplyUrlToChannel(row.download_url, btn.getAttribute("data-ls-ch")).catch((err) => {
+            const message = err.message || "Apply failed.";
+            document.getElementById("ls-publish-status").textContent = message;
+            document.getElementById("ls-up-meta").textContent = message;
+          });
         });
       });
     }
@@ -3957,6 +3962,25 @@
       if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
       if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
       if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
+      const writing = lsSelectedChannels();
+      for (const ch of writing) {
+        const pkg = catalog.products.airi.channels?.[ch];
+        if (!pkg?.url) continue;
+        for (const other of ["stable", "beta"]) {
+          if (other === ch) continue;
+          const twin = catalog.products.airi.channels?.[other];
+          if (twin?.url === pkg.url) {
+            catalog.products.airi.channels[other] = { ...twin, sha256: pkg.sha256, bytes: pkg.bytes };
+          }
+        }
+      }
+      const stable = catalog.products.airi.channels?.stable;
+      if (stable?.url) {
+        catalog.products.airi.version = stable.version || catalog.products.airi.version;
+        catalog.products.airi.url = stable.url;
+        catalog.products.airi.sha256 = stable.sha256 || "";
+        catalog.products.airi.bytes = stable.bytes || 0;
+      }
       const check = async (pkg, label) => {
         if (!pkg || !pkg.url || !pkg.bytes) return;
         const live = await lsHeadBytes(pkg.url);
@@ -3964,9 +3988,9 @@
           throw new Error(`${label} lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}. Hash that file before publishing.`);
         }
       };
-      await check(catalog.products.airi, "AiRi");
-      await check(catalog.products.airi.channels?.stable, "Release");
-      await check(catalog.products.airi.channels?.beta, "Beta");
+      for (const ch of writing) {
+        await check(catalog.products.airi.channels?.[ch], lsBranchName(ch));
+      }
       const { error } = await supabase.from("system_config").upsert({
         key: "virforge_launcher_catalog",
         value: catalog,
