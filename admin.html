@@ -1647,7 +1647,7 @@
     import { createSHA256 } from "https://esm.sh/hash-wasm@4.12.0";
     
     // Helper function to sign AWS requests (S3/R2 compatible)
-    async function signRequest(method, url, headers, body, credentials) {
+    async function signRequest(method, url, headers, body, credentials, unsignedPayload) {
       const encoder = new TextEncoder();
       
       async function hmacSha256(key, message) {
@@ -1669,7 +1669,7 @@
       const region = "auto";
       const service = "s3";
       
-      const payloadHash = await sha256(body || "");
+      const payloadHash = unsignedPayload ? "UNSIGNED-PAYLOAD" : await sha256(body || "");
       
       const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${datetime}\n`;
       const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
@@ -2992,6 +2992,7 @@
     }
 
     let lsUpAbort = false;
+    let lsUpXhr = null;
     const LS_PART = 16 * 1024 * 1024;
 
     function lsSafeFileName(name) {
@@ -3051,27 +3052,30 @@
       return msg;
     }
 
-    async function lsR2Send(method, url, body, credentials, extraHeaders) {
-      const auth = await signRequest(method, url, {}, body || "", credentials);
-      let res;
-      try {
-        res = await fetch(url, {
-          method,
-          headers: { ...auth, ...(extraHeaders || {}) },
-          body: body || undefined,
-        });
-      } catch (err) {
-        throw new Error(lsFetchError(err));
-      }
-      const text = await res.text();
-      if (!res.ok) throw new Error(`R2 ${method} ${res.status}: ${text.slice(0, 240)}`);
-      return { res, text };
-    }
-
-    function lsParseUploadId(xml) {
-      const match = String(xml).match(/<UploadId>([^<]+)<\/UploadId>/);
-      if (!match) throw new Error("R2 did not return an upload id.");
-      return match[1];
+    function lsPutFile(url, headers, file, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        lsUpXhr = xhr;
+        xhr.open("PUT", url);
+        Object.entries(headers || {}).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) onProgress(event.loaded, event.total);
+        };
+        xhr.onload = () => {
+          lsUpXhr = null;
+          if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText || "");
+          else reject(new Error(`R2 PUT ${xhr.status}: ${String(xhr.responseText || "").slice(0, 240)}`));
+        };
+        xhr.onerror = () => {
+          lsUpXhr = null;
+          reject(new Error(lsFetchError(new Error("Failed to fetch"))));
+        };
+        xhr.onabort = () => {
+          lsUpXhr = null;
+          reject(new Error("Upload aborted."));
+        };
+        xhr.send(file);
+      });
     }
 
     async function lsUploadToR2(file, key) {
@@ -3082,48 +3086,30 @@
       const publicUrl = `${publicBase}/${key.replace(/^\/+/, "")}`;
       const bar = document.getElementById("ls-up-bar");
       const meta = document.getElementById("ls-up-meta");
-      const setProg = (done) => {
+      const setProg = (done, label) => {
         bar.style.width = (file.size ? Math.min(100, (done / file.size) * 100) : 0).toFixed(1) + "%";
-        meta.textContent = `Uploading ${lsFmt(done)} / ${lsFmt(file.size)}`;
+        meta.textContent = `${label} ${lsFmt(done)} / ${lsFmt(file.size)}`;
       };
 
-      if (file.size <= LS_PART) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        hasher.update(bytes);
-        await lsR2Send("PUT", objectUrl, bytes, credentials, { "Content-Type": file.type || "application/octet-stream" });
-        setProg(file.size);
-        return { publicUrl, sha256: hasher.digest("hex"), bytes: file.size };
+      let offset = 0;
+      while (offset < file.size) {
+        if (lsUpAbort) throw new Error("Upload aborted.");
+        const end = Math.min(offset + LS_PART, file.size);
+        hasher.update(new Uint8Array(await file.slice(offset, end).arrayBuffer()));
+        offset = end;
+        setProg(offset, "Checksum");
       }
+      const sha256 = hasher.digest("hex");
+      if (lsUpAbort) throw new Error("Upload aborted.");
 
-      const created = await lsR2Send("POST", r2ObjectUrl(accountId, bucket, key, { uploads: "" }), "", credentials);
-      const uploadId = lsParseUploadId(created.text);
-      const parts = [];
-      try {
-        let offset = 0;
-        let partNumber = 1;
-        while (offset < file.size) {
-          if (lsUpAbort) throw new Error("Upload aborted.");
-          const end = Math.min(offset + LS_PART, file.size);
-          const bytes = new Uint8Array(await file.slice(offset, end).arrayBuffer());
-          hasher.update(bytes);
-          const partUrl = r2ObjectUrl(accountId, bucket, key, { partNumber: String(partNumber), uploadId });
-          const sent = await lsR2Send("PUT", partUrl, bytes, credentials, { "Content-Type": "application/octet-stream" });
-          const etag = sent.res.headers.get("etag") || sent.res.headers.get("ETag");
-          if (!etag) throw new Error("R2 part was missing an ETag.");
-          parts.push({ partNumber, etag });
-          offset = end;
-          partNumber += 1;
-          setProg(offset);
-        }
-        const xml = `<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>${
-          parts.map((p) => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag}</ETag></Part>`).join("")
-        }</CompleteMultipartUpload>`;
-        await lsR2Send("POST", r2ObjectUrl(accountId, bucket, key, { uploadId }), xml, credentials, { "Content-Type": "application/xml" });
-      } catch (err) {
-        try { await lsR2Send("DELETE", r2ObjectUrl(accountId, bucket, key, { uploadId }), "", credentials); } catch {}
-        throw err;
-      }
-      return { publicUrl, sha256: hasher.digest("hex"), bytes: file.size };
+      const auth = await signRequest("PUT", objectUrl, {}, "", credentials, true);
+      setProg(0, "Uploading");
+      await lsPutFile(objectUrl, {
+        ...auth,
+        "Content-Type": file.type || "application/octet-stream",
+      }, file, (done) => setProg(done, "Uploading"));
+      setProg(file.size, "Uploaded");
+      return { publicUrl, sha256, bytes: file.size };
     }
 
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
@@ -3156,7 +3142,8 @@
     });
     document.getElementById("ls-up-abort").addEventListener("click", () => {
       lsUpAbort = true;
-      document.getElementById("ls-up-meta").textContent = "Aborting after this part…";
+      if (lsUpXhr) lsUpXhr.abort();
+      document.getElementById("ls-up-meta").textContent = "Aborting…";
     });
 
     async function lsHashFile(file) {
