@@ -1539,55 +1539,33 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Separate from Publish Update and the 1.6 GB account download. Stream a package here to prove the HTTPS file works, then publish those URLs for the desktop launcher.</p>
+            <p>Same R2 keys and public URL as Storage. Upload the package, then this tab applies it to the launcher catalog. The live 1.6 GB account download stays on <code>updates/</code>.</p>
           </div>
 
           <div class="admin-section">
-            <div class="admin-section-title">Upload package to R2</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick the 3 GB package. It streams into <code>launcherstream/packagestream/</code>. The public URL is remembered after the first save.</p>
-            <div class="form-group">
-              <label>Local package</label>
-              <input id="ls-up-file" type="file" class="form-input">
+            <div class="admin-section-title">Upload and apply</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: pick a file, set the version, apply. The file goes to <code>packagestream/</code> on the same bucket so it does not replace the retail MSI.</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Version</label>
+                <input id="ls-up-version" type="text" class="form-input" value="1.4.3" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Package file</label>
+                <input id="ls-up-file" type="file" class="form-input">
+              </div>
             </div>
+            <input id="ls-up-key" type="hidden" value="">
+            <input id="ls-up-bucket" type="hidden" value="">
+            <input id="ls-up-public" type="hidden" value="">
             <p id="ls-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file.</p>
             <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
-            <div id="ls-up-meta" class="ls-meta">Idle. Pick the package, then Start upload.</div>
+            <div id="ls-up-meta" class="ls-meta">Idle. Pick the package, then Upload and apply.</div>
+            <div id="ls-up-save-status" class="ls-meta" hidden></div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
-              <button type="button" class="btn" id="ls-up-start">Start upload</button>
+              <button type="button" class="btn" id="ls-up-start">Upload and apply</button>
               <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
             </div>
-            <details style="margin-top:16px;">
-              <summary style="cursor:pointer;color:#9ca3af;font-size:0.82rem;">Advanced — public URL, CORS, test write</summary>
-              <p style="font-size:0.82rem;color:#9ca3af;margin:12px 0;">If Start upload says Failed to fetch, add this CORS policy on the <code>launcherstream</code> bucket and make sure the Storage API token can write that bucket.</p>
-              <pre id="ls-up-cors" style="font-size:0.75rem;color:#c4b5fd;background:rgba(0,0,0,0.25);padding:10px 12px;border-radius:8px;overflow:auto;margin:0 0 14px;white-space:pre;">[
-  {
-    "AllowedOrigins": ["https://viritts.com", "https://www.viritts.com"],
-    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag", "Content-Length"],
-    "MaxAgeSeconds": 3600
-  }
-]</pre>
-              <div class="form-group" style="margin-top:12px;">
-                <label>Object key</label>
-                <input id="ls-up-key" type="text" class="form-input" value="" placeholder="packagestream/your-file.exe" autocomplete="off" readonly>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Bucket</label>
-                  <input id="ls-up-bucket" type="text" class="form-input" value="launcherstream" autocomplete="off">
-                </div>
-                <div class="form-group">
-                  <label>Public base URL</label>
-                  <input id="ls-up-public" type="url" class="form-input" placeholder="https://pub-….r2.dev" autocomplete="off">
-                  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;">
-                    <button type="button" class="btn btn-outline" id="ls-up-save">Save URL</button>
-                    <button type="button" class="btn btn-outline" id="ls-up-test">Test write</button>
-                    <span id="ls-up-save-status" class="ls-meta">Paste the launcherstream pub- URL once if it is not already saved.</span>
-                  </div>
-                </div>
-              </div>
-            </details>
           </div>
 
           <div class="admin-section">
@@ -2941,7 +2919,7 @@
         launcherUrl: document.getElementById("ls-launcher-url").value.trim(),
         products: {
           airi: {
-            version: "1.4.3",
+            version: (document.getElementById("ls-up-version")?.value || "1.4.3").trim() || "1.4.3",
             url: document.getElementById("ls-airi-url").value.trim() || document.getElementById("ls-url").value.trim(),
             sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
             bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 3306303279,
@@ -2956,6 +2934,9 @@
       document.getElementById("ls-airi-url").value = airi.url || "";
       document.getElementById("ls-airi-sha").value = airi.sha256 || "";
       document.getElementById("ls-airi-bytes").value = airi.bytes || 3306303279;
+      if (airi.version && document.getElementById("ls-up-version")) {
+        document.getElementById("ls-up-version").value = airi.version;
+      }
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
     }
 
@@ -2980,23 +2961,8 @@
       if (lsReady) return;
       lsReady = true;
       try { if (typeof loadR2Config === "function") await loadR2Config(); } catch {}
-      if (!document.getElementById("ls-up-bucket").value.trim()) {
-        document.getElementById("ls-up-bucket").value = "launcherstream";
-      }
-      try {
-        const { data, error } = await supabase.rpc("get_virforge_launcher_r2");
-        if (error) throw error;
-        if (data?.bucket) document.getElementById("ls-up-bucket").value = data.bucket;
-        if (data?.public_url) {
-          document.getElementById("ls-up-public").value = data.public_url;
-          document.getElementById("ls-up-save-status").textContent = "Loaded saved launcherstream URL.";
-        } else {
-          const extras = document.querySelector("#tab-launcher details");
-          if (extras) extras.open = true;
-        }
-      } catch (err) {
-        document.getElementById("ls-up-save-status").textContent = err.message || "Could not load saved URL.";
-      }
+      document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim() || "viri-releases";
+      document.getElementById("ls-up-public").value = lsNormalizePublicBase(r2PublicUrlEl.value);
       lsSyncUploadKey();
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
@@ -3038,12 +3004,14 @@
       const file = document.getElementById("ls-up-file").files[0];
       const keyEl = document.getElementById("ls-up-key");
       if (file) keyEl.value = lsUploadKeyFromFile(file);
+      document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim() || "viri-releases";
+      document.getElementById("ls-up-public").value = lsNormalizePublicBase(r2PublicUrlEl.value);
       const base = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
       const key = keyEl.value.trim().replace(/^\/+/, "");
       const preview = document.getElementById("ls-up-public-preview");
       preview.textContent = base && key
         ? `${base}/${key}`
-        : "Public file URL appears here after you pick a file and paste the launcherstream pub- base.";
+        : "Uses the Storage public URL. Pick a file to see the full path.";
     }
     function lsNormalizePublicBase(raw) {
       let s = String(raw || "")
@@ -3058,44 +3026,19 @@
         return s.replace(/\/+$/, "");
       }
     }
-    async function lsRememberUploadTarget() {
-      const status = document.getElementById("ls-up-save-status");
-      const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
-      const public_url = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
-      if (!public_url) {
-        status.textContent = "Paste the launcherstream pub- URL first.";
-        return null;
-      }
-      document.getElementById("ls-up-public").value = public_url;
-      status.textContent = "Saving URL…";
-      const { data, error } = await supabase.rpc("update_virforge_launcher_r2", {
-        p_config: { bucket, public_url },
-      });
-      if (error) throw error;
-      const saved = data && data.new_config ? data.new_config : { bucket, public_url };
-      if (saved.bucket) document.getElementById("ls-up-bucket").value = saved.bucket;
-      if (saved.public_url) document.getElementById("ls-up-public").value = saved.public_url;
-      status.textContent = "Saved. This URL will be here next time you open Admin.";
-      lsSyncUploadKey();
-      return saved;
-    }
-
     function lsUpCreds() {
       const accountId = r2AccountIdEl.value.trim();
-      const bucket = document.getElementById("ls-up-bucket").value.trim() || "launcherstream";
-      const publicBase = lsNormalizePublicBase(document.getElementById("ls-up-public").value);
+      const bucket = r2BucketNameEl.value.trim() || "viri-releases";
+      const publicBase = lsNormalizePublicBase(r2PublicUrlEl.value);
       const credentials = {
         accessKeyId: r2AccessKeyEl.value.trim(),
         secretAccessKey: r2SecretKeyEl.value.trim(),
       };
-      if (!accountId || !credentials.accessKeyId || !credentials.secretAccessKey) {
-        throw new Error("Save R2 Account ID and API keys in Storage first. Those keys can write to launcherstream.");
+      if (!accountId || !bucket || !credentials.accessKeyId || !credentials.secretAccessKey) {
+        throw new Error("Save R2 Account ID, bucket, and API keys in Storage first. Same settings this tab uses.");
       }
       if (!publicBase || /cloudflarestorage\.com/i.test(publicBase)) {
-        throw new Error("Paste the launcherstream Public Development URL (https://pub-….r2.dev). That is not the S3 API host.");
-      }
-      if (publicBase.includes("dc3c6d7c6ae448c5b0c3fdf2830f7664")) {
-        throw new Error("That pub URL is viri-releases. Use the Public Development URL from the launcherstream bucket Settings.");
+        throw new Error("Save the Storage Public Download URL (https://pub-….r2.dev). That is not the S3 API host.");
       }
       return { accountId, bucket, publicBase, credentials };
     }
@@ -3103,7 +3046,7 @@
     function lsFetchError(err) {
       const msg = (err && err.message) || String(err || "");
       if (/failed to fetch|networkerror|cors/i.test(msg)) {
-        return "Failed to fetch: launcherstream blocked the browser (CORS or a token that cannot write that bucket). Cloudflare → R2 → launcherstream → Settings → CORS, paste the JSON above, then Test write. If that still fails, edit the R2 API token so it includes launcherstream.";
+        return "Failed to fetch: the Storage R2 bucket blocked the browser. Storage uploads already work on this origin — confirm those keys are saved, then try again.";
       }
       return msg;
     }
@@ -3184,22 +3127,16 @@
     }
 
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
-    document.getElementById("ls-up-public").addEventListener("input", lsSyncUploadKey);
-    document.getElementById("ls-up-save").addEventListener("click", async () => {
-      try { await lsRememberUploadTarget(); }
-      catch (err) { document.getElementById("ls-up-save-status").textContent = err.message || "Save failed."; }
-    });
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
-      if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local 3 GB package first."; return; }
+      if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local package first."; return; }
       lsSyncUploadKey();
       const key = document.getElementById("ls-up-key").value.trim().replace(/^\/+/, "") || lsUploadKeyFromFile(file);
       lsUpAbort = false;
       document.getElementById("ls-up-start").disabled = true;
       document.getElementById("ls-up-abort").disabled = false;
-      document.getElementById("ls-up-meta").textContent = "Saving URL, then starting streamed upload…";
+      document.getElementById("ls-up-meta").textContent = "Uploading with Storage R2 settings…";
       try {
-        await lsRememberUploadTarget();
         const result = await lsUploadToR2(file, key);
         document.getElementById("ls-url").value = result.publicUrl;
         document.getElementById("ls-airi-url").value = result.publicUrl;
@@ -3220,21 +3157,6 @@
     document.getElementById("ls-up-abort").addEventListener("click", () => {
       lsUpAbort = true;
       document.getElementById("ls-up-meta").textContent = "Aborting after this part…";
-    });
-    document.getElementById("ls-up-test").addEventListener("click", async () => {
-      const meta = document.getElementById("ls-up-meta");
-      meta.textContent = "Testing a 1-byte write to launcherstream…";
-      try {
-        await lsRememberUploadTarget();
-        const { accountId, bucket, credentials } = lsUpCreds();
-        const key = "packagestream/.write-test";
-        const probe = new Uint8Array([1]);
-        await lsR2Send("PUT", r2ObjectUrl(accountId, bucket, key), probe, credentials, { "Content-Type": "application/octet-stream" });
-        try { await lsR2Send("DELETE", r2ObjectUrl(accountId, bucket, key), "", credentials); } catch {}
-        meta.textContent = "Write test ok. Start upload.";
-      } catch (err) {
-        meta.textContent = lsFetchError(err);
-      }
     });
 
     async function lsHashFile(file) {
