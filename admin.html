@@ -1539,12 +1539,12 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Same R2 keys and public URL as Storage. Upload the package, then this tab applies it to the launcher catalog. The live 1.6 GB account download stays on <code>updates/</code>.</p>
+            <p>Same R2 keys, public URL, and key formula as Storage: <code>updates/{version}/{filename}</code>. Apply publishes the launcher catalog so VirForge streams that object. It does not activate the live account download.</p>
           </div>
 
           <div class="admin-section">
             <div class="admin-section-title">Upload and apply</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: pick a file, set the version, apply. The file goes to <code>packagestream/</code> on the same bucket so it does not replace the retail MSI.</p>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: version + file become the object key. Upload and apply streams the file, writes the launcher catalog, and adds an inactive Storage row.</p>
             <div class="form-row">
               <div class="form-group">
                 <label>Version</label>
@@ -2998,8 +2998,11 @@
     function lsSafeFileName(name) {
       return String(name || "package.bin").replace(/[/\\?%*:|"<>]/g, "_");
     }
+    function lsUploadVersion() {
+      return (document.getElementById("ls-up-version")?.value || "1.4.3").trim().replace(/[/\\]/g, "") || "1.4.3";
+    }
     function lsUploadKeyFromFile(file) {
-      return "packagestream/" + lsSafeFileName(file && file.name);
+      return "updates/" + lsUploadVersion() + "/" + lsSafeFileName(file && file.name);
     }
     function lsSyncUploadKey() {
       const file = document.getElementById("ls-up-file").files[0];
@@ -3012,7 +3015,7 @@
       const preview = document.getElementById("ls-up-public-preview");
       preview.textContent = base && key
         ? `${base}/${key}`
-        : "Uses the Storage public URL. Pick a file to see the full path.";
+        : "Uses the Storage public URL. Pick a file to see updates/{version}/{filename}.";
     }
     function lsNormalizePublicBase(raw) {
       let s = String(raw || "")
@@ -3112,12 +3115,65 @@
       return { publicUrl, sha256, bytes: file.size };
     }
 
+    async function lsRecordInactiveR2Version(file, key, publicUrl) {
+      const version = lsUploadVersion();
+      const { data: userData } = await supabase.auth.getUser();
+      const artifact = {
+        version,
+        title: `Launcher stream ${version}`,
+        content: "VirForge launcher package. Inactive on purpose so the live account download stays unchanged.",
+        file_name: lsSafeFileName(file && file.name),
+        file_path: key,
+        download_url: publicUrl,
+        is_critical: false,
+        uploaded_by: userData?.user?.id || null,
+      };
+      const { data: existing, error: existingErr } = await supabase
+        .from("r2_versions")
+        .select("id,is_active")
+        .eq("version", version)
+        .eq("channel", "stable")
+        .maybeSingle();
+      if (existingErr) throw existingErr;
+      if (existing?.id) {
+        if (existing.is_active) {
+          throw new Error(`Version ${version} is the live account download. Use a new version so Apply does not replace it.`);
+        }
+        const { error } = await supabase
+          .from("r2_versions")
+          .update(artifact)
+          .eq("id", existing.id);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.from("r2_versions").insert([{
+        ...artifact,
+        channel: "stable",
+        is_active: false,
+      }]);
+      if (error) throw error;
+    }
+
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
+    document.getElementById("ls-up-version").addEventListener("input", lsSyncUploadKey);
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
       if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local package first."; return; }
       lsSyncUploadKey();
       const key = document.getElementById("ls-up-key").value.trim().replace(/^\/+/, "") || lsUploadKeyFromFile(file);
+      try {
+        const { data: liveRows, error: liveErr } = await supabase
+          .from("r2_versions")
+          .select("file_path,is_active")
+          .eq("is_active", true);
+        if (liveErr) throw liveErr;
+        if ((liveRows || []).some((row) => row.file_path === key)) {
+          document.getElementById("ls-up-meta").textContent = "That key is the live account download. Change the version or file name.";
+          return;
+        }
+      } catch (liveCheckErr) {
+        if (/live account download/i.test(liveCheckErr.message || "")) throw liveCheckErr;
+      }
       lsUpAbort = false;
       document.getElementById("ls-up-start").disabled = true;
       document.getElementById("ls-up-abort").disabled = false;
@@ -3132,7 +3188,13 @@
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
         document.getElementById("ls-up-bar").style.width = "100%";
         await lsPublishCatalog();
-        document.getElementById("ls-up-meta").textContent = `Uploaded and saved on the website. ${result.bytes.toLocaleString()} bytes. Refresh the launcher library.`;
+        try {
+          await lsRecordInactiveR2Version(file, key, result.publicUrl);
+        } catch (rowErr) {
+          document.getElementById("ls-up-meta").textContent = `Uploaded and saved for the launcher. Storage Existing row failed: ${rowErr.message || rowErr}`;
+          return;
+        }
+        document.getElementById("ls-up-meta").textContent = `Uploaded and applied. ${result.bytes.toLocaleString()} bytes at ${key}. Refresh the launcher library.`;
       } catch (err) {
         document.getElementById("ls-up-meta").textContent = lsFetchError(err);
       } finally {
