@@ -218,6 +218,14 @@
     .ls-bar-wrap { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin: 12px 0; }
     .ls-bar { height: 100%; width: 0; background: linear-gradient(90deg,#7c3aed,#06b6d4); transition: width 0.15s linear; }
     .ls-meta { font-size: 0.82rem; color: #9ca3af; font-family: ui-monospace, Consolas, monospace; }
+    .ls-branch-tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .ls-branch-tab { flex:1; min-width:140px; border:1px solid rgba(124,58,237,0.35); background:transparent; color:#c4b5fd; opacity:0.7; }
+    .ls-branch-tab.active { opacity:1; box-shadow:0 0 0 1px rgba(167,139,250,0.35); }
+    .ls-branch-tab[data-ls-branch="stable"].active { background:linear-gradient(135deg,#14532d,#166534); border-color:#22c55e; color:#bbf7d0; }
+    .ls-branch-tab[data-ls-branch="beta"].active { background:linear-gradient(135deg,#1e3a5f,#0e7490); border-color:#22d3ee; color:#cffafe; }
+    .ls-live-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .ls-history-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+    @media (max-width: 900px) { .ls-live-grid { grid-template-columns:1fr; } }
 
     /* Tab header */
     .tab-header {
@@ -1539,28 +1547,31 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Same R2 keys and key formula as Storage. Apply a package to <strong>Release</strong>, <strong>Beta</strong>, or <strong>Both</strong>. The launcher streams Release to paying keys and Beta to beta keys. This does not activate the live account download.</p>
+            <p>Beta and Release are separate launcher branches. Upload or pick an already-uploaded file on the selected tab. Applied live below is what VirForge is serving right now — unpublish one branch without touching the other.</p>
           </div>
 
           <div class="admin-section">
-            <div class="admin-section-title">Upload and apply</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: version + file become <code>updates/{version}/{filename}</code>. Choose Release, Beta, or Both, then upload or apply an existing R2 item.</p>
+            <div class="ls-branch-tabs" role="tablist" aria-label="Launcher branch">
+              <button type="button" class="btn ls-branch-tab" data-ls-branch="beta" role="tab" aria-selected="false">Beta</button>
+              <button type="button" class="btn ls-branch-tab active" data-ls-branch="stable" role="tab" aria-selected="true">Release</button>
+            </div>
+            <div class="admin-section-title">Upload and apply · <span id="ls-up-branch-label">Release</span></div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">This tab writes only the selected branch. Version + new file become <code>updates/{version}/{filename}</code>. Or pick a file already on R2 and apply it.</p>
             <div class="form-row">
               <div class="form-group">
                 <label>Version</label>
                 <input id="ls-up-version" type="text" class="form-input" value="1.4.3" autocomplete="off">
               </div>
               <div class="form-group">
-                <label>Apply to</label>
-                <select id="ls-up-channel" class="form-input">
-                  <option value="stable">Release (paying)</option>
-                  <option value="beta">Beta</option>
-                  <option value="both">Both (Release + Beta)</option>
+                <label>Already uploaded</label>
+                <select id="ls-up-existing" class="form-input">
+                  <option value="">Loading uploaded files…</option>
                 </select>
               </div>
             </div>
+            <input id="ls-up-channel" type="hidden" value="stable">
             <div class="form-group" style="margin-top:12px;">
-              <label>Package file</label>
+              <label>New package file</label>
               <input id="ls-up-file" type="file" class="form-input">
             </div>
             <input id="ls-up-key" type="hidden" value="">
@@ -1568,11 +1579,25 @@
             <input id="ls-up-public" type="hidden" value="">
             <p id="ls-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file.</p>
             <div class="ls-bar-wrap"><div id="ls-up-bar" class="ls-bar"></div></div>
-            <div id="ls-up-meta" class="ls-meta">Idle. Pick the package, then Upload and apply.</div>
+            <div id="ls-up-meta" class="ls-meta">Idle. Pick a new package or an already-uploaded file.</div>
             <div id="ls-up-save-status" class="ls-meta" hidden></div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
               <button type="button" class="btn" id="ls-up-start">Upload and apply</button>
+              <button type="button" class="btn" id="ls-up-apply-existing">Apply uploaded file</button>
+              <button type="button" class="btn btn-outline" id="ls-up-hash-existing">Create checksum from this file</button>
               <button type="button" class="btn btn-outline" id="ls-up-abort" disabled>Abort</button>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">Applied live</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Live Release and Beta on top. Every older uploaded variant is listed under them, so you can roll a branch back or pull a bad version without touching the other branch.</p>
+            <div id="ls-live-list" class="ls-live-grid">
+              <div class="ls-meta">Loading applied launcher versions…</div>
+            </div>
+            <div class="admin-section-title" style="margin-top:22px;">Older variants</div>
+            <div id="ls-history-list" class="ls-history-list">
+              <div class="ls-meta">Loading uploaded versions…</div>
             </div>
           </div>
 
@@ -1589,9 +1614,9 @@
               <span id="ls-hash-status-top" style="font-size:0.82rem;color:#6b7280;">Select the local package, then Create checksum. Fills this box and the catalog SHA below.</span>
             </div>
             <div class="form-group">
-              <label>Existing R2 build</label>
+              <label>Already uploaded</label>
               <select id="ls-existing" class="form-input">
-                <option value="">Loading…</option>
+                <option value="">Loading uploaded files…</option>
               </select>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;">
@@ -2913,6 +2938,8 @@
     };
     let lsLoadedCatalog = LS_EMPTY;
     let lsReady = false;
+    let lsBranch = "stable";
+    let lsBuilds = [];
     let lsCtl = null;
     let lsReceived = 0;
     let lsTotal = 0;
@@ -2924,9 +2951,47 @@
     }
 
     function lsSelectedChannels() {
-      const raw = document.getElementById("ls-up-channel")?.value || "stable";
-      if (raw === "both") return ["stable", "beta"];
-      return [raw === "beta" ? "beta" : "stable"];
+      return [lsBranch === "beta" ? "beta" : "stable"];
+    }
+    function lsBranchName(ch) {
+      return ch === "beta" ? "Beta" : "Release";
+    }
+    function lsEscape(text) {
+      return String(text || "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[ch]));
+    }
+    function lsChannelPkg(catalog, ch) {
+      const airi = (catalog && catalog.products && catalog.products.airi) || {};
+      const fromCh = airi.channels && airi.channels[ch];
+      if (fromCh && fromCh.url) {
+        return {
+          version: fromCh.version || "",
+          url: fromCh.url || "",
+          sha256: String(fromCh.sha256 || "").toLowerCase(),
+          bytes: Number(fromCh.bytes) || 0,
+        };
+      }
+      if (ch === "stable") {
+        return {
+          version: airi.version || "",
+          url: airi.url || "",
+          sha256: String(airi.sha256 || "").toLowerCase(),
+          bytes: Number(airi.bytes) || 0,
+        };
+      }
+      return { version: "", url: "", sha256: "", bytes: 0 };
+    }
+    function lsPkgComplete(pkg) {
+      return Boolean(pkg && pkg.url && pkg.url.startsWith("https://") && /^[a-f0-9]{64}$/.test(pkg.sha256) && pkg.bytes > 0);
+    }
+    function lsFindPkgByUrl(catalog, url) {
+      if (!url) return null;
+      for (const ch of ["stable", "beta"]) {
+        const pkg = lsChannelPkg(catalog, ch);
+        if (pkg.url === url) return pkg;
+      }
+      return null;
     }
     function lsPackageFromForm() {
       const bytes = Number((document.getElementById("ls-airi-bytes").value || "").replace(/[^\d]/g, ""));
@@ -2942,17 +3007,19 @@
       const prevAiri = prev.products?.airi || {};
       const channels = { ...(prevAiri.channels || {}) };
       const pkg = lsPackageFromForm();
-      for (const ch of lsSelectedChannels()) channels[ch] = { ...pkg };
-      const stable = channels.stable || pkg;
+      if (lsPkgComplete(pkg)) {
+        for (const ch of lsSelectedChannels()) channels[ch] = { ...pkg };
+      }
+      const stable = channels.stable || {};
       return {
         licenseEndpoint: prev.licenseEndpoint || LS_LICENSE,
         launcherUrl: document.getElementById("ls-launcher-url").value.trim(),
         products: {
           airi: {
-            version: stable.version || pkg.version,
-            url: stable.url || pkg.url,
-            sha256: stable.sha256 || pkg.sha256,
-            bytes: stable.bytes || pkg.bytes,
+            version: stable.version || prevAiri.version || pkg.version,
+            url: stable.url || "",
+            sha256: stable.sha256 || "",
+            bytes: stable.bytes || 0,
             channels,
           },
         },
@@ -2960,16 +3027,164 @@
     }
 
     function lsPaintCatalog(catalog) {
-      const airi = catalog.products?.airi || LS_EMPTY.products.airi;
+      lsLoadedCatalog = catalog;
+      const pkg = lsChannelPkg(catalog, lsBranch);
       document.getElementById("ls-launcher-url").value = catalog.launcherUrl || "";
-      document.getElementById("ls-airi-url").value = airi.url || "";
-      document.getElementById("ls-airi-sha").value = airi.sha256 || "";
-      document.getElementById("ls-airi-bytes").value = airi.bytes || 3306303279;
-      if (airi.version && document.getElementById("ls-up-version")) {
-        document.getElementById("ls-up-version").value = airi.version;
+      document.getElementById("ls-airi-url").value = pkg.url || "";
+      document.getElementById("ls-airi-sha").value = pkg.sha256 || "";
+      document.getElementById("ls-airi-bytes").value = pkg.bytes || "";
+      if (pkg.version && document.getElementById("ls-up-version")) {
+        document.getElementById("ls-up-version").value = pkg.version;
       }
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
-      lsLoadedCatalog = catalog;
+      lsPaintLive(catalog);
+    }
+
+    function lsLiveUrls(catalog) {
+      return {
+        stable: lsChannelPkg(catalog, "stable").url || "",
+        beta: lsChannelPkg(catalog, "beta").url || "",
+      };
+    }
+
+    function lsPaintLive(catalog) {
+      const list = document.getElementById("ls-live-list");
+      if (!list) return;
+      const rows = [
+        { id: "stable", name: "Release", hint: "Paying keys" },
+        { id: "beta", name: "Beta", hint: "Beta-tier keys" },
+      ];
+      list.innerHTML = rows.map((row) => {
+        const pkg = lsChannelPkg(catalog, row.id);
+        const live = lsPkgComplete(pkg);
+        const file = pkg.url ? decodeURIComponent(pkg.url.split("/").pop() || "") : "";
+        const badge = live
+          ? '<span class="badge badge-active">LIVE</span>'
+          : '<span class="badge" style="background:#2d1b4e;">NOT APPLIED</span>';
+        const chBadge = row.id === "beta"
+          ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
+          : '<span class="badge" style="background:#14532d;color:#86efac;">RELEASE</span>';
+        return `
+          <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+            <div style="width:100%;">
+              <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
+                ${lsEscape(row.name)} ${pkg.version ? "v" + lsEscape(pkg.version) : ""}
+                ${chBadge}
+                ${badge}
+              </h4>
+              <p style="margin:0;font-size:0.85em;color:#9ca3af;">${lsEscape(row.hint)}</p>
+              <p style="margin:8px 0 0;font-size:0.85em;color:#6b7280;">${live ? lsEscape(file || pkg.url) : "Nothing applied on this branch."}</p>
+              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…` : ""}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" class="btn ls-live-open" data-ls-open="${row.id}" ${live ? "" : "disabled"} style="padding:8px 14px;font-size:0.85em;">Open branch</button>
+              <button type="button" class="btn btn-outline ls-unpublish" data-ls-unpublish="${row.id}" ${live ? "" : "disabled"} style="border-color:#ff4444;color:#ff4444;padding:8px 14px;font-size:0.85em;">Unpublish</button>
+            </div>
+          </div>`;
+      }).join("");
+      list.querySelectorAll(".ls-live-open").forEach((btn) => {
+        btn.addEventListener("click", () => lsSetBranch(btn.getAttribute("data-ls-open")));
+      });
+      list.querySelectorAll(".ls-unpublish").forEach((btn) => {
+        btn.addEventListener("click", () => lsUnpublishChannel(btn.getAttribute("data-ls-unpublish")));
+      });
+      lsPaintHistory(catalog);
+    }
+
+    function lsPaintHistory(catalog) {
+      const box = document.getElementById("ls-history-list");
+      if (!box) return;
+      const live = lsLiveUrls(catalog);
+      const variants = (lsBuilds || []).slice();
+      if (!variants.length) {
+        box.innerHTML = `<p class="ls-meta">No uploaded variants yet. Upload a package or pick one after Storage has rows.</p>`;
+        return;
+      }
+      box.innerHTML = variants.map((row, idx) => {
+        const onRelease = row.download_url && row.download_url === live.stable;
+        const onBeta = row.download_url && row.download_url === live.beta;
+        const chs = row.channels || [row.channel === "beta" ? "beta" : "stable"];
+        const badges = [
+          chs.includes("stable") ? '<span class="badge" style="background:#14532d;color:#86efac;">RELEASE</span>' : "",
+          chs.includes("beta") ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>' : "",
+          onRelease ? '<span class="badge badge-active">LIVE RELEASE</span>' : "",
+          onBeta ? '<span class="badge badge-active">LIVE BETA</span>' : "",
+          !onRelease && !onBeta ? '<span class="badge" style="background:#2d1b4e;">OLDER</span>' : "",
+        ].filter(Boolean).join("");
+        const when = row.created_at ? new Date(row.created_at).toLocaleString() : "";
+        return `
+          <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+            <div style="width:100%;">
+              <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
+                v${lsEscape(row.version || "?")} ${lsEscape(row.title || "")}
+                ${badges}
+              </h4>
+              <p style="margin:0;font-size:0.85em;color:#6b7280;">${lsEscape(row.file_name || row.file_path || row.download_url || "—")}${when ? " · " + lsEscape(when) : ""}</p>
+              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${lsEscape(row.download_url || "")}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" class="btn ls-hist-apply" data-ls-idx="${idx}" data-ls-ch="stable" style="padding:8px 14px;font-size:0.85em;">Apply to Release</button>
+              <button type="button" class="btn ls-hist-apply" data-ls-idx="${idx}" data-ls-ch="beta" style="padding:8px 14px;font-size:0.85em;">Apply to Beta</button>
+            </div>
+          </div>`;
+      }).join("");
+      box.querySelectorAll(".ls-hist-apply").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = lsBuilds[Number(btn.getAttribute("data-ls-idx"))];
+          if (row) lsApplyUrlToChannel(row.download_url, btn.getAttribute("data-ls-ch"));
+        });
+      });
+    }
+
+    function lsSetBranch(ch) {
+      lsBranch = ch === "beta" ? "beta" : "stable";
+      const hidden = document.getElementById("ls-up-channel");
+      if (hidden) hidden.value = lsBranch;
+      const label = document.getElementById("ls-up-branch-label");
+      if (label) label.textContent = lsBranchName(lsBranch);
+      document.querySelectorAll("[data-ls-branch]").forEach((btn) => {
+        const on = btn.getAttribute("data-ls-branch") === lsBranch;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      lsPaintCatalog(lsLoadedCatalog);
+    }
+
+    function lsBuildOptionsHtml(placeholder) {
+      const rows = lsBuilds || [];
+      if (!rows.length) return `<option value="">${lsEscape(placeholder || "No uploaded files yet")}</option>`;
+      return `<option value="">${lsEscape(placeholder || "Pick an uploaded file…")}</option>` + rows.map((row) => {
+        const live = row.is_active ? " · account live" : "";
+        const chs = (row.channels || [row.channel || "stable"]).join("+");
+        const label = `v${row.version || "?"} · ${row.file_name || row.version} · ${chs}${live}`;
+        return `<option value="${lsEscape(row.download_url)}">${lsEscape(label)}</option>`;
+      }).join("");
+    }
+
+    function lsFillBuildSelects() {
+      const up = document.getElementById("ls-up-existing");
+      const stream = document.getElementById("ls-existing");
+      if (up) up.innerHTML = lsBuildOptionsHtml("Pick an already-uploaded file…");
+      if (stream) stream.innerHTML = lsBuildOptionsHtml("Select an uploaded file to stream…");
+    }
+
+    function lsFillFromBuild(url) {
+      const href = String(url || "").trim();
+      if (!href.startsWith("https://")) return null;
+      const row = (lsBuilds || []).find((item) => item.download_url === href);
+      const known = lsFindPkgByUrl(lsLoadedCatalog, href) || {};
+      const fromPath = href.match(/\/updates\/([^/]+)\//);
+      const version = row?.version || known.version || (fromPath && fromPath[1]) || lsUploadVersion();
+      if (version) document.getElementById("ls-up-version").value = version;
+      document.getElementById("ls-url").value = href;
+      document.getElementById("ls-airi-url").value = href;
+      if (known.sha256) {
+        document.getElementById("ls-sha").value = known.sha256;
+        document.getElementById("ls-airi-sha").value = known.sha256;
+      }
+      if (known.bytes) document.getElementById("ls-airi-bytes").value = String(known.bytes);
+      document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
+      return { row, known, url: href, version };
     }
 
     function lsSetMeta(text) {
@@ -2989,9 +3204,48 @@
       return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
     }
 
+    function lsRowPublicUrl(row) {
+      const direct = String(row && row.download_url || "").trim();
+      if (direct.startsWith("https://")) return direct;
+      const base = lsNormalizePublicBase(r2PublicUrlEl?.value || "");
+      const key = String(row && row.file_path || "").replace(/^\/+/, "");
+      return base && key ? `${base}/${key}` : "";
+    }
+
+    async function lsLoadUploadedBuilds() {
+      const all = [];
+      let from = 0;
+      const page = 200;
+      while (true) {
+        const { data, error } = await supabase
+          .from("r2_versions")
+          .select("id,version,title,channel,file_name,file_path,download_url,is_active,created_at")
+          .order("created_at", { ascending: false })
+          .range(from, from + page - 1);
+        if (error) throw error;
+        all.push(...(data || []));
+        if (!data || data.length < page) break;
+        from += page;
+      }
+      const map = new Map();
+      for (const row of all) {
+        const url = lsRowPublicUrl(row);
+        if (!url.startsWith("https://")) continue;
+        const key = `${row.version || ""}|${url}`;
+        const prev = map.get(key) || { ...row, download_url: url, channels: [] };
+        const ch = row.channel === "beta" ? "beta" : "stable";
+        if (!prev.channels.includes(ch)) prev.channels.push(ch);
+        prev.is_active = prev.is_active || row.is_active;
+        if (!prev.file_name && row.file_name) prev.file_name = row.file_name;
+        if (!prev.created_at || (row.created_at && row.created_at > prev.created_at)) prev.created_at = row.created_at;
+        map.set(key, prev);
+      }
+      lsBuilds = [...map.values()];
+      lsFillBuildSelects();
+      lsPaintHistory(lsLoadedCatalog);
+    }
+
     async function initLauncherTab() {
-      if (lsReady) return;
-      lsReady = true;
       try { if (typeof loadR2Config === "function") await loadR2Config(); } catch {}
       document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim() || "viri-releases";
       document.getElementById("ls-up-public").value = lsNormalizePublicBase(r2PublicUrlEl.value);
@@ -3005,22 +3259,90 @@
         document.getElementById("ls-publish-status").textContent = err.message || "Catalog load failed.";
       }
       try {
-        const { data, error } = await supabase
-          .from("r2_versions")
-          .select("version,channel,file_name,download_url,is_active")
-          .order("created_at", { ascending: false })
-          .limit(16);
-        if (error) throw error;
-        const select = document.getElementById("ls-existing");
-        const rows = (data || []).filter((row) => row.download_url && String(row.download_url).startsWith("https://"));
-        select.innerHTML = `<option value="">Select a retail R2 build to stream…</option>` + rows.map((row) => {
-          const live = row.is_active ? " · live" : "";
-          const label = `${row.file_name || row.version} · ${row.channel}${live}`;
-          return `<option value="${String(row.download_url).replace(/"/g, "")}">${label.replace(/[<>&]/g, "")}</option>`;
-        }).join("");
+        await lsLoadUploadedBuilds();
       } catch (err) {
-        document.getElementById("ls-existing").innerHTML = `<option value="">${err.message || "Could not load builds"}</option>`;
+        lsBuilds = [];
+        const msg = `<option value="">${lsEscape(err.message || "Could not load uploaded files")}</option>`;
+        const up = document.getElementById("ls-up-existing");
+        const stream = document.getElementById("ls-existing");
+        if (up) up.innerHTML = msg;
+        if (stream) stream.innerHTML = msg;
       }
+      lsReady = true;
+    }
+
+    async function lsUnpublishChannel(ch) {
+      const channel = ch === "beta" ? "beta" : "stable";
+      const pkg = lsChannelPkg(lsLoadedCatalog, channel);
+      if (!pkg.url) return;
+      if (!confirm(`Unpublish ${lsBranchName(channel)} v${pkg.version || "?"} from the launcher? The other branch stays live.`)) return;
+      const catalog = lsCatalogFromForm();
+      const airi = catalog.products.airi;
+      const channels = { ...(airi.channels || {}) };
+      delete channels[channel];
+      if (channel === "stable") {
+        airi.version = (channels.beta && channels.beta.version) || "";
+        airi.url = "";
+        airi.sha256 = "";
+        airi.bytes = 0;
+      }
+      airi.channels = channels;
+      catalog.products.airi = airi;
+      const status = document.getElementById("ls-publish-status");
+      status.textContent = `Unpublishing ${lsBranchName(channel)}…`;
+      const { error } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        status.textContent = error.message || "Unpublish failed.";
+        return;
+      }
+      lsPaintCatalog(catalog);
+      status.textContent = `${lsBranchName(channel)} unpublished. VirForge will stop serving that version after Refresh.`;
+    }
+
+    async function lsApplyUrlToChannel(url, ch) {
+      lsBranch = ch === "beta" ? "beta" : "stable";
+      const hidden = document.getElementById("ls-up-channel");
+      if (hidden) hidden.value = lsBranch;
+      const label = document.getElementById("ls-up-branch-label");
+      if (label) label.textContent = lsBranchName(lsBranch);
+      document.querySelectorAll("[data-ls-branch]").forEach((btn) => {
+        const on = btn.getAttribute("data-ls-branch") === lsBranch;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      const up = document.getElementById("ls-up-existing");
+      const stream = document.getElementById("ls-existing");
+      if (up) up.value = url;
+      if (stream) stream.value = url;
+      await lsApplyUploadedFile();
+    }
+
+    async function lsApplyUploadedFile() {
+      const status = document.getElementById("ls-up-meta");
+      const publish = document.getElementById("ls-publish-status");
+      const url = (document.getElementById("ls-up-existing").value || document.getElementById("ls-existing").value || "").trim();
+      const picked = lsFillFromBuild(url);
+      if (!picked) {
+        status.textContent = "Pick an already-uploaded file first.";
+        return;
+      }
+      const pkg = lsPackageFromForm();
+      if (!pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) {
+        status.textContent = "Create a checksum for that file, then Apply uploaded file.";
+        return;
+      }
+      if (!pkg.bytes) {
+        status.textContent = "AiRi bytes must be filled for that file.";
+        return;
+      }
+      await lsPublishCatalog();
+      const msg = `Applied ${lsBranchName(lsBranch)} from ${picked.row?.file_name || pkg.version}.`;
+      status.textContent = msg;
+      if (publish) publish.textContent = msg;
     }
 
     let lsUpAbort = false;
@@ -3376,7 +3698,12 @@
     }
 
     async function lsRunRemoteHash() {
-      const url = (document.getElementById("ls-existing").value || document.getElementById("ls-url").value || "").trim();
+      const url = (
+        document.getElementById("ls-up-existing")?.value
+        || document.getElementById("ls-existing").value
+        || document.getElementById("ls-url").value
+        || ""
+      ).trim();
       if (!url.startsWith("https://")) {
         lsHashStatus("Pick an Existing R2 build (or paste its HTTPS URL) first.");
         return;
@@ -3450,6 +3777,26 @@
       if (file) lsRunHash(file);
     });
     document.getElementById("ls-hash-r2").addEventListener("click", () => {
+      lsRunRemoteHash();
+    });
+    document.querySelectorAll("[data-ls-branch]").forEach((btn) => {
+      btn.addEventListener("click", () => lsSetBranch(btn.getAttribute("data-ls-branch")));
+    });
+    document.getElementById("ls-up-existing").addEventListener("change", () => {
+      const url = document.getElementById("ls-up-existing").value;
+      if (!url) return;
+      lsFillFromBuild(url);
+      const stream = document.getElementById("ls-existing");
+      if (stream) stream.value = url;
+    });
+    document.getElementById("ls-up-apply-existing").addEventListener("click", () => {
+      lsApplyUploadedFile().catch((err) => {
+        document.getElementById("ls-up-meta").textContent = err.message || "Apply failed.";
+      });
+    });
+    document.getElementById("ls-up-hash-existing").addEventListener("click", () => {
+      const url = document.getElementById("ls-up-existing").value;
+      if (url) document.getElementById("ls-existing").value = url;
       lsRunRemoteHash();
     });
     document.getElementById("ls-apply-existing").addEventListener("click", async () => {
