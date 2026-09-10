@@ -2993,6 +2993,38 @@
       }
       return null;
     }
+    function lsUrlFileName(url) {
+      try { return decodeURIComponent(new URL(url).pathname.split("/").pop() || ""); }
+      catch { return String(url || "").split("/").pop() || ""; }
+    }
+    function lsPkgLooksStale(pkg) {
+      if (!pkg || !pkg.url) return false;
+      const name = lsUrlFileName(pkg.url).toLowerCase();
+      const bytes = Number(pkg.bytes) || 0;
+      if (name.endsWith(".msi") && bytes > 1_000_000_000) return true;
+      for (const ch of ["stable", "beta"]) {
+        const other = lsChannelPkg(lsLoadedCatalog, ch);
+        if (other.url && other.url !== pkg.url && other.sha256 && other.sha256 === pkg.sha256 && bytes === other.bytes) return true;
+      }
+      return false;
+    }
+    async function lsHeadBytes(url) {
+      try {
+        const head = await fetch(url, { method: "HEAD", redirect: "error" });
+        const len = Number(head.headers.get("content-length"));
+        if (Number.isSafeInteger(len) && len > 0) return len;
+      } catch {}
+      const range = await fetch(url, { method: "GET", headers: { Range: "bytes=0-0" }, redirect: "error" });
+      const cr = range.headers.get("content-range") || "";
+      const match = /\/(\d+)\s*$/.exec(cr);
+      const total = match ? Number(match[1]) : 0;
+      try { if (range.body) await range.body.cancel(); } catch {}
+      return Number.isSafeInteger(total) && total > 0 ? total : 0;
+    }
+    function lsClearPackageChecksum() {
+      document.getElementById("ls-sha").value = "";
+      document.getElementById("ls-airi-sha").value = "";
+    }
     function lsPackageFromForm() {
       const bytes = Number((document.getElementById("ls-airi-bytes").value || "").replace(/[^\d]/g, ""));
       return {
@@ -3074,7 +3106,7 @@
               </h4>
               <p style="margin:0;font-size:0.85em;color:#9ca3af;">${lsEscape(row.hint)}</p>
               <p style="margin:8px 0 0;font-size:0.85em;color:#6b7280;">${live ? lsEscape(file || pkg.url) : "Nothing applied on this branch."}</p>
-              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…` : ""}</p>
+              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…${lsPkgLooksStale(pkg) ? " · size/checksum do not match this file" : ""}` : ""}</p>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button type="button" class="btn ls-live-open" data-ls-open="${row.id}" ${live ? "" : "disabled"} style="padding:8px 14px;font-size:0.85em;">Open branch</button>
@@ -3172,19 +3204,23 @@
       const href = String(url || "").trim();
       if (!href.startsWith("https://")) return null;
       const row = (lsBuilds || []).find((item) => item.download_url === href);
-      const known = lsFindPkgByUrl(lsLoadedCatalog, href) || {};
+      const known = lsFindPkgByUrl(lsLoadedCatalog, href);
       const fromPath = href.match(/\/updates\/([^/]+)\//);
-      const version = row?.version || known.version || (fromPath && fromPath[1]) || lsUploadVersion();
+      const version = row?.version || known?.version || (fromPath && fromPath[1]) || lsUploadVersion();
       if (version) document.getElementById("ls-up-version").value = version;
       document.getElementById("ls-url").value = href;
       document.getElementById("ls-airi-url").value = href;
-      if (known.sha256) {
+      const usable = known && known.url === href && !lsPkgLooksStale(known);
+      if (usable && known.sha256) {
         document.getElementById("ls-sha").value = known.sha256;
         document.getElementById("ls-airi-sha").value = known.sha256;
+      } else {
+        lsClearPackageChecksum();
       }
-      if (known.bytes) document.getElementById("ls-airi-bytes").value = String(known.bytes);
+      if (usable && known.bytes) document.getElementById("ls-airi-bytes").value = String(known.bytes);
+      else document.getElementById("ls-airi-bytes").value = "";
       document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
-      return { row, known, url: href, version };
+      return { row, known: usable ? known : {}, url: href, version };
     }
 
     function lsSetMeta(text) {
@@ -3268,6 +3304,9 @@
         if (up) up.innerHTML = msg;
         if (stream) stream.innerHTML = msg;
       }
+      try { await lsRepairStaleLivePackages(); } catch (err) {
+        document.getElementById("ls-publish-status").textContent = err.message || "Could not repair live size.";
+      }
       lsReady = true;
     }
 
@@ -3330,19 +3369,60 @@
         status.textContent = "Pick an already-uploaded file first.";
         return;
       }
-      const pkg = lsPackageFromForm();
+      status.textContent = "Reading the real file size from R2…";
+      let bytes = 0;
+      try { bytes = await lsHeadBytes(url); } catch {}
+      if (bytes) document.getElementById("ls-airi-bytes").value = String(bytes);
+      let pkg = lsPackageFromForm();
+      if (lsPkgLooksStale(pkg) || !pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) {
+        status.textContent = "Hashing this file so size and checksum match…";
+        const hashed = await lsHashRemoteUrl(url);
+        document.getElementById("ls-airi-sha").value = hashed.hex;
+        document.getElementById("ls-sha").value = hashed.hex;
+        document.getElementById("ls-airi-bytes").value = String(hashed.bytes);
+        pkg = lsPackageFromForm();
+      }
       if (!pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) {
         status.textContent = "Create a checksum for that file, then Apply uploaded file.";
         return;
       }
       if (!pkg.bytes) {
-        status.textContent = "AiRi bytes must be filled for that file.";
+        status.textContent = "Could not read the file size. Create a checksum from that file, then apply.";
         return;
       }
       await lsPublishCatalog();
-      const msg = `Applied ${lsBranchName(lsBranch)} from ${picked.row?.file_name || pkg.version}.`;
+      const msg = `Applied ${lsBranchName(lsBranch)} ${pkg.version} · ${pkg.bytes.toLocaleString()} bytes.`;
       status.textContent = msg;
       if (publish) publish.textContent = msg;
+    }
+
+    async function lsRepairStaleLivePackages() {
+      const stale = ["stable", "beta"]
+        .map((ch) => ({ ch, pkg: lsChannelPkg(lsLoadedCatalog, ch) }))
+        .filter((row) => lsPkgLooksStale(row.pkg));
+      if (!stale.length) return;
+      const status = document.getElementById("ls-publish-status");
+      const byUrl = new Map();
+      for (const row of stale) {
+        if (!byUrl.has(row.pkg.url)) byUrl.set(row.pkg.url, []);
+        byUrl.get(row.pkg.url).push(row);
+      }
+      for (const [url, rows] of byUrl) {
+        status.textContent = `Repairing live size for ${lsUrlFileName(url)}…`;
+        const hashed = await lsHashRemoteUrl(url);
+        for (const row of rows) {
+          lsBranch = row.ch;
+          document.getElementById("ls-up-channel").value = row.ch;
+          document.getElementById("ls-up-version").value = row.pkg.version || lsUploadVersion();
+          document.getElementById("ls-airi-url").value = url;
+          document.getElementById("ls-url").value = url;
+          document.getElementById("ls-airi-sha").value = hashed.hex;
+          document.getElementById("ls-sha").value = hashed.hex;
+          document.getElementById("ls-airi-bytes").value = String(hashed.bytes);
+          await lsPublishCatalog();
+        }
+      }
+      status.textContent = "Live size and checksum now match the file on R2. Refresh VirForge.";
     }
 
     let lsUpAbort = false;
