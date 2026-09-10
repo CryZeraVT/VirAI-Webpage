@@ -1655,7 +1655,7 @@
               </div>
               <div class="form-group">
                 <label>AiRi bytes</label>
-                <input id="ls-airi-bytes" type="text" inputmode="numeric" class="form-input" value="3306303279" autocomplete="off">
+                <input id="ls-airi-bytes" type="text" inputmode="numeric" class="form-input" value="" autocomplete="off">
               </div>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;">
@@ -2933,7 +2933,7 @@
       licenseEndpoint: LS_LICENSE,
       launcherUrl: "",
       products: {
-        airi: { version: "1.4.3", url: "", sha256: "", bytes: 3306303279, channels: {} },
+        airi: { version: "1.4.3", url: "", sha256: "", bytes: 0, channels: {} },
       },
     };
     let lsLoadedCatalog = LS_EMPTY;
@@ -2997,11 +2997,13 @@
       try { return decodeURIComponent(new URL(url).pathname.split("/").pop() || ""); }
       catch { return String(url || "").split("/").pop() || ""; }
     }
-    function lsPkgLooksStale(pkg) {
+    function lsPkgLooksStale(pkg, liveBytes) {
       if (!pkg || !pkg.url) return false;
       const name = lsUrlFileName(pkg.url).toLowerCase();
       const bytes = Number(pkg.bytes) || 0;
-      if (name.endsWith(".msi") && bytes > 1_000_000_000) return true;
+      const sha = String(pkg.sha256 || "").toLowerCase();
+      if (name.endsWith(".msi") && sha === "5477781464ccf69f57b2429cdaef55e4ff96462a7ecdfad109044322ddf4fa94") return true;
+      if (Number.isSafeInteger(liveBytes) && liveBytes > 0 && bytes && bytes !== liveBytes) return true;
       for (const ch of ["stable", "beta"]) {
         const other = lsChannelPkg(lsLoadedCatalog, ch);
         if (other.url && other.url !== pkg.url && other.sha256 && other.sha256 === pkg.sha256 && bytes === other.bytes) return true;
@@ -3327,6 +3329,7 @@
       }
       airi.channels = channels;
       catalog.products.airi = airi;
+      catalog.publishedAt = new Date().toISOString();
       const status = document.getElementById("ls-publish-status");
       status.textContent = `Unpublishing ${lsBranchName(channel)}…`;
       const { error } = await supabase.from("system_config").upsert({
@@ -3338,8 +3341,11 @@
         status.textContent = error.message || "Unpublish failed.";
         return;
       }
+      const pinged = await lsNotifyLaunchers(catalog);
       lsPaintCatalog(catalog);
-      status.textContent = `${lsBranchName(channel)} unpublished. VirForge will stop serving that version after Refresh.`;
+      status.textContent = pinged
+        ? `${lsBranchName(channel)} unpublished. Running launchers were told to refresh.`
+        : `${lsBranchName(channel)} unpublished. Launchers will pick this up on their next check.`;
     }
 
     async function lsApplyUrlToChannel(url, ch) {
@@ -3397,9 +3403,14 @@
     }
 
     async function lsRepairStaleLivePackages() {
-      const stale = ["stable", "beta"]
-        .map((ch) => ({ ch, pkg: lsChannelPkg(lsLoadedCatalog, ch) }))
-        .filter((row) => lsPkgLooksStale(row.pkg));
+      const stale = [];
+      for (const ch of ["stable", "beta"]) {
+        const pkg = lsChannelPkg(lsLoadedCatalog, ch);
+        if (!pkg.url) continue;
+        let liveBytes = 0;
+        try { liveBytes = await lsHeadBytes(pkg.url); } catch {}
+        if (lsPkgLooksStale(pkg, liveBytes)) stale.push({ ch, pkg });
+      }
       if (!stale.length) return;
       const status = document.getElementById("ls-publish-status");
       const byUrl = new Map();
@@ -3898,21 +3909,89 @@
       }
     });
 
+    async function lsPutChecksumSidecar(publicUrl, sha256) {
+      const hex = String(sha256 || "").trim().toLowerCase();
+      if (!publicUrl || !/^[a-f0-9]{64}$/.test(hex)) return;
+      const { accountId, bucket, credentials } = lsUpCreds();
+      const objectKey = `${new URL(publicUrl).pathname.replace(/^\/+/, "")}.sha256`;
+      const objectUrl = r2ObjectUrl(accountId, bucket, objectKey);
+      const body = `${hex}\n`;
+      const headers = await signRequest("PUT", objectUrl, {}, body, credentials);
+      const res = await fetch(objectUrl, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+        body,
+      });
+      if (!res.ok) throw new Error(`Could not publish the SHA-256 sidecar (${res.status}).`);
+    }
+
+    async function lsNotifyLaunchers(catalog) {
+      const channel = supabase.channel("virforge-catalog");
+      try {
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("timeout")), 4000);
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") { clearTimeout(timer); resolve(); }
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { clearTimeout(timer); reject(new Error(status)); }
+          });
+        });
+        const sent = await channel.send({
+          type: "broadcast",
+          event: "updated",
+          payload: { publishedAt: catalog.publishedAt || new Date().toISOString() },
+        });
+        if (sent !== "ok") throw new Error(String(sent));
+        return true;
+      } catch {
+        return false;
+      } finally {
+        try { await supabase.removeChannel(channel); } catch {}
+      }
+    }
+
     async function lsPublishCatalog() {
       const status = document.getElementById("ls-publish-status");
       const catalog = lsCatalogFromForm();
+      catalog.publishedAt = new Date().toISOString();
       status.textContent = "Saving…";
       if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
       if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
       if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
+      const check = async (pkg, label) => {
+        if (!pkg || !pkg.url || !pkg.bytes) return;
+        const live = await lsHeadBytes(pkg.url);
+        if (live && live !== pkg.bytes) {
+          throw new Error(`${label} lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}. Hash that file before publishing.`);
+        }
+      };
+      await check(catalog.products.airi, "AiRi");
+      await check(catalog.products.airi.channels?.stable, "Release");
+      await check(catalog.products.airi.channels?.beta, "Beta");
       const { error } = await supabase.from("system_config").upsert({
         key: "virforge_launcher_catalog",
         value: catalog,
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      const pinged = await lsNotifyLaunchers(catalog);
+      const urls = new Set([
+        catalog.products.airi.url,
+        catalog.products.airi.channels?.stable?.url,
+        catalog.products.airi.channels?.beta?.url,
+      ].filter(Boolean));
+      for (const url of urls) {
+        const pkg = [catalog.products.airi, catalog.products.airi.channels?.stable, catalog.products.airi.channels?.beta]
+          .find((item) => item && item.url === url);
+        if (!pkg?.sha256) continue;
+        try { await lsPutChecksumSidecar(url, pkg.sha256); }
+        catch (err) { status.textContent = `Published catalog. SHA-256 sidecar skipped: ${err.message}`; }
+      }
       lsPaintCatalog(catalog);
-      status.textContent = "Published. The launcher reads this on Refresh.";
+      if (!/sidecar skipped/.test(status.textContent)) {
+        status.textContent = pinged
+          ? "Published. Running launchers were told to refresh."
+          : "Published. Launchers will pick this up on their next check.";
+      }
       return catalog;
     }
     document.getElementById("ls-publish").addEventListener("click", async () => {
