@@ -1539,21 +1539,29 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Same R2 keys, public URL, and key formula as Storage: <code>updates/{version}/{filename}</code>. Apply publishes the launcher catalog so VirForge streams that object. It does not activate the live account download.</p>
+            <p>Same R2 keys and key formula as Storage. Apply a package to <strong>Release</strong>, <strong>Beta</strong>, or <strong>Both</strong>. The launcher streams Release to paying keys and Beta to beta keys. This does not activate the live account download.</p>
           </div>
 
           <div class="admin-section">
             <div class="admin-section-title">Upload and apply</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: version + file become the object key. Upload and apply streams the file, writes the launcher catalog, and adds an inactive Storage row.</p>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Works like Storage: version + file become <code>updates/{version}/{filename}</code>. Choose Release, Beta, or Both, then upload or apply an existing R2 item.</p>
             <div class="form-row">
               <div class="form-group">
                 <label>Version</label>
                 <input id="ls-up-version" type="text" class="form-input" value="1.4.3" autocomplete="off">
               </div>
               <div class="form-group">
-                <label>Package file</label>
-                <input id="ls-up-file" type="file" class="form-input">
+                <label>Apply to</label>
+                <select id="ls-up-channel" class="form-input">
+                  <option value="stable">Release (paying)</option>
+                  <option value="beta">Beta</option>
+                  <option value="both">Both (Release + Beta)</option>
+                </select>
               </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Package file</label>
+              <input id="ls-up-file" type="file" class="form-input">
             </div>
             <input id="ls-up-key" type="hidden" value="">
             <input id="ls-up-bucket" type="hidden" value="">
@@ -1588,6 +1596,7 @@
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;">
               <button type="button" class="btn btn-outline" id="ls-hash-r2">Create checksum from this build</button>
+              <button type="button" class="btn" id="ls-apply-existing">Apply selected build</button>
             </div>
             <div class="form-group" style="margin-top:12px;">
               <label>HTTPS file URL</label>
@@ -2894,13 +2903,15 @@
       });
     });
 
+    const LS_LICENSE = "https://rgigtqpesabuyaumibaj.supabase.co/functions/v1/validate-license";
     const LS_EMPTY = {
-      licenseEndpoint: "",
+      licenseEndpoint: LS_LICENSE,
       launcherUrl: "",
       products: {
-        airi: { version: "1.4.3", url: "", sha256: "", bytes: 3306303279 },
+        airi: { version: "1.4.3", url: "", sha256: "", bytes: 3306303279, channels: {} },
       },
     };
+    let lsLoadedCatalog = LS_EMPTY;
     let lsReady = false;
     let lsCtl = null;
     let lsReceived = 0;
@@ -2912,17 +2923,37 @@
       if (tab) tab.click();
     }
 
-    function lsCatalogFromForm() {
+    function lsSelectedChannels() {
+      const raw = document.getElementById("ls-up-channel")?.value || "stable";
+      if (raw === "both") return ["stable", "beta"];
+      return [raw === "beta" ? "beta" : "stable"];
+    }
+    function lsPackageFromForm() {
       const bytes = Number((document.getElementById("ls-airi-bytes").value || "").replace(/[^\d]/g, ""));
       return {
-        licenseEndpoint: "",
+        version: lsUploadVersion(),
+        url: document.getElementById("ls-airi-url").value.trim() || document.getElementById("ls-url").value.trim(),
+        sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
+        bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0,
+      };
+    }
+    function lsCatalogFromForm() {
+      const prev = lsLoadedCatalog || LS_EMPTY;
+      const prevAiri = prev.products?.airi || {};
+      const channels = { ...(prevAiri.channels || {}) };
+      const pkg = lsPackageFromForm();
+      for (const ch of lsSelectedChannels()) channels[ch] = { ...pkg };
+      const stable = channels.stable || pkg;
+      return {
+        licenseEndpoint: prev.licenseEndpoint || LS_LICENSE,
         launcherUrl: document.getElementById("ls-launcher-url").value.trim(),
         products: {
           airi: {
-            version: (document.getElementById("ls-up-version")?.value || "1.4.3").trim() || "1.4.3",
-            url: document.getElementById("ls-airi-url").value.trim() || document.getElementById("ls-url").value.trim(),
-            sha256: document.getElementById("ls-airi-sha").value.trim().toLowerCase(),
-            bytes: Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 3306303279,
+            version: stable.version || pkg.version,
+            url: stable.url || pkg.url,
+            sha256: stable.sha256 || pkg.sha256,
+            bytes: stable.bytes || pkg.bytes,
+            channels,
           },
         },
       };
@@ -2938,6 +2969,7 @@
         document.getElementById("ls-up-version").value = airi.version;
       }
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
+      lsLoadedCatalog = catalog;
     }
 
     function lsSetMeta(text) {
@@ -3128,30 +3160,32 @@
         is_critical: false,
         uploaded_by: userData?.user?.id || null,
       };
-      const { data: existing, error: existingErr } = await supabase
-        .from("r2_versions")
-        .select("id,is_active")
-        .eq("version", version)
-        .eq("channel", "stable")
-        .maybeSingle();
-      if (existingErr) throw existingErr;
-      if (existing?.id) {
-        if (existing.is_active) {
-          throw new Error(`Version ${version} is the live account download. Use a new version so Apply does not replace it.`);
-        }
-        const { error } = await supabase
+      for (const channel of lsSelectedChannels()) {
+        const { data: existing, error: existingErr } = await supabase
           .from("r2_versions")
-          .update(artifact)
-          .eq("id", existing.id);
+          .select("id,is_active")
+          .eq("version", version)
+          .eq("channel", channel)
+          .maybeSingle();
+        if (existingErr) throw existingErr;
+        if (existing?.id) {
+          if (existing.is_active) {
+            throw new Error(`Version ${version} is the live ${channel} account download. Use a new version so Apply does not replace it.`);
+          }
+          const { error } = await supabase
+            .from("r2_versions")
+            .update(artifact)
+            .eq("id", existing.id);
+          if (error) throw error;
+          continue;
+        }
+        const { error } = await supabase.from("r2_versions").insert([{
+          ...artifact,
+          channel,
+          is_active: false,
+        }]);
         if (error) throw error;
-        return;
       }
-      const { error } = await supabase.from("r2_versions").insert([{
-        ...artifact,
-        channel: "stable",
-        is_active: false,
-      }]);
-      if (error) throw error;
     }
 
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
@@ -3417,6 +3451,24 @@
     });
     document.getElementById("ls-hash-r2").addEventListener("click", () => {
       lsRunRemoteHash();
+    });
+    document.getElementById("ls-apply-existing").addEventListener("click", async () => {
+      const status = document.getElementById("ls-publish-status");
+      const url = document.getElementById("ls-existing").value.trim() || document.getElementById("ls-url").value.trim();
+      if (url) {
+        document.getElementById("ls-url").value = url;
+        document.getElementById("ls-airi-url").value = url;
+      }
+      try {
+        if (!url.startsWith("https://")) throw new Error("Pick an existing R2 build first.");
+        const pkg = lsPackageFromForm();
+        if (!pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) throw new Error("Create a checksum for that build, then Apply selected build.");
+        if (!pkg.bytes) throw new Error("AiRi bytes must be filled for that build.");
+        await lsPublishCatalog();
+        status.textContent = `Applied ${lsSelectedChannels().join(" + ")} from the selected build.`;
+      } catch (err) {
+        status.textContent = err.message || "Apply failed.";
+      }
     });
 
     async function lsPublishCatalog() {
