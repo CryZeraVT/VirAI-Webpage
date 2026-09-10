@@ -2997,18 +2997,43 @@
       try { return decodeURIComponent(new URL(url).pathname.split("/").pop() || ""); }
       catch { return String(url || "").split("/").pop() || ""; }
     }
+    const LS_SFX_SHA = "5477781464ccf69f57b2429cdaef55e4ff96462a7ecdfad109044322ddf4fa94";
+    const LS_SFX_BYTES = 3306303279;
+
     function lsPkgLooksStale(pkg, liveBytes) {
       if (!pkg || !pkg.url) return false;
       const name = lsUrlFileName(pkg.url).toLowerCase();
       const bytes = Number(pkg.bytes) || 0;
       const sha = String(pkg.sha256 || "").toLowerCase();
-      if (name.endsWith(".msi") && sha === "5477781464ccf69f57b2429cdaef55e4ff96462a7ecdfad109044322ddf4fa94") return true;
+      if (name.endsWith(".msi") && sha === LS_SFX_SHA) return true;
       if (Number.isSafeInteger(liveBytes) && liveBytes > 0 && bytes && bytes !== liveBytes) return true;
-      for (const ch of ["stable", "beta"]) {
-        const other = lsChannelPkg(lsLoadedCatalog, ch);
-        if (other.url && other.url !== pkg.url && other.sha256 && other.sha256 === pkg.sha256 && bytes === other.bytes) return true;
-      }
       return false;
+    }
+
+    async function lsReadChecksumSidecar(url) {
+      try {
+        const res = await fetch(`${url}.sha256`, { cache: "no-store", redirect: "error" });
+        if (!res.ok) return "";
+        const hex = String(await res.text()).trim().split(/\s+/)[0].toLowerCase();
+        return /^[a-f0-9]{64}$/.test(hex) ? hex : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function lsKnownChecksum(url, bytes) {
+      const name = lsUrlFileName(url).toLowerCase();
+      const known = lsFindPkgByUrl(lsLoadedCatalog, url);
+      if (known?.sha256 && known.bytes === bytes && !lsPkgLooksStale(known, bytes)) return known.sha256;
+      if (bytes === LS_SFX_BYTES && name.endsWith("-setup.exe")) return LS_SFX_SHA;
+      return "";
+    }
+
+    async function lsResolveApplyIdentity(url) {
+      let bytes = 0;
+      try { bytes = await lsHeadBytes(url); } catch {}
+      const sha256 = (await lsReadChecksumSidecar(url)) || lsKnownChecksum(url, bytes);
+      return { bytes, sha256 };
     }
     async function lsHeadBytes(url) {
       try {
@@ -3374,32 +3399,28 @@
     async function lsApplyUploadedFile() {
       const status = document.getElementById("ls-up-meta");
       const publish = document.getElementById("ls-publish-status");
-      const url = (document.getElementById("ls-up-existing").value || document.getElementById("ls-existing").value || "").trim();
+      const url = (document.getElementById("ls-up-existing").value || document.getElementById("ls-existing").value || document.getElementById("ls-airi-url").value || "").trim();
       const picked = lsFillFromBuild(url);
       if (!picked) {
         status.textContent = "Pick an already-uploaded file first.";
         return;
       }
-      status.textContent = "Reading the real file size from R2…";
-      let bytes = 0;
-      try { bytes = await lsHeadBytes(url); } catch {}
-      if (bytes) document.getElementById("ls-airi-bytes").value = String(bytes);
+      status.textContent = "Reading size and checksum for that file…";
+      const ident = await lsResolveApplyIdentity(url);
+      if (ident.bytes) document.getElementById("ls-airi-bytes").value = String(ident.bytes);
+      if (ident.sha256) {
+        document.getElementById("ls-airi-sha").value = ident.sha256;
+        document.getElementById("ls-sha").value = ident.sha256;
+      }
       let pkg = lsPackageFromForm();
-      if (lsPkgLooksStale(pkg) || !pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) {
-        status.textContent = "Hashing this file so size and checksum match…";
-        const hashed = await lsHashRemoteUrl(url);
-        document.getElementById("ls-airi-sha").value = hashed.hex;
-        document.getElementById("ls-sha").value = hashed.hex;
-        document.getElementById("ls-airi-bytes").value = String(hashed.bytes);
-        pkg = lsPackageFromForm();
+      if (lsPkgLooksStale(pkg, ident.bytes)) {
+        throw new Error(`${lsUrlFileName(url)} still has a checksum from a different file. Create a checksum from this exact build, then Apply.`);
       }
       if (!pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) {
-        status.textContent = "Create a checksum for that file, then Apply uploaded file.";
-        return;
+        throw new Error("Need a checksum for that build. Use Create checksum from a local copy — the browser cannot hash a multi-GB R2 object.");
       }
       if (!pkg.bytes) {
-        status.textContent = "Could not read the file size. Create a checksum from that file, then apply.";
-        return;
+        throw new Error("Could not read the file size from R2.");
       }
       await lsPublishCatalog();
       const msg = `Applied ${lsBranchName(lsBranch)} ${pkg.version} · ${pkg.bytes.toLocaleString()} bytes.`;
@@ -3901,14 +3922,10 @@
       if (url) {
         document.getElementById("ls-url").value = url;
         document.getElementById("ls-airi-url").value = url;
+        document.getElementById("ls-up-existing").value = url;
       }
       try {
-        if (!url.startsWith("https://")) throw new Error("Pick an existing R2 build first.");
-        const pkg = lsPackageFromForm();
-        if (!pkg.sha256 || !/^[a-f0-9]{64}$/.test(pkg.sha256)) throw new Error("Create a checksum for that build, then Apply selected build.");
-        if (!pkg.bytes) throw new Error("AiRi bytes must be filled for that build.");
-        await lsPublishCatalog();
-        status.textContent = `Applied ${lsSelectedChannels().join(" + ")} from the selected build.`;
+        await lsApplyUploadedFile();
       } catch (err) {
         status.textContent = err.message || "Apply failed.";
       }
