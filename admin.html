@@ -3208,7 +3208,8 @@
         document.getElementById("ls-airi-bytes").value = String(result.bytes);
         document.getElementById("ls-preview").textContent = JSON.stringify(lsCatalogFromForm(), null, 2);
         document.getElementById("ls-up-bar").style.width = "100%";
-        document.getElementById("ls-up-meta").textContent = `Uploaded. ${result.bytes.toLocaleString()} bytes. Publish catalog to send this to the launcher.`;
+        await lsPublishCatalog();
+        document.getElementById("ls-up-meta").textContent = `Uploaded and saved on the website. ${result.bytes.toLocaleString()} bytes. Refresh the launcher library.`;
       } catch (err) {
         document.getElementById("ls-up-meta").textContent = lsFetchError(err);
       } finally {
@@ -3447,22 +3448,27 @@
       lsRunRemoteHash();
     });
 
-    document.getElementById("ls-publish").addEventListener("click", async () => {
+    async function lsPublishCatalog() {
       const status = document.getElementById("ls-publish-status");
       const catalog = lsCatalogFromForm();
       status.textContent = "Saving…";
+      if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
+      if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
+      if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
+      const { error } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      lsPaintCatalog(catalog);
+      status.textContent = "Published. The launcher reads this on Refresh.";
+      return catalog;
+    }
+    document.getElementById("ls-publish").addEventListener("click", async () => {
+      const status = document.getElementById("ls-publish-status");
       try {
-        if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
-        if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
-        if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
-        const { error } = await supabase.from("system_config").upsert({
-          key: "virforge_launcher_catalog",
-          value: catalog,
-          updated_at: new Date().toISOString(),
-        });
-        if (error) throw error;
-        lsPaintCatalog(catalog);
-        status.textContent = "Published.";
+        await lsPublishCatalog();
       } catch (err) {
         status.textContent = err.message || "Publish failed.";
       }
