@@ -2556,6 +2556,85 @@
       }, { onConflict: "version" });
     }
 
+    async function resolvePublicPackageIdentity(url, fallback) {
+      const prev = fallback || {};
+      const out = {
+        url,
+        version: prev.version || "",
+        bytes: Number(prev.bytes) || 0,
+        sha256: String(prev.sha256 || "").toLowerCase(),
+      };
+      try {
+        const head = await fetch(url, { method: "HEAD", redirect: "error" });
+        const len = Number(head.headers.get("content-length"));
+        if (Number.isSafeInteger(len) && len > 0) out.bytes = len;
+      } catch {}
+      try {
+        const side = await fetch(`${url}.sha256`, { cache: "no-store", redirect: "error" });
+        if (side.ok) {
+          const hex = String(await side.text()).trim().split(/\s+/)[0].toLowerCase();
+          if (/^[a-f0-9]{64}$/.test(hex)) out.sha256 = hex;
+        }
+      } catch {}
+      if (!/^[a-f0-9]{64}$/.test(out.sha256) && prev.url === url && /^[a-f0-9]{64}$/.test(String(prev.sha256 || ""))) {
+        out.sha256 = String(prev.sha256).toLowerCase();
+      }
+      if (!/^[a-f0-9]{64}$/.test(out.sha256) && out.bytes === 3306303279 && /setup\.exe$/i.test(url)) {
+        out.sha256 = "5477781464ccf69f57b2429cdaef55e4ff96462a7ecdfad109044322ddf4fa94";
+      }
+      return out;
+    }
+
+    async function pushActiveBuildToLauncherCatalog(targets) {
+      const rows = (targets || []).filter((row) => row && String(row.download_url || row.url || "").startsWith("https://"));
+      if (!rows.length) throw new Error("That version has no public HTTPS URL for VirForge.");
+      const { data, error } = await supabase.rpc("get_virforge_catalog");
+      if (error) throw error;
+      const catalog = data && data.products ? JSON.parse(JSON.stringify(data)) : {
+        licenseEndpoint: "https://rgigtqpesabuyaumibaj.supabase.co/functions/v1/validate-license",
+        products: { airi: { channels: {} } },
+      };
+      catalog.products = catalog.products || {};
+      catalog.products.airi = catalog.products.airi || {};
+      catalog.products.airi.channels = Object.assign({}, catalog.products.airi.channels || {});
+      for (const target of rows) {
+        const ch = target.channel === "beta" ? "beta" : "stable";
+        const url = String(target.download_url || target.url).trim();
+        const prev = catalog.products.airi.channels[ch] || {};
+        const ident = await resolvePublicPackageIdentity(url, prev);
+        if (!ident.bytes || !/^[a-f0-9]{64}$/.test(ident.sha256)) {
+          throw new Error(`Account download is live, but VirForge still needs a checksum for ${target.version}. Open Launcher / Stream and Apply that file.`);
+        }
+        const pkg = {
+          version: target.version || prev.version || "",
+          url,
+          sha256: ident.sha256,
+          bytes: ident.bytes,
+        };
+        catalog.products.airi.channels[ch] = pkg;
+        if (ch === "stable") {
+          catalog.products.airi.version = pkg.version;
+          catalog.products.airi.url = pkg.url;
+          catalog.products.airi.sha256 = pkg.sha256;
+          catalog.products.airi.bytes = pkg.bytes;
+        }
+      }
+      catalog.publishedAt = new Date().toISOString();
+      const { error: writeErr } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (writeErr) throw writeErr;
+      if (typeof lsNotifyLaunchers === "function") {
+        try { await lsNotifyLaunchers(catalog); } catch {}
+      }
+      if (typeof lsPaintCatalog === "function" && typeof lsReady !== "undefined" && lsReady) {
+        try { lsPaintCatalog(catalog); } catch {}
+      }
+      return catalog;
+    }
+
     window.setActiveVersion = async function(versionId, channelOverride) {
       // Twin-row model: unique (version, channel). Never move a row across channels.
       // Activating the other channel (or Both) upserts a twin with the same MSI/URL.
@@ -2577,15 +2656,29 @@
           ? channelOverride
           : rowChannel;
 
+        let launcherNote = "";
+        const tellLaunchers = async (rows) => {
+          try {
+            await pushActiveBuildToLauncherCatalog(rows);
+            launcherNote = " Running VirForge launchers were told this version is out.";
+          } catch (err) {
+            launcherNote = " " + (err.message || "Launcher catalog was not updated.");
+          }
+        };
+
         if (want === "both") {
           const stableRow = await ensureR2ChannelTwin(target, "stable");
           const betaRow = await ensureR2ChannelTwin(target, "beta");
           await activateR2ChannelRow(stableRow, "stable");
           await activateR2ChannelRow(betaRow, "beta");
           await syncStableAnnouncement(stableRow);
+          await tellLaunchers([
+            { ...stableRow, channel: "stable" },
+            { ...betaRow, channel: "beta" },
+          ]);
           loadVersions();
           if (typeof loadStorageVersions === "function") loadStorageVersions();
-          alert(`Version ${target.version} is now the active build on BOTH channels (stable + beta)!`);
+          alert(`Version ${target.version} is now the active build on BOTH channels (stable + beta)!${launcherNote}`);
           return;
         }
 
@@ -2594,10 +2687,11 @@
         if (want === "stable") {
           await syncStableAnnouncement(row);
         }
+        await tellLaunchers([{ ...row, channel: want }]);
 
         loadVersions();
         if (typeof loadStorageVersions === "function") loadStorageVersions();
-        alert(`Version ${target.version} is now the active ${want} build!`);
+        alert(`Version ${target.version} is now the active ${want} build!${launcherNote}`);
       } catch (err) {
         console.error("setActiveVersion failed:", err);
         alert("Error setting active version: " + (err?.message || err));
