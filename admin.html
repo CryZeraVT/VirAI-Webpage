@@ -2691,7 +2691,17 @@
 
         loadVersions();
         if (typeof loadStorageVersions === "function") loadStorageVersions();
-        alert(`Version ${target.version} is now the active ${want} build!${launcherNote}`);
+        const other = want === "beta" ? "stable" : "beta";
+        const { data: leftover } = await supabase
+          .from("r2_versions")
+          .select("version")
+          .eq("channel", other)
+          .eq("is_active", true)
+          .maybeSingle();
+        const leftoverNote = leftover?.version && leftover.version !== target.version
+          ? ` ${other === "beta" ? "Beta" : "Release"} is still v${leftover.version}. VirForge keys on that channel keep that build \u2014 use Both if they should match.`
+          : "";
+        alert(`Version ${target.version} is now the active ${want} build!${launcherNote}${leftoverNote}`);
       } catch (err) {
         console.error("setActiveVersion failed:", err);
         alert("Error setting active version: " + (err?.message || err));
@@ -3456,6 +3466,14 @@
       catalog.publishedAt = new Date().toISOString();
       const status = document.getElementById("ls-publish-status");
       status.textContent = `Unpublishing ${lsBranchName(channel)}…`;
+      const { error: clearErr } = await supabase
+        .from("r2_versions")
+        .update({ is_active: false })
+        .eq("channel", channel);
+      if (clearErr) {
+        status.textContent = clearErr.message || "Unpublish failed.";
+        return;
+      }
       const { error } = await supabase.from("system_config").upsert({
         key: "virforge_launcher_catalog",
         value: catalog,
@@ -4065,6 +4083,38 @@
       }
     }
 
+    async function lsFindR2RowForPackage(pkg, channel) {
+      const ch = channel === "beta" ? "beta" : "stable";
+      const version = String(pkg?.version || "").trim();
+      const url = String(pkg?.url || "").trim();
+      if (version) {
+        const { data, error } = await supabase.from("r2_versions").select("*").eq("version", version).eq("channel", ch).maybeSingle();
+        if (error) throw error;
+        if (data) return data;
+      }
+      if (url) {
+        const { data, error } = await supabase.from("r2_versions").select("*").eq("download_url", url).eq("channel", ch).maybeSingle();
+        if (error) throw error;
+        if (data) return data;
+        const { data: anyRows, error: anyErr } = await supabase.from("r2_versions").select("*").eq("download_url", url).limit(1);
+        if (anyErr) throw anyErr;
+        if (anyRows && anyRows[0]) {
+          return ensureR2ChannelTwin({ ...anyRows[0], version: version || anyRows[0].version }, ch);
+        }
+      }
+      return null;
+    }
+
+    async function lsSyncR2ActiveFromCatalog(catalog, channels) {
+      for (const ch of channels) {
+        const pkg = lsChannelPkg(catalog, ch);
+        if (!pkg.url) continue;
+        const row = await lsFindR2RowForPackage(pkg, ch);
+        if (!row) continue;
+        await activateR2ChannelRow(row, ch);
+      }
+    }
+
     async function lsPublishCatalog() {
       const status = document.getElementById("ls-publish-status");
       const catalog = lsCatalogFromForm();
@@ -4108,6 +4158,7 @@
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      await lsSyncR2ActiveFromCatalog(catalog, writing);
       const pinged = await lsNotifyLaunchers(catalog);
       const urls = new Set([
         catalog.products.airi.url,
