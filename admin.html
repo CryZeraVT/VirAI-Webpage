@@ -1547,7 +1547,7 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Beta and Release are separate launcher branches. Upload or pick an already-uploaded file on the selected tab. Applied live below is what VirForge is serving right now — unpublish one branch without touching the other.</p>
+            <p>Top of this tab is <strong>AiRi</strong> stream packages (Beta vs Release). Further down is a separate channel for <strong>VirForge itself</strong>. Those files never replace the slim account MSI.</p>
           </div>
 
           <div class="admin-section">
@@ -1602,6 +1602,56 @@
           </div>
 
           <div class="admin-section">
+            <div class="admin-section-title">VirForge launcher updates</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Installer for the desktop hub, not AiRi. Objects land at <code>updates/launcher/{version}/VirForge-Setup-….exe</code>. This does <strong>not</strong> write <code>r2_versions</code> or change get-airi.</p>
+            <div class="ls-branch-tabs" role="tablist" aria-label="VirForge launcher branch">
+              <button type="button" class="btn vf-branch-tab" data-vf-branch="beta" role="tab" aria-selected="false">Beta</button>
+              <button type="button" class="btn vf-branch-tab active" data-vf-branch="stable" role="tab" aria-selected="true">Release</button>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Launcher version</label>
+                <input id="vf-up-version" type="text" class="form-input" value="0.1.6" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Already published launcher file</label>
+                <select id="vf-up-existing" class="form-input">
+                  <option value="">No launcher builds yet</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>New VirForge-Setup.exe</label>
+              <input id="vf-up-file" type="file" class="form-input" accept=".exe">
+            </div>
+            <p id="vf-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Public file URL appears here after you pick a file.</p>
+            <div class="ls-bar-wrap"><div id="vf-up-bar" class="ls-bar"></div></div>
+            <div id="vf-up-meta" class="ls-meta">Idle. Pick VirForge-Setup-0.1.6.exe or an already-published launcher object.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn" id="vf-up-start">Upload and apply launcher</button>
+              <button type="button" class="btn" id="vf-up-apply-existing">Apply launcher file</button>
+              <button type="button" class="btn btn-outline" id="vf-up-abort" disabled>Abort</button>
+            </div>
+            <div id="vf-live-list" class="ls-live-grid" style="margin-top:18px;">
+              <div class="ls-meta">Loading VirForge launcher branches…</div>
+            </div>
+            <div class="form-row" style="margin-top:14px;">
+              <div class="form-group">
+                <label>Launcher SHA-256</label>
+                <input id="vf-sha" type="text" maxlength="64" class="form-input" placeholder="filled on upload" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="form-group">
+                <label>Launcher bytes</label>
+                <input id="vf-bytes" type="text" inputmode="numeric" class="form-input" value="" autocomplete="off">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Launcher HTTPS URL</label>
+              <input id="vf-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/launcher/0.1.6/VirForge-Setup-0.1.6.exe" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="admin-section">
             <div class="admin-section-title">Stream test</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
             <div class="form-group">
@@ -1639,10 +1689,10 @@
 
           <div class="admin-section">
             <div class="admin-section-title">Publish launcher catalog</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Desktop VirForge reads this when Stream Mode is off. Homepage and get-airi.html stay on the slim retail MSI.</p>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Desktop VirForge reads this when Stream Mode is off. Homepage and get-airi.html stay on the slim retail MSI. The launcher installer URL is filled by the VirForge launcher updates section above.</p>
             <div class="form-group">
-              <label>Launcher installer URL</label>
-              <input id="ls-launcher-url" type="url" class="form-input" placeholder="https://….r2.dev/staging/launcher/VirForge-Setup-0.1.5.exe" autocomplete="off">
+              <label>Launcher installer URL (stable alias)</label>
+              <input id="ls-launcher-url" type="url" class="form-input" placeholder="set by VirForge launcher updates" autocomplete="off" readonly>
             </div>
             <div class="form-group" style="margin-top:12px;">
               <label>AiRi full package URL (~3 GB)</label>
@@ -2597,6 +2647,7 @@
       catalog.products = catalog.products || {};
       catalog.products.airi = catalog.products.airi || {};
       catalog.products.airi.channels = Object.assign({}, catalog.products.airi.channels || {});
+      catalog.products.launcher = catalog.products.launcher || { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] };
       for (const target of rows) {
         const ch = target.channel === "beta" ? "beta" : "stable";
         const url = String(target.download_url || target.url).trim();
@@ -2610,6 +2661,8 @@
           url,
           sha256: ident.sha256,
           bytes: ident.bytes,
+          title: target.title || prev.title || "",
+          notes: target.content || target.notes || prev.notes || "",
         };
         catalog.products.airi.channels[ch] = pkg;
         if (ch === "stable") {
@@ -2617,6 +2670,8 @@
           catalog.products.airi.url = pkg.url;
           catalog.products.airi.sha256 = pkg.sha256;
           catalog.products.airi.bytes = pkg.bytes;
+          catalog.products.airi.notesTitle = pkg.title;
+          catalog.products.airi.notes = pkg.notes;
         }
       }
       catalog.publishedAt = new Date().toISOString();
@@ -3038,11 +3093,13 @@
       launcherUrl: "",
       products: {
         airi: { version: "1.4.3", url: "", sha256: "", bytes: 0, channels: {} },
+        launcher: { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] },
       },
     };
     let lsLoadedCatalog = LS_EMPTY;
     let lsReady = false;
     let lsBranch = "stable";
+    let vfBranch = "stable";
     let lsBuilds = [];
     let lsCtl = null;
     let lsReceived = 0;
@@ -3085,6 +3142,62 @@
         };
       }
       return { version: "", url: "", sha256: "", bytes: 0 };
+    }
+    function vfEmptyPkg() {
+      return { version: "", url: "", sha256: "", bytes: 0 };
+    }
+    function vfNormalizePkg(pkg) {
+      return {
+        version: String(pkg?.version || "").trim(),
+        url: String(pkg?.url || "").trim(),
+        sha256: String(pkg?.sha256 || "").toLowerCase(),
+        bytes: Number(pkg?.bytes) || 0,
+      };
+    }
+    function vfChannelPkg(catalog, ch) {
+      const item = (catalog && catalog.products && catalog.products.launcher) || {};
+      const fromCh = item.channels && item.channels[ch];
+      if (fromCh && fromCh.url) return vfNormalizePkg(fromCh);
+      if (ch === "stable") {
+        return vfNormalizePkg({
+          version: item.version || "",
+          url: item.url || catalog?.launcherUrl || "",
+          sha256: item.sha256 || "",
+          bytes: item.bytes || 0,
+        });
+      }
+      return vfEmptyPkg();
+    }
+    function vfIsLauncherObject(row) {
+      const blob = `${row?.file_path || ""} ${row?.download_url || ""} ${row?.file_name || ""} ${row?.title || ""}`;
+      return /updates\/launcher\//i.test(blob) || /VirForge-Setup/i.test(blob);
+    }
+    function vfHistory(catalog) {
+      const item = catalog?.products?.launcher || {};
+      const seen = new Map();
+      const add = (pkg, extra) => {
+        const row = { ...vfNormalizePkg(pkg), ...(extra || {}) };
+        if (!row.url) return;
+        const prev = seen.get(row.url) || row;
+        seen.set(row.url, {
+          ...prev,
+          ...row,
+          version: row.version || prev.version,
+          sha256: row.sha256 || prev.sha256,
+          bytes: row.bytes || prev.bytes,
+        });
+      };
+      for (const row of Array.isArray(item.history) ? item.history : []) add(row);
+      add(vfChannelPkg(catalog, "stable"));
+      add(vfChannelPkg(catalog, "beta"));
+      return [...seen.values()];
+    }
+    function vfRememberHistory(catalog, pkg, ch) {
+      const launcher = catalog.products.launcher || { channels: {}, history: [] };
+      const history = vfHistory(catalog).filter((row) => row.url !== pkg.url);
+      history.unshift({ ...vfNormalizePkg(pkg), applied: ch, uploadedAt: new Date().toISOString() });
+      launcher.history = history.slice(0, 40);
+      catalog.products.launcher = launcher;
     }
     function lsPkgComplete(pkg) {
       return Boolean(pkg && pkg.url && pkg.url.startsWith("https://") && /^[a-f0-9]{64}$/.test(pkg.sha256) && pkg.bytes > 0);
@@ -3174,9 +3287,10 @@
         for (const ch of lsSelectedChannels()) channels[ch] = { ...pkg };
       }
       const stable = channels.stable || {};
+      const launcher = vfLauncherFromForm(prev.products?.launcher);
       return {
         licenseEndpoint: prev.licenseEndpoint || LS_LICENSE,
-        launcherUrl: document.getElementById("ls-launcher-url").value.trim(),
+        launcherUrl: launcher.url || "",
         products: {
           airi: {
             version: stable.version || prevAiri.version || pkg.version,
@@ -3185,22 +3299,57 @@
             bytes: stable.bytes || 0,
             channels,
           },
+          vircast: prev.products?.vircast || { version: null, url: "", sha256: "", bytes: 0 },
+          launcher,
         },
+      };
+    }
+
+    function vfLauncherFromForm(prevLauncher) {
+      const prev = prevLauncher || { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] };
+      const channels = { ...(prev.channels || {}) };
+      const pkg = vfNormalizePkg({
+        version: (document.getElementById("vf-up-version")?.value || prev.version || "").trim(),
+        url: (document.getElementById("vf-url")?.value || "").trim(),
+        sha256: (document.getElementById("vf-sha")?.value || "").trim().toLowerCase(),
+        bytes: Number((document.getElementById("vf-bytes")?.value || "").replace(/[^\d]/g, "")) || 0,
+      });
+      if (lsPkgComplete(pkg)) {
+        channels[vfBranch === "beta" ? "beta" : "stable"] = { ...pkg };
+      }
+      const stable = channels.stable || {};
+      return {
+        version: stable.version || prev.version || "",
+        url: stable.url || "",
+        sha256: stable.sha256 || "",
+        bytes: stable.bytes || 0,
+        channels,
+        history: Array.isArray(prev.history) ? prev.history : [],
       };
     }
 
     function lsPaintCatalog(catalog) {
       lsLoadedCatalog = catalog;
       const pkg = lsChannelPkg(catalog, lsBranch);
-      document.getElementById("ls-launcher-url").value = catalog.launcherUrl || "";
+      const launcher = vfChannelPkg(catalog, vfBranch);
+      document.getElementById("ls-launcher-url").value = catalog.launcherUrl || launcher.url || "";
       document.getElementById("ls-airi-url").value = pkg.url || "";
       document.getElementById("ls-airi-sha").value = pkg.sha256 || "";
       document.getElementById("ls-airi-bytes").value = pkg.bytes || "";
       if (pkg.version && document.getElementById("ls-up-version")) {
         document.getElementById("ls-up-version").value = pkg.version;
       }
+      const vfUrl = document.getElementById("vf-url");
+      if (vfUrl) {
+        vfUrl.value = launcher.url || "";
+        document.getElementById("vf-sha").value = launcher.sha256 || "";
+        document.getElementById("vf-bytes").value = launcher.bytes || "";
+        if (launcher.version) document.getElementById("vf-up-version").value = launcher.version;
+      }
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
       lsPaintLive(catalog);
+      vfPaintLive(catalog);
+      vfFillExisting(catalog);
     }
 
     function lsLiveUrls(catalog) {
@@ -3254,11 +3403,194 @@
       lsPaintHistory(catalog);
     }
 
+    function vfSetBranch(ch) {
+      vfBranch = ch === "beta" ? "beta" : "stable";
+      document.querySelectorAll("[data-vf-branch]").forEach((btn) => {
+        const on = btn.getAttribute("data-vf-branch") === vfBranch;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      lsPaintCatalog(lsLoadedCatalog);
+      vfSyncUploadPreview();
+    }
+
+    function vfPaintLive(catalog) {
+      const list = document.getElementById("vf-live-list");
+      if (!list) return;
+      const rows = [
+        { id: "stable", name: "Release", hint: "Every launcher" },
+        { id: "beta", name: "Beta", hint: "Beta-tier keys, when the desktop build reads channels" },
+      ];
+      list.innerHTML = rows.map((row) => {
+        const pkg = vfChannelPkg(catalog, row.id);
+        const live = lsPkgComplete(pkg);
+        const file = pkg.url ? decodeURIComponent(pkg.url.split("/").pop() || "") : "";
+        const badge = live
+          ? '<span class="badge badge-active">LIVE</span>'
+          : '<span class="badge" style="background:#2d1b4e;">NOT APPLIED</span>';
+        const chBadge = row.id === "beta"
+          ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
+          : '<span class="badge" style="background:#14532d;color:#86efac;">RELEASE</span>';
+        return `
+          <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+            <div style="width:100%;">
+              <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
+                VirForge ${lsEscape(row.name)} ${pkg.version ? "v" + lsEscape(pkg.version) : ""}
+                ${chBadge}
+                ${badge}
+              </h4>
+              <p style="margin:0;font-size:0.85em;color:#9ca3af;">${lsEscape(row.hint)}</p>
+              <p style="margin:8px 0 0;font-size:0.85em;color:#6b7280;">${live ? lsEscape(file || pkg.url) : "Nothing applied on this launcher branch."}</p>
+              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…` : ""}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" class="btn vf-live-open" data-vf-open="${row.id}" ${live ? "" : "disabled"} style="padding:8px 14px;font-size:0.85em;">Open branch</button>
+              <button type="button" class="btn btn-outline vf-unpublish" data-vf-unpublish="${row.id}" ${live ? "" : "disabled"} style="border-color:#ff4444;color:#ff4444;padding:8px 14px;font-size:0.85em;">Unpublish</button>
+            </div>
+          </div>`;
+      }).join("");
+      list.querySelectorAll(".vf-live-open").forEach((btn) => {
+        btn.addEventListener("click", () => vfSetBranch(btn.getAttribute("data-vf-open")));
+      });
+      list.querySelectorAll(".vf-unpublish").forEach((btn) => {
+        btn.addEventListener("click", () => vfUnpublishChannel(btn.getAttribute("data-vf-unpublish")));
+      });
+    }
+
+    function vfFillExisting(catalog) {
+      const sel = document.getElementById("vf-up-existing");
+      if (!sel) return;
+      const rows = vfHistory(catalog);
+      if (!rows.length) {
+        sel.innerHTML = `<option value="">No launcher builds yet</option>`;
+        return;
+      }
+      sel.innerHTML = `<option value="">Pick a published launcher file…</option>` + rows.map((row) => {
+        const name = lsUrlFileName(row.url) || row.version || "launcher";
+        return `<option value="${lsEscape(row.url)}">v${lsEscape(row.version || "?")} · ${lsEscape(name)}</option>`;
+      }).join("");
+    }
+
+    function vfSyncUploadPreview() {
+      const file = document.getElementById("vf-up-file")?.files?.[0];
+      const preview = document.getElementById("vf-up-public-preview");
+      if (!preview) return;
+      const version = (document.getElementById("vf-up-version")?.value || "0.1.6").trim().replace(/[/\\]/g, "") || "0.1.6";
+      const key = file ? `updates/launcher/${version}/${lsSafeFileName(file.name)}` : "";
+      const base = lsNormalizePublicBase(r2PublicUrlEl?.value);
+      preview.textContent = base && key
+        ? `${base}/${key}`
+        : "Uses the Storage public URL. Pick VirForge-Setup-….exe to see updates/launcher/{version}/{filename}.";
+    }
+
+    function vfPackageFromFields() {
+      return vfNormalizePkg({
+        version: (document.getElementById("vf-up-version")?.value || "").trim(),
+        url: (document.getElementById("vf-url")?.value || "").trim(),
+        sha256: (document.getElementById("vf-sha")?.value || "").trim().toLowerCase(),
+        bytes: Number((document.getElementById("vf-bytes")?.value || "").replace(/[^\d]/g, "")) || 0,
+      });
+    }
+
+    async function vfPublishLauncher(pkg) {
+      if (!lsPkgComplete(pkg)) throw new Error("Launcher needs HTTPS URL, SHA-256, and byte size.");
+      const live = await lsHeadBytes(pkg.url);
+      if (live && live !== pkg.bytes) {
+        throw new Error(`Launcher lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}.`);
+      }
+      const catalog = lsCatalogFromForm();
+      const ch = vfBranch === "beta" ? "beta" : "stable";
+      catalog.products.launcher = catalog.products.launcher || { channels: {}, history: [] };
+      catalog.products.launcher.channels = { ...(catalog.products.launcher.channels || {}) };
+      catalog.products.launcher.channels[ch] = { ...pkg };
+      if (ch === "stable") {
+        catalog.products.launcher.version = pkg.version;
+        catalog.products.launcher.url = pkg.url;
+        catalog.products.launcher.sha256 = pkg.sha256;
+        catalog.products.launcher.bytes = pkg.bytes;
+        catalog.launcherUrl = pkg.url;
+      }
+      vfRememberHistory(catalog, pkg, ch);
+      catalog.publishedAt = new Date().toISOString();
+      const { error } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      const pinged = await lsNotifyLaunchers(catalog);
+      try { await lsPutChecksumSidecar(pkg.url, pkg.sha256); }
+      catch (err) {
+        document.getElementById("vf-up-meta").textContent = `Saved launcher catalog. SHA sidecar skipped: ${err.message}`;
+      }
+      lsPaintCatalog(catalog);
+      const status = document.getElementById("ls-publish-status");
+      const msg = pinged
+        ? `Applied VirForge ${lsBranchName(ch)} ${pkg.version}. Running launchers were told to refresh.`
+        : `Applied VirForge ${lsBranchName(ch)} ${pkg.version}. Launchers pick this up on their next check.`;
+      if (status) status.textContent = msg;
+      return msg;
+    }
+
+    async function vfApplyExisting() {
+      const url = (document.getElementById("vf-up-existing")?.value || document.getElementById("vf-url")?.value || "").trim();
+      const status = document.getElementById("vf-up-meta");
+      if (!url.startsWith("https://")) {
+        status.textContent = "Pick a published launcher file first.";
+        return;
+      }
+      status.textContent = "Reading size and checksum for the launcher file…";
+      const known = vfHistory(lsLoadedCatalog).find((row) => row.url === url) || {};
+      const ident = await lsResolveApplyIdentity(url);
+      const pkg = vfNormalizePkg({
+        version: (document.getElementById("vf-up-version")?.value || known.version || "").trim(),
+        url,
+        sha256: ident.sha256 || known.sha256,
+        bytes: ident.bytes || known.bytes,
+      });
+      document.getElementById("vf-url").value = pkg.url;
+      document.getElementById("vf-sha").value = pkg.sha256;
+      document.getElementById("vf-bytes").value = pkg.bytes || "";
+      if (!pkg.sha256) throw new Error("Need a checksum for that launcher build. Upload the local Setup.exe so the hash is computed here.");
+      if (!pkg.bytes) throw new Error("Could not read the launcher file size from R2.");
+      status.textContent = await vfPublishLauncher(pkg);
+    }
+
+    async function vfUnpublishChannel(ch) {
+      const channel = ch === "beta" ? "beta" : "stable";
+      const pkg = vfChannelPkg(lsLoadedCatalog, channel);
+      if (!pkg.url) return;
+      if (!confirm(`Unpublish VirForge ${lsBranchName(channel)} v${pkg.version || "?"}? AiRi packages stay live. Account download is unchanged.`)) return;
+      const catalog = lsCatalogFromForm();
+      const launcher = catalog.products.launcher || { channels: {} };
+      const channels = { ...(launcher.channels || {}) };
+      delete channels[channel];
+      if (channel === "stable") {
+        launcher.version = channels.beta?.version || "";
+        launcher.url = channels.beta?.url || "";
+        launcher.sha256 = channels.beta?.sha256 || "";
+        launcher.bytes = channels.beta?.bytes || 0;
+        catalog.launcherUrl = launcher.url || "";
+      }
+      launcher.channels = channels;
+      catalog.products.launcher = launcher;
+      catalog.publishedAt = new Date().toISOString();
+      const { error } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      await lsNotifyLaunchers(catalog);
+      lsPaintCatalog(catalog);
+      document.getElementById("vf-up-meta").textContent = `VirForge ${lsBranchName(channel)} unpublished.`;
+    }
+
     function lsPaintHistory(catalog) {
       const box = document.getElementById("ls-history-list");
       if (!box) return;
       const live = lsLiveUrls(catalog);
-      const variants = (lsBuilds || []).slice();
+      const variants = (lsBuilds || []).filter((row) => !vfIsLauncherObject(row));
       if (!variants.length) {
         box.innerHTML = `<p class="ls-meta">No uploaded variants yet. Upload a package or pick one after Storage has rows.</p>`;
         return;
@@ -3293,7 +3625,7 @@
       }).join("");
       box.querySelectorAll(".ls-hist-apply").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const row = lsBuilds[Number(btn.getAttribute("data-ls-idx"))];
+          const row = variants[Number(btn.getAttribute("data-ls-idx"))];
           if (!row) return;
           lsApplyUrlToChannel(row.download_url, btn.getAttribute("data-ls-ch")).catch((err) => {
             const message = err.message || "Apply failed.";
@@ -3319,7 +3651,7 @@
     }
 
     function lsBuildOptionsHtml(placeholder) {
-      const rows = lsBuilds || [];
+      const rows = (lsBuilds || []).filter((row) => !vfIsLauncherObject(row));
       if (!rows.length) return `<option value="">${lsEscape(placeholder || "No uploaded files yet")}</option>`;
       return `<option value="">${lsEscape(placeholder || "Pick an uploaded file…")}</option>` + rows.map((row) => {
         const live = row.is_active ? " · account live" : "";
@@ -3422,6 +3754,7 @@
       document.getElementById("ls-up-bucket").value = r2BucketNameEl.value.trim() || "viri-releases";
       document.getElementById("ls-up-public").value = lsNormalizePublicBase(r2PublicUrlEl.value);
       lsSyncUploadKey();
+      vfSyncUploadPreview();
       try {
         const { data, error } = await supabase.rpc("get_virforge_catalog");
         if (error) throw error;
@@ -3664,14 +3997,14 @@
       });
     }
 
-    async function lsUploadToR2(file, key) {
+    async function lsUploadToR2(file, key, ui = {}) {
       const { accountId, bucket, publicBase, credentials } = lsUpCreds();
       const hasher = await createSHA256();
       hasher.init();
       const objectUrl = r2ObjectUrl(accountId, bucket, key);
       const publicUrl = `${publicBase}/${key.replace(/^\/+/, "")}`;
-      const bar = document.getElementById("ls-up-bar");
-      const meta = document.getElementById("ls-up-meta");
+      const bar = document.getElementById(ui.bar || "ls-up-bar");
+      const meta = document.getElementById(ui.meta || "ls-up-meta");
       const setProg = (done, label) => {
         bar.style.width = (file.size ? Math.min(100, (done / file.size) * 100) : 0).toFixed(1) + "%";
         meta.textContent = `${label} ${lsFmt(done)} / ${lsFmt(file.size)}`;
@@ -3741,6 +4074,59 @@
 
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
     document.getElementById("ls-up-version").addEventListener("input", lsSyncUploadKey);
+    document.querySelectorAll("[data-vf-branch]").forEach((btn) => {
+      btn.addEventListener("click", () => vfSetBranch(btn.getAttribute("data-vf-branch")));
+    });
+    document.getElementById("vf-up-file")?.addEventListener("change", vfSyncUploadPreview);
+    document.getElementById("vf-up-version")?.addEventListener("input", vfSyncUploadPreview);
+    document.getElementById("vf-up-existing")?.addEventListener("change", () => {
+      const url = document.getElementById("vf-up-existing").value;
+      if (!url) return;
+      const known = vfHistory(lsLoadedCatalog).find((row) => row.url === url);
+      document.getElementById("vf-url").value = url;
+      if (known?.sha256) document.getElementById("vf-sha").value = known.sha256;
+      if (known?.bytes) document.getElementById("vf-bytes").value = String(known.bytes);
+      if (known?.version) document.getElementById("vf-up-version").value = known.version;
+    });
+    document.getElementById("vf-up-apply-existing")?.addEventListener("click", async () => {
+      try { await vfApplyExisting(); }
+      catch (err) { document.getElementById("vf-up-meta").textContent = err.message || "Apply failed."; }
+    });
+    document.getElementById("vf-up-start")?.addEventListener("click", async () => {
+      const file = document.getElementById("vf-up-file").files[0];
+      const status = document.getElementById("vf-up-meta");
+      if (!file) { status.textContent = "Pick VirForge-Setup-….exe first."; return; }
+      const version = (document.getElementById("vf-up-version")?.value || "0.1.6").trim().replace(/[/\\]/g, "") || "0.1.6";
+      const key = `updates/launcher/${version}/${lsSafeFileName(file.name)}`;
+      lsUpAbort = false;
+      document.getElementById("vf-up-start").disabled = true;
+      document.getElementById("vf-up-abort").disabled = false;
+      status.textContent = "Uploading VirForge installer…";
+      try {
+        const result = await lsUploadToR2(file, key, { bar: "vf-up-bar", meta: "vf-up-meta" });
+        document.getElementById("vf-url").value = result.publicUrl;
+        document.getElementById("vf-sha").value = result.sha256;
+        document.getElementById("vf-bytes").value = String(result.bytes);
+        document.getElementById("ls-launcher-url").value = vfBranch === "beta" ? document.getElementById("ls-launcher-url").value : result.publicUrl;
+        const pkg = vfNormalizePkg({
+          version,
+          url: result.publicUrl,
+          sha256: result.sha256,
+          bytes: result.bytes,
+        });
+        status.textContent = await vfPublishLauncher(pkg);
+      } catch (err) {
+        status.textContent = lsFetchError(err);
+      } finally {
+        document.getElementById("vf-up-start").disabled = false;
+        document.getElementById("vf-up-abort").disabled = true;
+      }
+    });
+    document.getElementById("vf-up-abort")?.addEventListener("click", () => {
+      lsUpAbort = true;
+      if (lsUpXhr) lsUpXhr.abort();
+      document.getElementById("vf-up-meta").textContent = "Aborting…";
+    });
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
       if (!file) { document.getElementById("ls-up-meta").textContent = "Pick the local package first."; return; }
@@ -4122,7 +4508,9 @@
       status.textContent = "Saving…";
       if (catalog.products.airi.url && !catalog.products.airi.url.startsWith("https://")) throw new Error("AiRi URL must be HTTPS.");
       if (catalog.launcherUrl && !catalog.launcherUrl.startsWith("https://")) throw new Error("Launcher URL must be HTTPS.");
+      if (catalog.products.launcher?.url && !catalog.products.launcher.url.startsWith("https://")) throw new Error("VirForge launcher URL must be HTTPS.");
       if (catalog.products.airi.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.airi.sha256)) throw new Error("SHA-256 must be 64 hex characters.");
+      if (catalog.products.launcher?.sha256 && !/^[a-f0-9]{64}$/.test(catalog.products.launcher.sha256)) throw new Error("VirForge launcher SHA-256 must be 64 hex characters.");
       const writing = lsSelectedChannels();
       for (const ch of writing) {
         const pkg = catalog.products.airi.channels?.[ch];
@@ -4164,10 +4552,19 @@
         catalog.products.airi.url,
         catalog.products.airi.channels?.stable?.url,
         catalog.products.airi.channels?.beta?.url,
+        catalog.products.launcher?.url,
+        catalog.products.launcher?.channels?.stable?.url,
+        catalog.products.launcher?.channels?.beta?.url,
       ].filter(Boolean));
       for (const url of urls) {
-        const pkg = [catalog.products.airi, catalog.products.airi.channels?.stable, catalog.products.airi.channels?.beta]
-          .find((item) => item && item.url === url);
+        const pkg = [
+          catalog.products.airi,
+          catalog.products.airi.channels?.stable,
+          catalog.products.airi.channels?.beta,
+          catalog.products.launcher,
+          catalog.products.launcher?.channels?.stable,
+          catalog.products.launcher?.channels?.beta,
+        ].find((item) => item && item.url === url);
         if (!pkg?.sha256) continue;
         try { await lsPutChecksumSidecar(url, pkg.sha256); }
         catch (err) { status.textContent = `Published catalog. SHA-256 sidecar skipped: ${err.message}`; }
