@@ -62,7 +62,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST")    return jsonResponse({ error: "Method not allowed" }, 405);
 
-  let body: { license_key?: string };
+  let body: {
+    license_key?: string;
+    machine_id?: string;
+    client?: string;
+    client_version?: string;
+  };
   try { body = await req.json(); }
   catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
 
@@ -74,12 +79,28 @@ serve(async (req) => {
   // Validate license + read tier
   const { data: license, error: licErr } = await supabase
     .from("licenses")
-    .select("status, expires_at, tier")
+    .select("status, expires_at, tier, machine_id")
     .eq("license_key", licenseKey)
     .single();
 
   if (licErr || !license)          return jsonResponse({ error: "License not found" }, 403);
   if (license.status !== "active") return jsonResponse({ error: "License is inactive" }, 403);
+  const machineId = String(body.machine_id || "").trim();
+  const likelyDesktop = body.client === "airi-desktop" ||
+    /python-requests/i.test(req.headers.get("user-agent") || "");
+  if (likelyDesktop && !machineId) {
+    const clientVersion = String(body.client_version || "unknown")
+      .replace(/[^A-Za-z0-9._+-]/g, "")
+      .slice(0, 40) || "unknown";
+    console.warn(JSON.stringify({
+      event: "compat_missing_machine_id",
+      endpoint: "get-quota",
+      client_version: clientVersion,
+    }));
+  }
+  if (machineId && license.machine_id && license.machine_id !== machineId) {
+    return jsonResponse({ error: "License is already in use on another machine." }, 403);
+  }
   if (license.expires_at && new Date(license.expires_at) < new Date())
     return jsonResponse({ error: "License has expired" }, 403);
 
@@ -112,33 +133,16 @@ serve(async (req) => {
   const now = new Date();
   const daysRemaining = Math.max(0, Math.ceil((new Date(periodEnd).getTime() - now.getTime()) / 86400000));
 
-  // Compute avg tokens per hour from token_usage in the current period
-  const { data: usageRows } = await supabase
-    .from("token_usage")
-    .select("prompt_tokens, completion_tokens, created_at")
-    .eq("license_key", licenseKey)
-    .gte("created_at", periodStart)
-    .order("created_at", { ascending: true });
-
-  let avgTokensPerHour = 0;
-  let totalHoursTracked = 0;
-
-  if (usageRows && usageRows.length > 0) {
-    let totalTokens = 0;
-    const activeHours = new Set<string>();
-
-    for (const row of usageRows) {
-      totalTokens += (row.prompt_tokens ?? 0) + (row.completion_tokens ?? 0);
-      // Bucket by YYYY-MM-DD-HH to count distinct active hours
-      const d = new Date(row.created_at);
-      activeHours.add(`${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`);
-    }
-
-    totalHoursTracked = activeHours.size;
-    avgTokensPerHour = totalHoursTracked > 0
-      ? Math.round(totalTokens / totalHoursTracked)
-      : 0;
-  }
+  // Avg from the quota row — do not scan token_usage. Same JSON fields so
+  // current desktop builds keep working. Hours = elapsed period time (min 1).
+  const hoursElapsed = Math.max(
+    1,
+    (now.getTime() - new Date(periodStart).getTime()) / 3_600_000,
+  );
+  const totalHoursTracked = Math.floor(hoursElapsed);
+  const avgTokensPerHour = tokensUsed > 0
+    ? Math.round(tokensUsed / hoursElapsed)
+    : 0;
 
   return jsonResponse({
     tier,
