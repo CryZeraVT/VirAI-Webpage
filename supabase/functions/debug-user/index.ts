@@ -8,13 +8,53 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function requireAdmin(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]?.trim()) {
+    return { error: jsonResponse({ error: "Missing Authorization header." }, 401) };
+  }
+  const { data: userData, error: userError } = await supabase.auth.getUser(match[1].trim());
+  if (userError || !userData?.user) {
+    return { error: jsonResponse({ error: "Invalid or expired session." }, 401) };
+  }
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userData.user.id)
+    .maybeSingle();
+  if (profileError) {
+    console.error("debug-user admin check failed:", profileError.message);
+    return { error: jsonResponse({ error: "Could not verify admin access." }, 500) };
+  }
+  if (!profile?.is_admin) {
+    return { error: jsonResponse({ error: "Admin access required." }, 403) };
+  }
+  return { user: userData.user };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed." }, 405);
+
+  const admin = await requireAdmin(req);
+  if ("error" in admin) return admin.error;
 
   const { email } = await req.json().catch(() => ({}));
   const wanted = String(email ?? "").trim().toLowerCase();
+  if (!wanted || wanted.length > 254) {
+    return jsonResponse({ error: "A valid search value is required." }, 400);
+  }
 
   // Paginate all users and collect matches + total count
   const pageSize = 200;

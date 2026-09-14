@@ -24,6 +24,42 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function requireAdmin(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]?.trim()) {
+    return { error: jsonResponse({ error: "Missing Authorization header." }, 401) };
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(match[1].trim());
+  if (userError || !userData?.user) {
+    return { error: jsonResponse({ error: "Invalid or expired session." }, 401) };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userData.user.id)
+    .maybeSingle();
+  if (profileError) {
+    console.error("send-beta-approval admin check failed:", profileError.message);
+    return { error: jsonResponse({ error: "Could not verify admin access." }, 500) };
+  }
+  if (!profile?.is_admin) {
+    return { error: jsonResponse({ error: "Admin access required." }, 403) };
+  }
+  return { user: userData.user };
+}
+
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {
   if (!resendApiKey) {
     console.warn("RESEND_API_KEY not set — skipping email");
@@ -69,6 +105,9 @@ serve(async (req) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
+  const admin = await requireAdmin(req);
+  if ("error" in admin) return admin.error;
+
   let body: { name: string; email: string; license_key: string; expires_at: string };
   try {
     body = await req.json();
@@ -82,11 +121,22 @@ serve(async (req) => {
     return jsonResponse({ error: "name, email, and license_key are required." }, 400);
   }
 
-  const cleanEmail = email.trim();
+  const cleanEmail = email.trim().toLowerCase();
   const cleanName = name.trim();
-  const expiryStr = expires_at
-    ? new Date(expires_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleanEmail)) {
+    return jsonResponse({ error: "Invalid email address." }, 400);
+  }
+  if (cleanName.length > 120 || license_key.trim().length > 120) {
+    return jsonResponse({ error: "Input exceeds the allowed length." }, 400);
+  }
+  const expiryDate = expires_at ? new Date(expires_at) : null;
+  const expiryStr = expiryDate && Number.isFinite(expiryDate.getTime())
+    ? expiryDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : "30 days from now";
+  const safeName = escapeHtml(cleanName);
+  const safeLicenseKey = escapeHtml(license_key.trim());
+  const safeExpiry = escapeHtml(expiryStr);
 
   const alreadyExists = await userExistsByEmail(cleanEmail);
 
@@ -119,7 +169,7 @@ serve(async (req) => {
   }
 
   const signInLine = actionLink
-    ? `<a href="${actionLink}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;margin:12px 0;">
+    ? `<a href="${escapeHtml(actionLink)}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;margin:12px 0;">
         ${alreadyExists ? "Sign In to Your Account" : "Create Your Account"}
        </a>`
     : `<a href="${SITE_URL}/account.html" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;margin:12px 0;">
@@ -133,13 +183,13 @@ serve(async (req) => {
   <h1 style="color:#a78bfa;margin-bottom:4px;">🎉 You're In!</h1>
   <p style="color:#9ca3af;margin-top:0;">Your ViriTTS Beta access has been approved.</p>
   <hr style="border-color:#2d1b4e;margin:20px 0;" />
-  <p>Hey <strong>${cleanName}</strong>,</p>
+  <p>Hey <strong>${safeName}</strong>,</p>
   <p>We've reviewed your application and you're officially approved for the <strong>ViriTTS Beta</strong>! Here's everything you need to get started:</p>
 
   <div style="background:#1a112e;border:1px solid #4c1d95;border-radius:10px;padding:20px;margin:20px 0;">
     <p style="margin:0 0 6px;color:#9ca3af;font-size:0.85em;">YOUR LICENSE KEY</p>
-    <p style="margin:0;font-size:1.4em;font-weight:bold;letter-spacing:2px;color:#a78bfa;">${license_key}</p>
-    <p style="margin:8px 0 0;font-size:0.8em;color:#6b7280;">Expires: ${expiryStr}</p>
+    <p style="margin:0;font-size:1.4em;font-weight:bold;letter-spacing:2px;color:#a78bfa;">${safeLicenseKey}</p>
+    <p style="margin:8px 0 0;font-size:0.8em;color:#6b7280;">Expires: ${safeExpiry}</p>
   </div>
 
   <p><strong>How to activate:</strong></p>
@@ -155,7 +205,7 @@ serve(async (req) => {
 
   <p style="font-size:0.85em;color:#6b7280;">
     If the button doesn't work, copy this link:<br>
-    <span style="word-break:break-all;">${actionLink ?? `${SITE_URL}/account.html`}</span>
+    <span style="word-break:break-all;">${escapeHtml(actionLink ?? `${SITE_URL}/account.html`)}</span>
   </p>
 
   <hr style="border-color:#2d1b4e;margin:20px 0;" />
@@ -195,7 +245,6 @@ serve(async (req) => {
     return jsonResponse({
       success: false,
       already_exists: alreadyExists,
-      action_link: actionLink,
       error: `Email failed to send: ${emailResult.error}`,
       invite_error: inviteError,
     }, 500);
@@ -204,10 +253,7 @@ serve(async (req) => {
   return jsonResponse({
     success: true,
     already_exists: alreadyExists,
-    action_link: actionLink,
     invite_error: inviteError ?? null,
-    license_key,
     expires: expiryStr,
-    name: cleanName,
   });
 });

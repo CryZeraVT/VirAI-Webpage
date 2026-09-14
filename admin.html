@@ -1950,6 +1950,20 @@
       }[c]));
     }
 
+    function _safeHttpUrl(value) {
+      try {
+        const raw = String(value || "").trim();
+        if (!/^https:\/\//i.test(raw) || raw.startsWith("//")) return "#";
+        const url = new URL(raw);
+        const allowedHost = url.hostname === window.location.hostname
+          || url.hostname.endsWith(".r2.dev")
+          || url.hostname === "rgigtqpesabuyaumibaj.supabase.co";
+        return allowedHost ? url.href : "#";
+      } catch (_) {
+        return "#";
+      }
+    }
+
     function _tosMaskKey(k) {
       if (!k) return "—";
       const s = String(k);
@@ -2452,15 +2466,15 @@
           <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="announcement-info" style="flex: 1;">
               <h4 style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                v${ver.version}: ${ver.title}
+                v${_tosEscape(ver.version)}: ${_tosEscape(ver.title)}
                 ${chBadge}
                 ${twinBadge}
                 ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ''}
                 ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background: #2d1b4e;">INACTIVE</span>'}
               </h4>
-              <p>${ver.content ? ver.content.substring(0, 100) : 'No changelog'}${ver.content && ver.content.length > 100 ? '...' : ''}</p>
+              <p>${ver.content ? _tosEscape(String(ver.content).substring(0, 100)) : 'No changelog'}${ver.content && ver.content.length > 100 ? '...' : ''}</p>
               <p style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">
-                ${ver.file_name} · Channel: ${ch} · Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
+                ${_tosEscape(ver.file_name)} · Channel: ${ch} · Uploaded: ${new Date(ver.created_at).toLocaleDateString()}
               </p>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -2806,22 +2820,23 @@
           const shortUrl = ver.download_url
             ? (ver.download_url.length > 64 ? ver.download_url.slice(0, 64) + "…" : ver.download_url)
             : (ver.file_path || "—");
-          const urlAttr = String(ver.download_url || ver.file_path || "").replace(/"/g, "&quot;");
+          const safeDownloadUrl = _safeHttpUrl(ver.download_url || ver.file_path || "");
+          const urlAttr = _tosEscape(safeDownloadUrl);
           return `
           <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
             <div style="width:100%;">
               <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
-                v${ver.version}: ${ver.title || ""}
+                v${_tosEscape(ver.version)}: ${_tosEscape(ver.title || "")}
                 ${chBadge}
                 ${twinBadge}
                 ${ver.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ""}
                 ${ver.is_active ? '<span class="badge badge-active">ACTIVE</span>' : '<span class="badge" style="background:#2d1b4e;">INACTIVE</span>'}
               </h4>
               <p style="margin:0;font-size:0.85em;color:#6b7280;">
-                ${ver.file_name || "—"} · ${created}
+                ${_tosEscape(ver.file_name || "—")} · ${created}
               </p>
               <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;" title="${urlAttr}">
-                ${shortUrl}
+                ${_tosEscape(shortUrl)}
               </p>
             </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%;">
@@ -2835,7 +2850,7 @@
               <button type="button" class="btn storage-activate-btn" data-id="${ver.id}" style="background:#22c55e;border:none;padding:8px 14px;font-size:0.85em;">
                 Set Active
               </button>
-              <a href="${ver.download_url || "#"}" target="_blank" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 14px;font-size:0.85em;text-decoration:none;">
+              <a href="${urlAttr}" target="_blank" rel="noopener" class="btn btn-outline" style="border-color:#06b6d4;color:#06b6d4;padding:8px 14px;font-size:0.85em;text-decoration:none;">
                 Download
               </a>
             </div>
@@ -2997,13 +3012,13 @@
       listEl.innerHTML = data.map(ann => `
         <div class="announcement-item">
           <div class="announcement-info">
-            <h4>v${ann.version}: ${ann.title} 
+            <h4>v${_tosEscape(ann.version)}: ${_tosEscape(ann.title)}
               ${ann.is_critical ? '<span class="badge badge-critical">CRITICAL</span>' : ''}
               ${ann.active ? '<span class="badge badge-active">ACTIVE</span>' : ''}
             </h4>
-            <p>${ann.content.substring(0, 100)}${ann.content.length > 100 ? '...' : ''}</p>
+            <p>${_tosEscape(String(ann.content || "").substring(0, 100))}${String(ann.content || "").length > 100 ? '...' : ''}</p>
           </div>
-          <button class="btn btn-outline delete-btn" data-id="${ann.id}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Delete</button>
+          <button class="btn btn-outline delete-btn" data-id="${_tosEscape(ann.id)}" style="border-color: #ff4444; color: #ff4444; padding: 5px 10px; font-size: 0.8em;">Delete</button>
         </div>
       `).join("");
 
@@ -5125,35 +5140,35 @@
         <div class="announcement-item" style="${cls === "expiring" ? "border-left:3px solid #f59e0b;" : cls === "expired" || cls === "inactive" ? "opacity:0.75;" : ""}">
           <div class="announcement-info" style="flex:1;min-width:0;">
             <h4 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span style="font-family:monospace;font-size:0.92em;">${lic.license_key}</span>
+              <span style="font-family:monospace;font-size:0.92em;">${_tosEscape(lic.license_key)}</span>
               <span style="background:${statusColor};color:#0f051e;font-size:0.68em;font-weight:700;padding:2px 8px;border-radius:999px;">${statusLabel}</span>
             </h4>
-            <p>📧 ${lic.email || "—"}</p>
-            <p>🎮 ${twitch !== "—" ? `<a href="https://twitch.tv/${twitch}" target="_blank" style="color:#9146FF;text-decoration:none;">${twitch}</a>` : "—"}</p>
+            <p>📧 ${_tosEscape(lic.email || "—")}</p>
+            <p>🎮 ${twitch !== "—" ? `<a href="https://twitch.tv/${encodeURIComponent(twitch)}" target="_blank" rel="noopener" style="color:#9146FF;text-decoration:none;">${_tosEscape(twitch)}</a>` : "—"}</p>
             ${expiryBanner(lic)}
             <p style="font-size:0.78em;color:#4b5563;margin-top:4px;">Created: ${new Date(lic.created_at).toLocaleDateString()}</p>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
             <button class="btn toggle-status-btn"
-              data-key="${lic.license_key}" data-status="${lic.status}"
+              data-key="${_tosEscape(lic.license_key)}" data-status="${_tosEscape(lic.status)}"
               style="background:${lic.status === 'active' ? '#f59e0b' : '#22c55e'};color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">
               ${lic.status === 'active' ? 'Deactivate' : 'Activate'}
             </button>
             <button class="btn resend-beta-email-btn"
-              data-key="${lic.license_key}" data-email="${lic.email}"
-              data-name="${name}" data-expires="${lic.expires_at || ""}"
+              data-key="${_tosEscape(lic.license_key)}" data-email="${_tosEscape(lic.email || "")}"
+              data-name="${_tosEscape(name)}" data-expires="${_tosEscape(lic.expires_at || "")}"
               style="background:#06b6d4;color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">
               Resend Email
             </button>
             <button class="btn reactivate-license-btn"
-              data-key="${lic.license_key}" data-email="${lic.email}" data-expires="${lic.expires_at || ""}" data-tier="${lic.tier || ""}"
+              data-key="${_tosEscape(lic.license_key)}" data-email="${_tosEscape(lic.email || "")}" data-expires="${_tosEscape(lic.expires_at || "")}" data-tier="${_tosEscape(lic.tier || "")}"
               style="background:#22c55e;color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">🔄 Reactivate</button>
             <button class="btn toggle-unlocked-btn"
-              data-key="${lic.license_key}" data-revoked="${lic.unlocked_revoked ? "1" : "0"}"
+              data-key="${_tosEscape(lic.license_key)}" data-revoked="${lic.unlocked_revoked ? "1" : "0"}"
               style="background:${lic.unlocked_revoked ? '#22c55e' : '#a855f7'};color:#0f051e;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">
               ${lic.unlocked_revoked ? "Restore Unlocked" : "Revoke Unlocked"}
             </button>
-            <button class="btn delete-license-btn" data-key="${lic.license_key}"
+            <button class="btn delete-license-btn" data-key="${_tosEscape(lic.license_key)}"
               style="background:#ef4444;color:#fff;border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;">Revoke</button>
           </div>
         </div>`;
@@ -5246,9 +5261,12 @@
           const oldText = btn.textContent;
           btn.disabled = true; btn.textContent = "📧 Sending...";
           try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
+            if (!accessToken) throw new Error("Admin session expired. Sign in again.");
             const res = await fetch(`${SUPABASE_URL}/functions/v1/send-beta-approval`, {
               method: "POST",
-              headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+              headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${accessToken}` },
               body: JSON.stringify({ name, email, license_key: licenseKey, expires_at: expiresAt }),
             });
             const result = await res.json().catch(() => ({}));
@@ -5316,44 +5334,44 @@
       const statusColors = { pending: "#f59e0b", approved: "#22c55e", rejected: "#ef4444" };
 
       listEl.innerHTML = data.map(s => `
-        <div class="announcement-item" style="flex-direction:column; align-items:flex-start; gap:12px;" data-id="${s.id}">
+        <div class="announcement-item" style="flex-direction:column; align-items:flex-start; gap:12px;" data-id="${_tosEscape(s.id)}">
           <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start; gap:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:200px;">
               <h4 style="margin:0; display:flex; align-items:center; gap:8px;">
-                ${s.name}
-                <span class="badge" style="background:${statusColors[s.status] || "#4b5563"};">${s.status.toUpperCase()}</span>
+                ${_tosEscape(s.name)}
+                <span class="badge" style="background:${statusColors[s.status] || "#4b5563"};">${_tosEscape(String(s.status || "unknown").toUpperCase())}</span>
                 ${s.hidden_from_carousel ? `<span class="badge" style="background:#4b5563; font-size:0.7em;">🙈 Hidden from Carousel</span>` : ""}
               </h4>
-              <p style="margin:4px 0 0; font-size:0.9em;">📧 ${s.email}</p>
-              <p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${s.twitch_username}</p>
-              ${s.content_type ? `<p style="margin:2px 0 0; font-size:0.85em; color:#a1a1aa;">📺 ${s.content_type}</p>` : ""}
-              ${s.message ? `<p style="margin:6px 0 0; font-size:0.85em; color:#d1d5db; background:#1a112e; padding:8px; border-radius:6px; white-space:pre-wrap;">${s.message}</p>` : ""}
+              <p style="margin:4px 0 0; font-size:0.9em;">📧 ${_tosEscape(s.email)}</p>
+              <p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${_tosEscape(s.twitch_username)}</p>
+              ${s.content_type ? `<p style="margin:2px 0 0; font-size:0.85em; color:#a1a1aa;">📺 ${_tosEscape(s.content_type)}</p>` : ""}
+              ${s.message ? `<p style="margin:6px 0 0; font-size:0.85em; color:#d1d5db; background:#1a112e; padding:8px; border-radius:6px; white-space:pre-wrap;">${_tosEscape(s.message)}</p>` : ""}
               <p style="margin:4px 0 0; font-size:0.8em; color:#6b7280;">Signed up: ${new Date(s.created_at).toLocaleString()}</p>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px; min-width:160px;">
               ${s.status === "pending" ? `
-                <button class="btn approve-btn" data-id="${s.id}" data-email="${s.email}" data-name="${s.name}"
+                <button class="btn approve-btn" data-id="${_tosEscape(s.id)}" data-email="${_tosEscape(s.email)}" data-name="${_tosEscape(s.name)}"
                   style="background:linear-gradient(135deg,#22c55e,#06b6d4); padding:8px 14px; font-size:0.85em;">
                   ✅ Approve & Send Key
                 </button>
-                <button class="btn reject-btn" data-id="${s.id}"
+                <button class="btn reject-btn" data-id="${_tosEscape(s.id)}"
                   style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:8px 14px; font-size:0.85em;">
                   ❌ Reject
                 </button>
               ` : ""}
               ${s.status === "approved" ? `
-                <button class="btn revert-btn" data-id="${s.id}"
+                <button class="btn revert-btn" data-id="${_tosEscape(s.id)}"
                   style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:8px 14px; font-size:0.85em;">
                   ↩ Revert to Pending
                 </button>
               ` : ""}
               ${s.status === "rejected" ? `
-                <button class="btn revert-btn" data-id="${s.id}"
+                <button class="btn revert-btn" data-id="${_tosEscape(s.id)}"
                   style="background:transparent; border:1px solid #f59e0b; color:#f59e0b; padding:8px 14px; font-size:0.85em;">
                   ↩ Revert to Pending
                 </button>
               ` : ""}
-              <button class="btn carousel-toggle-btn" data-id="${s.id}" data-hidden="${s.hidden_from_carousel ? 'true' : 'false'}"
+              <button class="btn carousel-toggle-btn" data-id="${_tosEscape(s.id)}" data-hidden="${s.hidden_from_carousel ? 'true' : 'false'}"
                 style="background:transparent; border:1px solid ${s.hidden_from_carousel ? '#22c55e' : '#6b7280'}; color:${s.hidden_from_carousel ? '#22c55e' : '#6b7280'}; padding:8px 14px; font-size:0.82em;">
                 ${s.hidden_from_carousel ? '👁 Show in Carousel' : '🙈 Hide from Carousel'}
               </button>
@@ -5373,8 +5391,11 @@
           btn.disabled = true;
           btn.textContent = "⏳ Processing...";
 
-          const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase() + "-" +
-                            Math.random().toString(36).substring(2, 6).toUpperCase();
+          const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          const randomBytes = crypto.getRandomValues(new Uint8Array(8));
+          const randomStr = Array.from(randomBytes, (value) => alphabet[value % alphabet.length])
+            .join("")
+            .replace(/^(.{4})/, "$1-");
           const key = `VIRI-BETA-${randomStr}`;
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
@@ -5419,16 +5440,14 @@
             );
             if (invokeErr) throw invokeErr;
             if (!emailData?.success) {
-              alert(`⚠️ License created but email failed: ${emailData?.error || "Unknown error"}\n\nManually share:\nKey: ${key}\nAccount page: https://AiRi.com/account.html`);
+              alert(`⚠️ License created but email failed: ${emailData?.error || "Unknown error"}\n\nManually share:\nKey: ${key}\nAccount page: https://viritts.com/account.html`);
             } else if (emailData.already_exists) {
-              // User already has an account — show magic link for them to sign in
-              const link = emailData.action_link || "https://AiRi.com/account.html";
-              alert(`✅ Approved! User already has an account.\n\nLicense: ${key}\nEmail: ${email}\n\nShare this sign-in link with them:\n${link}`);
+              alert(`✅ Approved! A secure sign-in link and license details were emailed to ${email}.`);
             } else {
               alert(`✅ Approved & invite sent!\n\nLicense: ${key}\nInvite emailed to: ${email}\nExpires: ${expiresAt.toLocaleDateString()}\n\nThey'll get a Supabase invite email with a link to create their account. Their key will be waiting for them when they log in.`);
             }
           } catch (emailErr) {
-            alert(`⚠️ License created but invite failed to send.\n\nManually share:\nKey: ${key}\nCreate account: https://AiRi.com/account.html`);
+            alert(`⚠️ License created but invite failed to send.\n\nManually share:\nKey: ${key}\nCreate account: https://viritts.com/account.html`);
           }
 
           loadBetaSignups();
@@ -5511,18 +5530,18 @@
       function renderRow(r) {
         const subColor = r.subscribed !== false ? "#22c55e" : "#6b7280";
         const subLabel = r.subscribed !== false ? "SUBSCRIBED" : "UNSUBSCRIBED";
+        const safeEmail = _tosEscape(r.email);
         return `
           <div class="announcement-item" style="${r.subscribed === false ? "opacity:0.55;" : ""}">
             <div class="announcement-info">
               <h4 style="display:flex;align-items:center;gap:8px;">
-                ${r.name || "<span style='color:#6b7280;font-style:italic;'>No name</span>"}
+                ${r.name ? _tosEscape(r.name) : "<span style='color:#6b7280;font-style:italic;'>No name</span>"}
                 <span style="background:${subColor};color:#0f051e;font-size:0.68em;font-weight:700;padding:2px 8px;border-radius:999px;">${subLabel}</span>
               </h4>
-              <p>📧 ${r.email}</p>
-              <p style="font-size:0.78em;color:#4b5563;">Signed up: ${new Date(r.created_at).toLocaleDateString()} · Source: ${r.source || "unknown"}</p>
+              <p>📧 ${safeEmail}</p>
+              <p style="font-size:0.78em;color:#4b5563;">Signed up: ${new Date(r.created_at).toLocaleDateString()} · Source: ${_tosEscape(r.source || "unknown")}</p>
             </div>
-            <button class="btn" data-email="${r.email}" data-subscribed="${r.subscribed !== false}"
-              onclick="toggleMailingSubscription('${r.email}', ${r.subscribed !== false})"
+            <button class="btn mailing-toggle-btn" data-email="${safeEmail}" data-subscribed="${r.subscribed !== false}"
               style="background:${r.subscribed !== false ? '#4b5563' : '#22c55e'};color:${r.subscribed !== false ? '#e2e8f0' : '#0f051e'};border:none;padding:6px 14px;font-size:0.8em;font-weight:700;border-radius:6px;cursor:pointer;flex-shrink:0;">
               ${r.subscribed !== false ? "Unsubscribe" : "Resubscribe"}
             </button>
@@ -5531,6 +5550,14 @@
 
       listEl.innerHTML = subscribed.map(renderRow).join("") +
         (unsubscribed.length ? `<div style="margin:14px 0 6px;font-size:0.78em;color:#4b5563;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Unsubscribed (${unsubscribed.length})</div>` + unsubscribed.map(renderRow).join("") : "");
+      listEl.querySelectorAll(".mailing-toggle-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          toggleMailingSubscription(
+            btn.getAttribute("data-email") || "",
+            btn.getAttribute("data-subscribed") === "true",
+          );
+        });
+      });
     }
 
     async function toggleMailingSubscription(email, currentlySubscribed) {
@@ -6375,23 +6402,23 @@
             <div style="display:flex; justify-content:space-between; width:100%; align-items:flex-start; gap:10px; flex-wrap:wrap;">
               <div style="flex:1; min-width:260px;">
                 <h4 style="margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  ${u.email || "Unknown Email"}
+                  ${_tosEscape(u.email || "Unknown Email")}
                   ${u.is_admin ? '<span class="badge badge-critical" style="background:#06b6d4;">ADMIN</span>' : ""}
                 </h4>
-                <p style="margin:4px 0 0; font-size:0.9em;">User ID: <code>${u.id}</code></p>
-                ${u.twitch_username ? `<p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${u.twitch_username}</p>` : ""}
+                <p style="margin:4px 0 0; font-size:0.9em;">User ID: <code>${_tosEscape(u.id)}</code></p>
+                ${u.twitch_username ? `<p style="margin:2px 0 0; font-size:0.9em; color:#06b6d4;">🎮 ${_tosEscape(u.twitch_username)}</p>` : ""}
                 <p style="margin:2px 0 0; font-size:0.85em; color:#a1a1aa;">
-                  Licenses: ${u.license_count || 0} (${u.active_license_count || 0} active) • Beta status: ${u.beta_status || "none"}
+                  Licenses: ${Number(u.license_count) || 0} (${Number(u.active_license_count) || 0} active) • Beta status: ${_tosEscape(u.beta_status || "none")}
                 </p>
                 <p style="margin:2px 0 0; font-size:0.8em; color:#6b7280;">
                   Created: ${u.created_at ? new Date(u.created_at).toLocaleString() : "unknown"} • Last sign-in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "never"}
                 </p>
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-outline set-password-btn" data-id="${u.id}" data-email="${u.email || ""}" style="border-color:#a78bfa;color:#a78bfa;padding:8px 14px;font-size:0.85em;">
+                <button class="btn btn-outline set-password-btn" data-id="${_tosEscape(u.id)}" data-email="${_tosEscape(u.email || "")}" style="border-color:#a78bfa;color:#a78bfa;padding:8px 14px;font-size:0.85em;">
                   🔐 Set Password
                 </button>
-                <button class="btn btn-outline delete-user-btn" data-id="${u.id}" data-email="${u.email || ""}" style="border-color:#ef4444;color:#ef4444;padding:8px 14px;font-size:0.85em;">
+                <button class="btn btn-outline delete-user-btn" data-id="${_tosEscape(u.id)}" data-email="${_tosEscape(u.email || "")}" style="border-color:#ef4444;color:#ef4444;padding:8px 14px;font-size:0.85em;">
                   🗑 Delete User
                 </button>
               </div>
