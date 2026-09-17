@@ -1547,7 +1547,7 @@
         <div class="tab-content" id="tab-launcher">
           <div class="tab-header">
             <h3>📦 Launcher / Stream</h3>
-            <p>Top of this tab is <strong>AiRi</strong> stream packages (Beta vs Release). Further down is a separate channel for <strong>VirForge itself</strong>. Those files never replace the slim account MSI.</p>
+            <p>This tab publishes <strong>AiRi</strong>, the free <strong>VirCast</strong> package, and a separate self-update channel for <strong>VirForge itself</strong>. These files never replace the slim account MSI.</p>
           </div>
 
           <div class="admin-section">
@@ -1648,6 +1648,43 @@
             <div class="form-group" style="margin-top:12px;">
               <label>Launcher HTTPS URL</label>
               <input id="vf-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/launcher/0.1.6/VirForge-Setup-0.1.6.exe" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="admin-section-title">VirCast stream package</div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Free VirCast installer distributed by VirForge. New uploads land at <code>updates/vircast/{version}/{filename}</code> and do not affect AiRi or launcher packages.</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>VirCast version</label>
+                <input id="vc-up-version" type="text" class="form-input" value="1.0.0" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>New VirCast installer</label>
+                <input id="vc-up-file" type="file" class="form-input" accept=".exe,.msi">
+              </div>
+            </div>
+            <p id="vc-up-public-preview" class="ls-meta" style="margin:8px 0 0;">Pick an installer to preview its R2 stream path.</p>
+            <div class="ls-bar-wrap"><div id="vc-up-bar" class="ls-bar"></div></div>
+            <div id="vc-up-meta" class="ls-meta">Not published. Upload an installer when the VirCast build is ready.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <button type="button" class="btn" id="vc-up-start">Upload and publish VirCast</button>
+              <button type="button" class="btn" id="vc-up-apply-existing">Apply HTTPS path</button>
+              <button type="button" class="btn btn-outline" id="vc-up-abort" disabled>Abort</button>
+            </div>
+            <div class="form-row" style="margin-top:14px;">
+              <div class="form-group">
+                <label>VirCast SHA-256</label>
+                <input id="vc-sha" type="text" maxlength="64" class="form-input" placeholder="filled during upload" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="form-group">
+                <label>VirCast bytes</label>
+                <input id="vc-bytes" type="text" inputmode="numeric" class="form-input" value="" autocomplete="off">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>VirCast HTTPS stream URL</label>
+              <input id="vc-url" type="url" class="form-input" placeholder="https://….r2.dev/updates/vircast/1.0.0/VirCastDirectSetup.exe" autocomplete="off">
             </div>
           </div>
 
@@ -3108,6 +3145,7 @@
       launcherUrl: "",
       products: {
         airi: { version: "1.4.3", url: "", sha256: "", bytes: 0, channels: {} },
+        vircast: { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [], downloadable: true, requiresKey: false },
         launcher: { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] },
       },
     };
@@ -3303,6 +3341,7 @@
       }
       const stable = channels.stable || {};
       const launcher = vfLauncherFromForm(prev.products?.launcher);
+      const vircast = vcVircastFromForm(prev.products?.vircast);
       return {
         licenseEndpoint: prev.licenseEndpoint || LS_LICENSE,
         launcherUrl: launcher.url || "",
@@ -3314,7 +3353,7 @@
             bytes: stable.bytes || 0,
             channels,
           },
-          vircast: prev.products?.vircast || { version: null, url: "", sha256: "", bytes: 0 },
+          vircast,
           launcher,
         },
       };
@@ -3343,6 +3382,36 @@
       };
     }
 
+    function vcVircastFromForm(prevVircast) {
+      const prev = prevVircast || { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] };
+      const channels = { ...(prev.channels || {}) };
+      const pkg = vfNormalizePkg({
+        version: (document.getElementById("vc-up-version")?.value || prev.version || "").trim(),
+        url: (document.getElementById("vc-url")?.value || prev.url || "").trim(),
+        sha256: (document.getElementById("vc-sha")?.value || prev.sha256 || "").trim().toLowerCase(),
+        bytes: Number((document.getElementById("vc-bytes")?.value || prev.bytes || "").toString().replace(/[^\d]/g, "")) || 0,
+      });
+      if (lsPkgComplete(pkg)) channels.stable = { ...pkg };
+      const stable = channels.stable || pkg;
+      return {
+        ...prev,
+        version: stable.version || "",
+        url: stable.url || "",
+        sha256: stable.sha256 || "",
+        bytes: stable.bytes || 0,
+        channels,
+        history: Array.isArray(prev.history) ? prev.history : [],
+        downloadable: true,
+        requiresKey: false,
+      };
+    }
+
+    function vcChannelPkg(catalog) {
+      const item = catalog?.products?.vircast || {};
+      const stable = item.channels?.stable;
+      return vfNormalizePkg(stable?.url ? stable : item);
+    }
+
     function lsPaintCatalog(catalog) {
       lsLoadedCatalog = catalog;
       const pkg = lsChannelPkg(catalog, lsBranch);
@@ -3361,6 +3430,14 @@
         document.getElementById("vf-bytes").value = launcher.bytes || "";
         if (launcher.version) document.getElementById("vf-up-version").value = launcher.version;
       }
+      const vircast = vcChannelPkg(catalog);
+      document.getElementById("vc-url").value = vircast.url || "";
+      document.getElementById("vc-sha").value = vircast.sha256 || "";
+      document.getElementById("vc-bytes").value = vircast.bytes || "";
+      if (vircast.version) document.getElementById("vc-up-version").value = vircast.version;
+      document.getElementById("vc-up-meta").textContent = lsPkgComplete(vircast)
+        ? `Published VirCast ${vircast.version} · ${vircast.bytes.toLocaleString()} bytes`
+        : "Not published. Upload an installer when the VirCast build is ready.";
       document.getElementById("ls-preview").textContent = JSON.stringify(catalog, null, 2);
       lsPaintLive(catalog);
       vfPaintLive(catalog);
@@ -3599,6 +3676,87 @@
       await lsNotifyLaunchers(catalog);
       lsPaintCatalog(catalog);
       document.getElementById("vf-up-meta").textContent = `VirForge ${lsBranchName(channel)} unpublished.`;
+    }
+
+    function vcSyncUploadPreview() {
+      const file = document.getElementById("vc-up-file")?.files?.[0];
+      const preview = document.getElementById("vc-up-public-preview");
+      if (!preview) return;
+      const version = (document.getElementById("vc-up-version")?.value || "1.0.0").trim().replace(/[/\\]/g, "") || "1.0.0";
+      const key = file ? `updates/vircast/${version}/${lsSafeFileName(file.name)}` : "";
+      const base = lsNormalizePublicBase(r2PublicUrlEl?.value);
+      preview.textContent = base && key
+        ? `${base}/${key}`
+        : "Uses the Storage public URL. Pick an installer to see updates/vircast/{version}/{filename}.";
+    }
+
+    function vcPackageFromFields() {
+      return vfNormalizePkg({
+        version: (document.getElementById("vc-up-version")?.value || "").trim(),
+        url: (document.getElementById("vc-url")?.value || "").trim(),
+        sha256: (document.getElementById("vc-sha")?.value || "").trim().toLowerCase(),
+        bytes: Number((document.getElementById("vc-bytes")?.value || "").replace(/[^\d]/g, "")) || 0,
+      });
+    }
+
+    async function vcPublishVircast(pkg) {
+      if (!lsPkgComplete(pkg)) throw new Error("VirCast needs an HTTPS URL, SHA-256, and byte size.");
+      const live = await lsHeadBytes(pkg.url);
+      if (live && live !== pkg.bytes) {
+        throw new Error(`VirCast lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}.`);
+      }
+      const catalog = lsCatalogFromForm();
+      const previous = catalog.products.vircast || {};
+      const history = Array.isArray(previous.history) ? previous.history.filter((row) => row?.url !== pkg.url) : [];
+      history.unshift({ ...pkg, applied: "stable", uploadedAt: new Date().toISOString() });
+      catalog.products.vircast = {
+        ...previous,
+        version: pkg.version,
+        url: pkg.url,
+        sha256: pkg.sha256,
+        bytes: pkg.bytes,
+        channels: { ...(previous.channels || {}), stable: { ...pkg } },
+        history: history.slice(0, 40),
+        downloadable: true,
+        requiresKey: false,
+      };
+      catalog.publishedAt = new Date().toISOString();
+      const { error } = await supabase.from("system_config").upsert({
+        key: "virforge_launcher_catalog",
+        value: catalog,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      const pinged = await lsNotifyLaunchers(catalog);
+      try { await lsPutChecksumSidecar(pkg.url, pkg.sha256); }
+      catch (err) {
+        document.getElementById("vc-up-meta").textContent = `Saved VirCast catalog. SHA sidecar skipped: ${err.message}`;
+      }
+      lsPaintCatalog(catalog);
+      return pinged
+        ? `Published free VirCast ${pkg.version}. Running launchers were told to refresh.`
+        : `Published free VirCast ${pkg.version}. Launchers pick this up on their next check.`;
+    }
+
+    async function vcApplyExisting() {
+      const status = document.getElementById("vc-up-meta");
+      const entered = vcPackageFromFields();
+      if (!entered.url.startsWith("https://")) {
+        status.textContent = "Paste the public HTTPS installer path first.";
+        return;
+      }
+      status.textContent = "Reading VirCast installer size and checksum…";
+      const ident = await lsResolveApplyIdentity(entered.url);
+      const pkg = vfNormalizePkg({
+        ...entered,
+        sha256: ident.sha256 || entered.sha256,
+        bytes: ident.bytes || entered.bytes,
+      });
+      document.getElementById("vc-sha").value = pkg.sha256;
+      document.getElementById("vc-bytes").value = pkg.bytes || "";
+      if (!pkg.sha256) throw new Error("Need a checksum. Upload the local installer so the browser can calculate it.");
+      if (!pkg.bytes) throw new Error("Could not read the VirCast installer size.");
+      status.textContent = await vcPublishVircast(pkg);
     }
 
     function lsPaintHistory(catalog) {
@@ -4141,6 +4299,46 @@
       lsUpAbort = true;
       if (lsUpXhr) lsUpXhr.abort();
       document.getElementById("vf-up-meta").textContent = "Aborting…";
+    });
+    document.getElementById("vc-up-file")?.addEventListener("change", vcSyncUploadPreview);
+    document.getElementById("vc-up-version")?.addEventListener("input", vcSyncUploadPreview);
+    document.getElementById("vc-up-apply-existing")?.addEventListener("click", async () => {
+      try { await vcApplyExisting(); }
+      catch (err) { document.getElementById("vc-up-meta").textContent = err.message || "Apply failed."; }
+    });
+    document.getElementById("vc-up-start")?.addEventListener("click", async () => {
+      const file = document.getElementById("vc-up-file").files[0];
+      const status = document.getElementById("vc-up-meta");
+      if (!file) { status.textContent = "Pick the VirCast installer first."; return; }
+      if (!/\.(exe|msi)$/i.test(file.name)) { status.textContent = "VirCast must be an .exe or .msi installer."; return; }
+      const version = (document.getElementById("vc-up-version")?.value || "1.0.0").trim().replace(/[/\\]/g, "") || "1.0.0";
+      const key = `updates/vircast/${version}/${lsSafeFileName(file.name)}`;
+      lsUpAbort = false;
+      document.getElementById("vc-up-start").disabled = true;
+      document.getElementById("vc-up-abort").disabled = false;
+      status.textContent = "Hashing and uploading VirCast installer…";
+      try {
+        const result = await lsUploadToR2(file, key, { bar: "vc-up-bar", meta: "vc-up-meta" });
+        document.getElementById("vc-url").value = result.publicUrl;
+        document.getElementById("vc-sha").value = result.sha256;
+        document.getElementById("vc-bytes").value = String(result.bytes);
+        status.textContent = await vcPublishVircast(vfNormalizePkg({
+          version,
+          url: result.publicUrl,
+          sha256: result.sha256,
+          bytes: result.bytes,
+        }));
+      } catch (err) {
+        status.textContent = lsFetchError(err);
+      } finally {
+        document.getElementById("vc-up-start").disabled = false;
+        document.getElementById("vc-up-abort").disabled = true;
+      }
+    });
+    document.getElementById("vc-up-abort")?.addEventListener("click", () => {
+      lsUpAbort = true;
+      if (lsUpXhr) lsUpXhr.abort();
+      document.getElementById("vc-up-meta").textContent = "Aborting…";
     });
     document.getElementById("ls-up-start").addEventListener("click", async () => {
       const file = document.getElementById("ls-up-file").files[0];
