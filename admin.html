@@ -1550,7 +1550,13 @@
             <p>This tab publishes <strong>AiRi</strong>, the free <strong>VirCast</strong> package, and a separate self-update channel for <strong>VirForge itself</strong>. These files never replace the slim account MSI.</p>
           </div>
 
-          <div class="admin-section">
+          <div class="ls-branch-tabs" role="tablist" aria-label="Launcher product" style="margin-bottom:18px;">
+            <button type="button" class="btn ls-product-tab active" data-ls-product-tab="airi" role="tab" aria-selected="true">AiRi</button>
+            <button type="button" class="btn ls-product-tab" data-ls-product-tab="launcher" role="tab" aria-selected="false">VirForge</button>
+            <button type="button" class="btn ls-product-tab" data-ls-product-tab="vircast" role="tab" aria-selected="false">VirCast</button>
+          </div>
+
+          <div class="admin-section" data-ls-product-panel="airi">
             <div class="ls-branch-tabs" role="tablist" aria-label="Launcher branch">
               <button type="button" class="btn ls-branch-tab" data-ls-branch="beta" role="tab" aria-selected="false">Beta</button>
               <button type="button" class="btn ls-branch-tab active" data-ls-branch="stable" role="tab" aria-selected="true">Release</button>
@@ -1589,7 +1595,7 @@
             </div>
           </div>
 
-          <div class="admin-section">
+          <div class="admin-section" data-ls-product-panel="airi">
             <div class="admin-section-title">Applied live</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Live Release and Beta on top. Every older uploaded variant is listed under them, so you can roll a branch back or pull a bad version without touching the other branch.</p>
             <div id="ls-live-list" class="ls-live-grid">
@@ -1601,7 +1607,7 @@
             </div>
           </div>
 
-          <div class="admin-section">
+          <div class="admin-section" data-ls-product-panel="launcher" hidden>
             <div class="admin-section-title">VirForge launcher updates</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Installer for the desktop hub, not AiRi. Objects land at <code>updates/launcher/{version}/VirForge-Setup-….exe</code>. This does <strong>not</strong> write <code>r2_versions</code> or change get-airi.</p>
             <div class="ls-branch-tabs" role="tablist" aria-label="VirForge launcher branch">
@@ -1651,7 +1657,7 @@
             </div>
           </div>
 
-          <div class="admin-section">
+          <div class="admin-section" data-ls-product-panel="vircast" hidden>
             <div class="admin-section-title">VirCast stream package</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Free VirCast installer distributed by VirForge. New uploads land at <code>updates/vircast/{version}/{filename}</code> and do not affect AiRi or launcher packages.</p>
             <div class="form-row">
@@ -1688,7 +1694,7 @@
             </div>
           </div>
 
-          <div class="admin-section">
+          <div class="admin-section" data-ls-product-panel="airi">
             <div class="admin-section-title">Stream test</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Pick an existing R2 build or paste any HTTPS URL. This writes to a file you choose (Chrome/Edge). It does not activate retail downloads.</p>
             <div class="form-group">
@@ -1724,7 +1730,7 @@
             <p style="font-size:0.8rem;color:#6b7280;margin:12px 0 0;">If Start stream fails with a CORS error, add GET/HEAD/Range on the R2 bucket for https://viritts.com, or use Open in browser download.</p>
           </div>
 
-          <div class="admin-section">
+          <div class="admin-section" data-ls-product-panel="airi">
             <div class="admin-section-title">Publish launcher catalog</div>
             <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Desktop VirForge reads this when Stream Mode is off. Homepage and get-airi.html stay on the slim retail MSI. The launcher installer URL is filled by the VirForge launcher updates section above.</p>
             <div class="form-group">
@@ -3158,6 +3164,22 @@
     let lsReceived = 0;
     let lsTotal = 0;
     let lsStarted = 0;
+
+    function lsSetProductTab(product) {
+      const selected = ["airi", "launcher", "vircast"].includes(product) ? product : "airi";
+      document.querySelectorAll("[data-ls-product-tab]").forEach((btn) => {
+        const active = btn.getAttribute("data-ls-product-tab") === selected;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      document.querySelectorAll("[data-ls-product-panel]").forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-ls-product-panel") !== selected;
+      });
+    }
+
+    document.querySelectorAll("[data-ls-product-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => lsSetProductTab(btn.getAttribute("data-ls-product-tab")));
+    });
 
     function openLauncherTab() {
       const tab = document.querySelector('.nav-tab[data-tab="launcher"]');
