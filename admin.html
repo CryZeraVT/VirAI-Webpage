@@ -1566,7 +1566,14 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Version</label>
-                <input id="ls-up-version" type="text" class="form-input" value="1.4.3" autocomplete="off">
+                <div style="display:flex;gap:8px;">
+                  <input id="ls-up-version" type="text" class="form-input" value="1.4.3" autocomplete="off" style="flex:1;min-width:0;">
+                  <select id="ls-up-target" class="form-input" style="width:auto;flex:0 0 auto;" aria-label="Apply to branch">
+                    <option value="stable">Release</option>
+                    <option value="beta">Beta</option>
+                    <option value="both">Release + Beta</option>
+                  </select>
+                </div>
               </div>
               <div class="form-group">
                 <label>Already uploaded</label>
@@ -1609,11 +1616,7 @@
 
           <div class="admin-section" data-ls-product-panel="launcher" hidden>
             <div class="admin-section-title">VirForge launcher updates</div>
-            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">Installer for the desktop hub, not AiRi. Objects land at <code>updates/launcher/{version}/VirForge-Setup-….exe</code>. This does <strong>not</strong> write <code>r2_versions</code> or change get-airi.</p>
-            <div class="ls-branch-tabs" role="tablist" aria-label="VirForge launcher branch">
-              <button type="button" class="btn vf-branch-tab" data-vf-branch="beta" role="tab" aria-selected="false">Beta</button>
-              <button type="button" class="btn vf-branch-tab active" data-vf-branch="stable" role="tab" aria-selected="true">Release</button>
-            </div>
+            <p style="font-size:0.85rem;color:#6b7280;margin:0 0 14px;">One current installer for every desktop launcher. Only AiRi uses Beta and Release channels. Objects land at <code>updates/launcher/{version}/VirForge-Setup-….exe</code>.</p>
             <div class="form-row">
               <div class="form-group">
                 <label>Launcher version</label>
@@ -1639,7 +1642,7 @@
               <button type="button" class="btn btn-outline" id="vf-up-abort" disabled>Abort</button>
             </div>
             <div id="vf-live-list" class="ls-live-grid" style="margin-top:18px;">
-              <div class="ls-meta">Loading VirForge launcher branches…</div>
+              <div class="ls-meta">Loading the current VirForge launcher…</div>
             </div>
             <div class="form-row" style="margin-top:14px;">
               <div class="form-group">
@@ -2692,61 +2695,6 @@
       return out;
     }
 
-    async function pushActiveBuildToLauncherCatalog(targets) {
-      const rows = (targets || []).filter((row) => row && String(row.download_url || row.url || "").startsWith("https://"));
-      if (!rows.length) throw new Error("That version has no public HTTPS URL for VirForge.");
-      const { data, error } = await supabase.rpc("get_virforge_catalog");
-      if (error) throw error;
-      const catalog = data && data.products ? JSON.parse(JSON.stringify(data)) : {
-        licenseEndpoint: "https://rgigtqpesabuyaumibaj.supabase.co/functions/v1/validate-license",
-        products: { airi: { channels: {} } },
-      };
-      catalog.products = catalog.products || {};
-      catalog.products.airi = catalog.products.airi || {};
-      catalog.products.airi.channels = Object.assign({}, catalog.products.airi.channels || {});
-      catalog.products.launcher = catalog.products.launcher || { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] };
-      for (const target of rows) {
-        const ch = target.channel === "beta" ? "beta" : "stable";
-        const url = String(target.download_url || target.url).trim();
-        const prev = catalog.products.airi.channels[ch] || {};
-        const ident = await resolvePublicPackageIdentity(url, prev);
-        if (!ident.bytes || !/^[a-f0-9]{64}$/.test(ident.sha256)) {
-          throw new Error(`Account download is live, but VirForge still needs a checksum for ${target.version}. Open Launcher / Stream and Apply that file.`);
-        }
-        const pkg = {
-          version: target.version || prev.version || "",
-          url,
-          sha256: ident.sha256,
-          bytes: ident.bytes,
-          title: target.title || prev.title || "",
-          notes: target.content || target.notes || prev.notes || "",
-        };
-        catalog.products.airi.channels[ch] = pkg;
-        if (ch === "stable") {
-          catalog.products.airi.version = pkg.version;
-          catalog.products.airi.url = pkg.url;
-          catalog.products.airi.sha256 = pkg.sha256;
-          catalog.products.airi.bytes = pkg.bytes;
-          catalog.products.airi.notesTitle = pkg.title;
-          catalog.products.airi.notes = pkg.notes;
-        }
-      }
-      catalog.publishedAt = new Date().toISOString();
-      const { error: writeErr } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (writeErr) throw writeErr;
-      if (typeof lsNotifyLaunchers === "function") {
-        try { await lsNotifyLaunchers(catalog); } catch {}
-      }
-      if (typeof lsPaintCatalog === "function" && typeof lsReady !== "undefined" && lsReady) {
-        try { lsPaintCatalog(catalog); } catch {}
-      }
-      return catalog;
-    }
-
     window.setActiveVersion = async function(versionId, channelOverride) {
       // Twin-row model: unique (version, channel). Never move a row across channels.
       // Activating the other channel (or Both) upserts a twin with the same MSI/URL.
@@ -2768,15 +2716,7 @@
           ? channelOverride
           : rowChannel;
 
-        let launcherNote = "";
-        const tellLaunchers = async (rows) => {
-          try {
-            await pushActiveBuildToLauncherCatalog(rows);
-            launcherNote = " Running VirForge launchers were told this version is out.";
-          } catch (err) {
-            launcherNote = " " + (err.message || "Launcher catalog was not updated.");
-          }
-        };
+        const launcherNote = " Launcher / Stream stays unchanged until you publish it from that tab.";
 
         if (want === "both") {
           const stableRow = await ensureR2ChannelTwin(target, "stable");
@@ -2784,10 +2724,6 @@
           await activateR2ChannelRow(stableRow, "stable");
           await activateR2ChannelRow(betaRow, "beta");
           await syncStableAnnouncement(stableRow);
-          await tellLaunchers([
-            { ...stableRow, channel: "stable" },
-            { ...betaRow, channel: "beta" },
-          ]);
           loadVersions();
           if (typeof loadStorageVersions === "function") loadStorageVersions();
           alert(`Version ${target.version} is now the active build on BOTH channels (stable + beta)!${launcherNote}`);
@@ -2799,7 +2735,6 @@
         if (want === "stable") {
           await syncStableAnnouncement(row);
         }
-        await tellLaunchers([{ ...row, channel: want }]);
 
         loadVersions();
         if (typeof loadStorageVersions === "function") loadStorageVersions();
@@ -2811,7 +2746,7 @@
           .eq("is_active", true)
           .maybeSingle();
         const leftoverNote = leftover?.version && leftover.version !== target.version
-          ? ` ${other === "beta" ? "Beta" : "Release"} is still v${leftover.version}. VirForge keys on that channel keep that build \u2014 use Both if they should match.`
+          ? ` The ${other === "beta" ? "Beta" : "Release"} account download is still v${leftover.version}. Use Both if the retail channels should match.`
           : "";
         alert(`Version ${target.version} is now the active ${want} build!${launcherNote}${leftoverNote}`);
       } catch (err) {
@@ -3158,7 +3093,6 @@
     let lsLoadedCatalog = LS_EMPTY;
     let lsReady = false;
     let lsBranch = "stable";
-    let vfBranch = "stable";
     let lsBuilds = [];
     let lsCtl = null;
     let lsReceived = 0;
@@ -3186,8 +3120,31 @@
       if (tab) tab.click();
     }
 
+    let lsApplyBoth = false;
     function lsSelectedChannels() {
+      if (lsApplyBoth) return ["stable", "beta"];
       return [lsBranch === "beta" ? "beta" : "stable"];
+    }
+    function lsTargetName() {
+      return lsApplyBoth ? "Release + Beta" : lsBranchName(lsBranch);
+    }
+    function lsSyncTargetUi() {
+      const select = document.getElementById("ls-up-target");
+      if (select) select.value = lsApplyBoth ? "both" : lsBranch;
+      const label = document.getElementById("ls-up-branch-label");
+      if (label) label.textContent = lsTargetName();
+    }
+    function lsSetTarget(value) {
+      if (value === "both") {
+        lsApplyBoth = true;
+        lsBranch = "stable";
+        const hidden = document.getElementById("ls-up-channel");
+        if (hidden) hidden.value = "stable";
+        lsPaintCatalog(lsLoadedCatalog);
+        lsSyncTargetUi();
+        return;
+      }
+      lsSetBranch(value);
     }
     function lsBranchName(ch) {
       return ch === "beta" ? "Beta" : "Release";
@@ -3229,18 +3186,19 @@
         bytes: Number(pkg?.bytes) || 0,
       };
     }
-    function vfChannelPkg(catalog, ch) {
+    function vfCurrentPkg(catalog) {
       const item = (catalog && catalog.products && catalog.products.launcher) || {};
-      const fromCh = item.channels && item.channels[ch];
-      if (fromCh && fromCh.url) return vfNormalizePkg(fromCh);
-      if (ch === "stable") {
-        return vfNormalizePkg({
-          version: item.version || "",
-          url: item.url || catalog?.launcherUrl || "",
-          sha256: item.sha256 || "",
-          bytes: item.bytes || 0,
-        });
-      }
+      const current = vfNormalizePkg({
+        version: item.version || "",
+        url: item.url || catalog?.launcherUrl || "",
+        sha256: item.sha256 || "",
+        bytes: item.bytes || 0,
+      });
+      if (current.url) return current;
+      const legacyStable = item.channels?.stable;
+      if (legacyStable?.url) return vfNormalizePkg(legacyStable);
+      const legacyBeta = item.channels?.beta;
+      if (legacyBeta?.url) return vfNormalizePkg(legacyBeta);
       return vfEmptyPkg();
     }
     function vfIsLauncherObject(row) {
@@ -3263,14 +3221,15 @@
         });
       };
       for (const row of Array.isArray(item.history) ? item.history : []) add(row);
-      add(vfChannelPkg(catalog, "stable"));
-      add(vfChannelPkg(catalog, "beta"));
+      add(vfCurrentPkg(catalog), { applied: "current" });
+      add(item.channels?.stable, { applied: "legacy-release" });
+      add(item.channels?.beta, { applied: "legacy-beta" });
       return [...seen.values()];
     }
-    function vfRememberHistory(catalog, pkg, ch) {
-      const launcher = catalog.products.launcher || { channels: {}, history: [] };
+    function vfRememberHistory(catalog, pkg) {
+      const launcher = catalog.products.launcher || { history: [] };
       const history = vfHistory(catalog).filter((row) => row.url !== pkg.url);
-      history.unshift({ ...vfNormalizePkg(pkg), applied: ch, uploadedAt: new Date().toISOString() });
+      history.unshift({ ...vfNormalizePkg(pkg), applied: "current", uploadedAt: new Date().toISOString() });
       launcher.history = history.slice(0, 40);
       catalog.products.launcher = launcher;
     }
@@ -3383,23 +3342,21 @@
 
     function vfLauncherFromForm(prevLauncher) {
       const prev = prevLauncher || { version: "", url: "", sha256: "", bytes: 0, channels: {}, history: [] };
-      const channels = { ...(prev.channels || {}) };
       const pkg = vfNormalizePkg({
         version: (document.getElementById("vf-up-version")?.value || prev.version || "").trim(),
         url: (document.getElementById("vf-url")?.value || "").trim(),
         sha256: (document.getElementById("vf-sha")?.value || "").trim().toLowerCase(),
         bytes: Number((document.getElementById("vf-bytes")?.value || "").replace(/[^\d]/g, "")) || 0,
       });
-      if (lsPkgComplete(pkg)) {
-        channels[vfBranch === "beta" ? "beta" : "stable"] = { ...pkg };
-      }
-      const stable = channels.stable || {};
+      const current = lsPkgComplete(pkg)
+        ? pkg
+        : vfCurrentPkg({ products: { launcher: prev } });
       return {
-        version: stable.version || prev.version || "",
-        url: stable.url || "",
-        sha256: stable.sha256 || "",
-        bytes: stable.bytes || 0,
-        channels,
+        version: current.version || "",
+        url: current.url || "",
+        sha256: current.sha256 || "",
+        bytes: current.bytes || 0,
+        channels: {},
         history: Array.isArray(prev.history) ? prev.history : [],
       };
     }
@@ -3437,7 +3394,7 @@
     function lsPaintCatalog(catalog) {
       lsLoadedCatalog = catalog;
       const pkg = lsChannelPkg(catalog, lsBranch);
-      const launcher = vfChannelPkg(catalog, vfBranch);
+      const launcher = vfCurrentPkg(catalog);
       document.getElementById("ls-launcher-url").value = catalog.launcherUrl || launcher.url || "";
       document.getElementById("ls-airi-url").value = pkg.url || "";
       document.getElementById("ls-airi-sha").value = pkg.sha256 || "";
@@ -3517,58 +3474,29 @@
       lsPaintHistory(catalog);
     }
 
-    function vfSetBranch(ch) {
-      vfBranch = ch === "beta" ? "beta" : "stable";
-      document.querySelectorAll("[data-vf-branch]").forEach((btn) => {
-        const on = btn.getAttribute("data-vf-branch") === vfBranch;
-        btn.classList.toggle("active", on);
-        btn.setAttribute("aria-selected", on ? "true" : "false");
-      });
-      lsPaintCatalog(lsLoadedCatalog);
-      vfSyncUploadPreview();
-    }
-
     function vfPaintLive(catalog) {
       const list = document.getElementById("vf-live-list");
       if (!list) return;
-      const rows = [
-        { id: "stable", name: "Release", hint: "Every launcher" },
-        { id: "beta", name: "Beta", hint: "Beta-tier keys, when the desktop build reads channels" },
-      ];
-      list.innerHTML = rows.map((row) => {
-        const pkg = vfChannelPkg(catalog, row.id);
-        const live = lsPkgComplete(pkg);
-        const file = pkg.url ? decodeURIComponent(pkg.url.split("/").pop() || "") : "";
-        const badge = live
-          ? '<span class="badge badge-active">LIVE</span>'
-          : '<span class="badge" style="background:#2d1b4e;">NOT APPLIED</span>';
-        const chBadge = row.id === "beta"
-          ? '<span class="badge" style="background:#1e3a5f;color:#7dd3fc;">BETA</span>'
-          : '<span class="badge" style="background:#14532d;color:#86efac;">RELEASE</span>';
-        return `
-          <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
-            <div style="width:100%;">
-              <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
-                VirForge ${lsEscape(row.name)} ${pkg.version ? "v" + lsEscape(pkg.version) : ""}
-                ${chBadge}
-                ${badge}
-              </h4>
-              <p style="margin:0;font-size:0.85em;color:#9ca3af;">${lsEscape(row.hint)}</p>
-              <p style="margin:8px 0 0;font-size:0.85em;color:#6b7280;">${live ? lsEscape(file || pkg.url) : "Nothing applied on this launcher branch."}</p>
-              <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…` : ""}</p>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button type="button" class="btn vf-live-open" data-vf-open="${row.id}" ${live ? "" : "disabled"} style="padding:8px 14px;font-size:0.85em;">Open branch</button>
-              <button type="button" class="btn btn-outline vf-unpublish" data-vf-unpublish="${row.id}" ${live ? "" : "disabled"} style="border-color:#ff4444;color:#ff4444;padding:8px 14px;font-size:0.85em;">Unpublish</button>
-            </div>
-          </div>`;
-      }).join("");
-      list.querySelectorAll(".vf-live-open").forEach((btn) => {
-        btn.addEventListener("click", () => vfSetBranch(btn.getAttribute("data-vf-open")));
-      });
-      list.querySelectorAll(".vf-unpublish").forEach((btn) => {
-        btn.addEventListener("click", () => vfUnpublishChannel(btn.getAttribute("data-vf-unpublish")));
-      });
+      const pkg = vfCurrentPkg(catalog);
+      const live = lsPkgComplete(pkg);
+      const file = pkg.url ? decodeURIComponent(pkg.url.split("/").pop() || "") : "";
+      const badge = live
+        ? '<span class="badge badge-active">CURRENT</span>'
+        : '<span class="badge" style="background:#2d1b4e;">NOT PUBLISHED</span>';
+      list.innerHTML = `
+        <div class="announcement-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+          <div style="width:100%;">
+            <h4 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px;">
+              VirForge Launcher ${pkg.version ? "v" + lsEscape(pkg.version) : ""}
+              ${badge}
+            </h4>
+            <p style="margin:0;font-size:0.85em;color:#9ca3af;">Available to every launcher; no AiRi key or channel required.</p>
+            <p style="margin:8px 0 0;font-size:0.85em;color:#6b7280;">${live ? lsEscape(file || pkg.url) : "No launcher update is currently published."}</p>
+            <p style="margin:4px 0 0;font-size:0.78em;color:#4b5563;word-break:break-all;">${live ? `${pkg.bytes.toLocaleString()} bytes · ${pkg.sha256.slice(0, 16)}…` : ""}</p>
+          </div>
+          <button type="button" class="btn btn-outline vf-unpublish" ${live ? "" : "disabled"} style="border-color:#ff4444;color:#ff4444;padding:8px 14px;font-size:0.85em;">Unpublish</button>
+        </div>`;
+      list.querySelector(".vf-unpublish")?.addEventListener("click", vfUnpublishCurrent);
     }
 
     function vfFillExisting(catalog) {
@@ -3613,25 +3541,16 @@
         throw new Error(`Launcher lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}.`);
       }
       const catalog = lsCatalogFromForm();
-      const ch = vfBranch === "beta" ? "beta" : "stable";
-      catalog.products.launcher = catalog.products.launcher || { channels: {}, history: [] };
-      catalog.products.launcher.channels = { ...(catalog.products.launcher.channels || {}) };
-      catalog.products.launcher.channels[ch] = { ...pkg };
-      if (ch === "stable") {
-        catalog.products.launcher.version = pkg.version;
-        catalog.products.launcher.url = pkg.url;
-        catalog.products.launcher.sha256 = pkg.sha256;
-        catalog.products.launcher.bytes = pkg.bytes;
-        catalog.launcherUrl = pkg.url;
-      }
-      vfRememberHistory(catalog, pkg, ch);
+      catalog.products.launcher = catalog.products.launcher || { history: [] };
+      catalog.products.launcher.version = pkg.version;
+      catalog.products.launcher.url = pkg.url;
+      catalog.products.launcher.sha256 = pkg.sha256;
+      catalog.products.launcher.bytes = pkg.bytes;
+      catalog.products.launcher.channels = {};
+      catalog.launcherUrl = pkg.url;
+      vfRememberHistory(catalog, pkg);
       catalog.publishedAt = new Date().toISOString();
-      const { error } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
+      await lsSaveCatalog(catalog);
       const pinged = await lsNotifyLaunchers(catalog);
       try { await lsPutChecksumSidecar(pkg.url, pkg.sha256); }
       catch (err) {
@@ -3640,8 +3559,8 @@
       lsPaintCatalog(catalog);
       const status = document.getElementById("ls-publish-status");
       const msg = pinged
-        ? `Applied VirForge ${lsBranchName(ch)} ${pkg.version}. Running launchers were told to refresh.`
-        : `Applied VirForge ${lsBranchName(ch)} ${pkg.version}. Launchers pick this up on their next check.`;
+        ? `Applied VirForge Launcher ${pkg.version} as current. Running launchers were told to refresh.`
+        : `Applied VirForge Launcher ${pkg.version} as current. Launchers pick this up on their next check.`;
       if (status) status.textContent = msg;
       return msg;
     }
@@ -3670,34 +3589,41 @@
       status.textContent = await vfPublishLauncher(pkg);
     }
 
-    async function vfUnpublishChannel(ch) {
-      const channel = ch === "beta" ? "beta" : "stable";
-      const pkg = vfChannelPkg(lsLoadedCatalog, channel);
+    async function vfUnpublishCurrent() {
+      const pkg = vfCurrentPkg(lsLoadedCatalog);
       if (!pkg.url) return;
-      if (!confirm(`Unpublish VirForge ${lsBranchName(channel)} v${pkg.version || "?"}? AiRi packages stay live. Account download is unchanged.`)) return;
+      if (!confirm(`Unpublish VirForge Launcher v${pkg.version || "?"}? AiRi packages stay live. Account download is unchanged.`)) return;
       const catalog = lsCatalogFromForm();
-      const launcher = catalog.products.launcher || { channels: {} };
-      const channels = { ...(launcher.channels || {}) };
-      delete channels[channel];
-      if (channel === "stable") {
-        launcher.version = channels.beta?.version || "";
-        launcher.url = channels.beta?.url || "";
-        launcher.sha256 = channels.beta?.sha256 || "";
-        launcher.bytes = channels.beta?.bytes || 0;
-        catalog.launcherUrl = launcher.url || "";
-      }
-      launcher.channels = channels;
+      const launcher = catalog.products.launcher || {};
+      launcher.version = "";
+      launcher.url = "";
+      launcher.sha256 = "";
+      launcher.bytes = 0;
+      launcher.channels = {};
+      catalog.launcherUrl = "";
       catalog.products.launcher = launcher;
       catalog.publishedAt = new Date().toISOString();
-      const { error } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
+      await lsSaveCatalog(catalog);
       await lsNotifyLaunchers(catalog);
       lsPaintCatalog(catalog);
-      document.getElementById("vf-up-meta").textContent = `VirForge ${lsBranchName(channel)} unpublished.`;
+      document.getElementById("vf-up-meta").textContent = "VirForge Launcher update unpublished.";
+    }
+
+    function vcAssertVersionMatchesArtifact(version, artifact) {
+      const expected = String(version || "").trim();
+      if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(expected)) {
+        throw new Error("VirCast version must use semantic versioning, such as 1.0.1.");
+      }
+      let name = String(artifact || "");
+      try {
+        name = decodeURIComponent(new URL(name).pathname.split("/").pop() || name);
+      } catch {
+        name = name.split(/[\\/]/).pop() || name;
+      }
+      const match = name.match(/(?:^|[^0-9])(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?:[^0-9]|$)/);
+      if (match && match[1] !== expected) {
+        throw new Error(`VirCast version ${expected} does not match installer “${name}” (${match[1]}). Rename or rebuild the correct installer before publishing.`);
+      }
     }
 
     function vcSyncUploadPreview() {
@@ -3723,6 +3649,7 @@
 
     async function vcPublishVircast(pkg) {
       if (!lsPkgComplete(pkg)) throw new Error("VirCast needs an HTTPS URL, SHA-256, and byte size.");
+      vcAssertVersionMatchesArtifact(pkg.version, pkg.url);
       const live = await lsHeadBytes(pkg.url);
       if (live && live !== pkg.bytes) {
         throw new Error(`VirCast lists ${pkg.bytes.toLocaleString()} bytes but R2 has ${live.toLocaleString()}.`);
@@ -3743,12 +3670,7 @@
         requiresKey: false,
       };
       catalog.publishedAt = new Date().toISOString();
-      const { error } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
+      await lsSaveCatalog(catalog);
       const pinged = await lsNotifyLaunchers(catalog);
       try { await lsPutChecksumSidecar(pkg.url, pkg.sha256); }
       catch (err) {
@@ -3815,6 +3737,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button type="button" class="btn ls-hist-apply" data-ls-idx="${idx}" data-ls-ch="stable" style="padding:8px 14px;font-size:0.85em;">Apply to Release</button>
               <button type="button" class="btn ls-hist-apply" data-ls-idx="${idx}" data-ls-ch="beta" style="padding:8px 14px;font-size:0.85em;">Apply to Beta</button>
+              <button type="button" class="btn ls-hist-apply" data-ls-idx="${idx}" data-ls-ch="both" style="padding:8px 14px;font-size:0.85em;">Apply to both</button>
             </div>
           </div>`;
       }).join("");
@@ -3833,16 +3756,16 @@
 
     function lsSetBranch(ch) {
       lsBranch = ch === "beta" ? "beta" : "stable";
+      lsApplyBoth = false;
       const hidden = document.getElementById("ls-up-channel");
       if (hidden) hidden.value = lsBranch;
-      const label = document.getElementById("ls-up-branch-label");
-      if (label) label.textContent = lsBranchName(lsBranch);
       document.querySelectorAll("[data-ls-branch]").forEach((btn) => {
         const on = btn.getAttribute("data-ls-branch") === lsBranch;
         btn.classList.toggle("active", on);
         btn.setAttribute("aria-selected", on ? "true" : "false");
       });
       lsPaintCatalog(lsLoadedCatalog);
+      lsSyncTargetUi();
     }
 
     function lsBuildOptionsHtml(placeholder) {
@@ -3979,7 +3902,10 @@
       const pkg = lsChannelPkg(lsLoadedCatalog, channel);
       if (!pkg.url) return;
       if (!confirm(`Unpublish ${lsBranchName(channel)} v${pkg.version || "?"} from the launcher? The other branch stays live.`)) return;
-      const catalog = lsCatalogFromForm();
+      // Clone the live catalog, not the form: with "Release + Beta" selected the form would re-write the other branch.
+      const catalog = JSON.parse(JSON.stringify(lsLoadedCatalog || LS_EMPTY));
+      catalog.products = catalog.products || {};
+      catalog.products.airi = catalog.products.airi || {};
       const airi = catalog.products.airi;
       const channels = { ...(airi.channels || {}) };
       delete channels[channel];
@@ -3994,36 +3920,26 @@
       catalog.publishedAt = new Date().toISOString();
       const status = document.getElementById("ls-publish-status");
       status.textContent = `Unpublishing ${lsBranchName(channel)}…`;
-      const { error: clearErr } = await supabase
-        .from("r2_versions")
-        .update({ is_active: false })
-        .eq("channel", channel);
-      if (clearErr) {
-        status.textContent = clearErr.message || "Unpublish failed.";
-        return;
-      }
-      const { error } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) {
+      try {
+        await lsSaveCatalog(catalog);
+      } catch (error) {
         status.textContent = error.message || "Unpublish failed.";
         return;
       }
       const pinged = await lsNotifyLaunchers(catalog);
       lsPaintCatalog(catalog);
+      lsLoadUploadedBuilds().catch(() => {});
       status.textContent = pinged
         ? `${lsBranchName(channel)} unpublished. Running launchers were told to refresh.`
         : `${lsBranchName(channel)} unpublished. Launchers will pick this up on their next check.`;
     }
 
     async function lsApplyUrlToChannel(url, ch) {
+      lsApplyBoth = ch === "both";
       lsBranch = ch === "beta" ? "beta" : "stable";
       const hidden = document.getElementById("ls-up-channel");
       if (hidden) hidden.value = lsBranch;
-      const label = document.getElementById("ls-up-branch-label");
-      if (label) label.textContent = lsBranchName(lsBranch);
+      lsSyncTargetUi();
       document.querySelectorAll("[data-ls-branch]").forEach((btn) => {
         const on = btn.getAttribute("data-ls-branch") === lsBranch;
         btn.classList.toggle("active", on);
@@ -4063,9 +3979,10 @@
         throw new Error("Could not read the file size from R2.");
       }
       await lsPublishCatalog();
-      const msg = `Applied ${lsBranchName(lsBranch)} ${pkg.version} · ${pkg.bytes.toLocaleString()} bytes.`;
+      const msg = `Applied ${lsTargetName()} ${pkg.version} · ${pkg.bytes.toLocaleString()} bytes.`;
       status.textContent = msg;
       if (publish) publish.textContent = msg;
+      lsLoadUploadedBuilds().catch(() => {});
     }
 
     async function lsRepairStaleLivePackages() {
@@ -4089,6 +4006,8 @@
         const hashed = await lsHashRemoteUrl(url);
         for (const row of rows) {
           lsBranch = row.ch;
+          lsApplyBoth = false;
+          lsSyncTargetUi();
           document.getElementById("ls-up-channel").value = row.ch;
           document.getElementById("ls-up-version").value = row.pkg.version || lsUploadVersion();
           document.getElementById("ls-airi-url").value = url;
@@ -4267,11 +4186,9 @@
       }
     }
 
+    document.getElementById("ls-up-target").addEventListener("change", (e) => lsSetTarget(e.target.value));
     document.getElementById("ls-up-file").addEventListener("change", lsSyncUploadKey);
     document.getElementById("ls-up-version").addEventListener("input", lsSyncUploadKey);
-    document.querySelectorAll("[data-vf-branch]").forEach((btn) => {
-      btn.addEventListener("click", () => vfSetBranch(btn.getAttribute("data-vf-branch")));
-    });
     document.getElementById("vf-up-file")?.addEventListener("change", vfSyncUploadPreview);
     document.getElementById("vf-up-version")?.addEventListener("input", vfSyncUploadPreview);
     document.getElementById("vf-up-existing")?.addEventListener("change", () => {
@@ -4302,7 +4219,7 @@
         document.getElementById("vf-url").value = result.publicUrl;
         document.getElementById("vf-sha").value = result.sha256;
         document.getElementById("vf-bytes").value = String(result.bytes);
-        document.getElementById("ls-launcher-url").value = vfBranch === "beta" ? document.getElementById("ls-launcher-url").value : result.publicUrl;
+        document.getElementById("ls-launcher-url").value = result.publicUrl;
         const pkg = vfNormalizePkg({
           version,
           url: result.publicUrl,
@@ -4334,6 +4251,8 @@
       if (!file) { status.textContent = "Pick the VirCast installer first."; return; }
       if (!/\.(exe|msi)$/i.test(file.name)) { status.textContent = "VirCast must be an .exe or .msi installer."; return; }
       const version = (document.getElementById("vc-up-version")?.value || "1.0.0").trim().replace(/[/\\]/g, "") || "1.0.0";
+      try { vcAssertVersionMatchesArtifact(version, file.name); }
+      catch (err) { status.textContent = err.message; return; }
       const key = `updates/vircast/${version}/${lsSafeFileName(file.name)}`;
       lsUpAbort = false;
       document.getElementById("vc-up-start").disabled = true;
@@ -4400,7 +4319,8 @@
           document.getElementById("ls-up-meta").textContent = `Uploaded and saved for the launcher. Storage Existing row failed: ${rowErr.message || rowErr}`;
           return;
         }
-        document.getElementById("ls-up-meta").textContent = `Uploaded and applied. ${result.bytes.toLocaleString()} bytes at ${key}. Refresh the launcher library.`;
+        document.getElementById("ls-up-meta").textContent = `Uploaded and applied to ${lsTargetName()}. ${result.bytes.toLocaleString()} bytes at ${key}. Refresh the launcher library.`;
+        lsLoadUploadedBuilds().catch(() => {});
       } catch (err) {
         document.getElementById("ls-up-meta").textContent = lsFetchError(err);
       } finally {
@@ -4680,6 +4600,14 @@
       if (!res.ok) throw new Error(`Could not publish the SHA-256 sidecar (${res.status}).`);
     }
 
+    async function lsSaveCatalog(catalog) {
+      const { data, error } = await supabase.rpc("update_virforge_catalog", {
+        p_catalog: catalog,
+      });
+      if (error) throw error;
+      return data?.catalog || catalog;
+    }
+
     async function lsNotifyLaunchers(catalog) {
       const channel = supabase.channel("virforge-catalog");
       try {
@@ -4701,38 +4629,6 @@
         return false;
       } finally {
         try { await supabase.removeChannel(channel); } catch {}
-      }
-    }
-
-    async function lsFindR2RowForPackage(pkg, channel) {
-      const ch = channel === "beta" ? "beta" : "stable";
-      const version = String(pkg?.version || "").trim();
-      const url = String(pkg?.url || "").trim();
-      if (version) {
-        const { data, error } = await supabase.from("r2_versions").select("*").eq("version", version).eq("channel", ch).maybeSingle();
-        if (error) throw error;
-        if (data) return data;
-      }
-      if (url) {
-        const { data, error } = await supabase.from("r2_versions").select("*").eq("download_url", url).eq("channel", ch).maybeSingle();
-        if (error) throw error;
-        if (data) return data;
-        const { data: anyRows, error: anyErr } = await supabase.from("r2_versions").select("*").eq("download_url", url).limit(1);
-        if (anyErr) throw anyErr;
-        if (anyRows && anyRows[0]) {
-          return ensureR2ChannelTwin({ ...anyRows[0], version: version || anyRows[0].version }, ch);
-        }
-      }
-      return null;
-    }
-
-    async function lsSyncR2ActiveFromCatalog(catalog, channels) {
-      for (const ch of channels) {
-        const pkg = lsChannelPkg(catalog, ch);
-        if (!pkg.url) continue;
-        const row = await lsFindR2RowForPackage(pkg, ch);
-        if (!row) continue;
-        await activateR2ChannelRow(row, ch);
       }
     }
 
@@ -4775,13 +4671,7 @@
       for (const ch of writing) {
         await check(catalog.products.airi.channels?.[ch], lsBranchName(ch));
       }
-      const { error } = await supabase.from("system_config").upsert({
-        key: "virforge_launcher_catalog",
-        value: catalog,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      await lsSyncR2ActiveFromCatalog(catalog, writing);
+      await lsSaveCatalog(catalog);
       const pinged = await lsNotifyLaunchers(catalog);
       const urls = new Set([
         catalog.products.airi.url,
