@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirCast Direct: send audio between two PCs</title>
+<meta name="description" content="VirCast Direct links your gaming PC and streaming PC over your home network. Six audio lanes, found and paired in one click. Free while we test it.">
+<meta name="theme-color" content="#f4f5f7">
+<link rel="icon" href="media/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500&display=swap" rel="stylesheet">
+<style>
+/* VirCast Direct site. Design notes:
+   - Light studio page; the app's own dark windows are the only "cards".
+   - The six lane colors come straight from the app and only ever mean "a lane".
+   - One bold element: the real VirCast interface running live in the hero (demo engine, no real audio).
+   - Motion answers what the visitor does (demo checklist, muting a cable). The only ambient motion is
+     signal flowing along the cables, which shows each lane's direction. */
+:root {
+  --page: #f4f5f7; --ink: #16181d; --ink2: #555a66; --rule: #dcdfe5; --graphite: #2c2e33; --win: #1a1b1e;
+  --violet: #7950f2; --violet-d: #6741d9; --ok: #20c997; --brand: linear-gradient(90deg, #b74dff, #42c7ff);
+  --l1: #fa5252; --l2: #228be6; --l3: #40c057; --l4: #fab005; --l5: #be4bdb; --l6: #fd7e14;
+  --gut: clamp(16px, 4vw, 56px); --max: 1200px;
+  --f: 'Schibsted Grotesk', 'Segoe UI', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 400 17px/1.6 var(--f); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+img { max-width: 100%; display: block; }
+:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gut); }
+h1, h2, h3 { margin: 0; letter-spacing: -.02em; }
+h2 { font-size: clamp(32px, 4.2vw, 54px); font-weight: 800; line-height: 1.05; max-width: 18ch; }
+h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+p { margin: 0; }
+.lead { font-size: clamp(18px, 1.5vw, 20px); color: var(--ink2); max-width: 56ch; margin-top: 16px; }
+section { padding: clamp(80px, 11vh, 132px) 0; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 12px; font: 700 16px var(--f); text-decoration: none; border: 0; cursor: pointer; }
+.btn-go { background: var(--violet); color: #fff; }
+.btn-go:hover { background: var(--violet-d); }
+.btn-line { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--rule); background: transparent; }
+.btn-line:hover { box-shadow: inset 0 0 0 1.5px var(--ink2); }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ---------- nav ---------- */
+nav.top { position: sticky; top: 0; z-index: 30; background: rgba(244,245,247,.86); backdrop-filter: blur(12px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+nav.top.edge { border-bottom-color: var(--rule); }
+nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+.logo { font-weight: 800; font-size: 20px; letter-spacing: -.02em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.logo img { height: 32px; width: auto; }
+.direct { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand img { width: clamp(76px, 7vw, 104px); height: auto; }
+.brand b { font-size: clamp(22px, 2vw, 28px); font-weight: 800; letter-spacing: -.02em; }
+.brand small { display: block; font-size: 13px; font-weight: 600; color: var(--ink2); letter-spacing: .02em; }
+nav.top .links { margin-left: auto; display: flex; gap: 24px; font-weight: 600; font-size: 15px; }
+nav.top .links a { text-decoration: none; color: var(--ink2); } nav.top .links a:hover { color: var(--ink); }
+nav.top .btn { padding: 9px 16px; font-size: 14px; border-radius: 10px; }
+@media (max-width: 860px) { nav.top .links { display: none; } nav.top .btn { margin-left: auto; } }
+
+
+/* ---------- story hero: scroll plays the scene (hero.js) ---------- */
+.story { height: 520vh; position: relative; }
+.story .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.story .copy { position: absolute; left: 0; right: 0; top: calc(64px + 5vh); }
+.story .copy .wrap { position: relative; }
+#intro h1 { font-size: clamp(40px, 5.2vw, 78px); font-weight: 900; line-height: .98; letter-spacing: -.035em; margin-top: 16px; max-width: 13ch; }
+#intro .lead { margin-top: 18px; max-width: 46ch; }
+#intro .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.story .beat { position: absolute; left: var(--gut); right: var(--gut); top: 0; opacity: 0; pointer-events: none; }
+.story .beat h2 { font-size: clamp(30px, 3.6vw, 52px); max-width: 20ch; }
+.story .beat p { font-size: clamp(17px, 1.4vw, 20px); color: var(--ink2); margin-top: 10px; max-width: 44ch; }
+.story .beat .btn { margin-top: 18px; }
+.story .hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); font-weight: 700; font-size: 14px; color: var(--ink2); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.story .hint i { width: 2px; height: 26px; background: linear-gradient(var(--ink2), transparent); }
+@media (max-width: 700px) { .story .copy { top: calc(58px + 3vh); } #intro .lead { font-size: 16px; } #intro .ctas .btn-line { display: none; } }
+
+/* ---------- try the real app ---------- */
+.hero { padding-top: clamp(64px, 9vh, 110px); }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 4.1fr) minmax(0, 7.9fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.hero h2 { margin-top: 18px; }
+.hero .lead { margin-top: 22px; }
+.hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero .facts { list-style: none; padding: 0; margin: 34px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; font-size: 15px; color: var(--ink2); max-width: 460px; }
+.hero .facts b { display: block; color: var(--ink); font-size: 17px; }
+.lanes6 { display: flex; gap: 6px; }
+.lanes6 i { width: 22px; height: 6px; border-radius: 3px; }
+.appwin { border-radius: 14px; overflow: hidden; background: var(--win); box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 40px 80px -30px rgba(22,24,29,.55), 0 0 0 1px rgba(22,24,29,.12); }
+.appwin .bar { height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; background: #141517; color: #909296; font-size: 12.5px; font-weight: 600; }
+.appwin .bar .ctl { margin-left: auto; display: flex; }
+.appwin .bar .ctl span { width: 40px; height: 34px; display: grid; place-items: center; }
+.appwin .bar .ctl svg { width: 10px; height: 10px; stroke: #909296; }
+.stagebox { position: relative; width: 100%; overflow: hidden; }
+.stagebox iframe { position: absolute; left: 0; top: 0; width: 1216px; height: 900px; border: 0; transform-origin: 0 0; background: var(--win); }
+.stagebox img { width: 100%; }
+.try { margin-top: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.try li { list-style: none; display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.35; color: var(--ink2); padding: 12px; border-radius: 12px; border: 1.5px solid var(--rule); transition: border-color .3s, background .3s, color .3s; }
+.try li i { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--rule); display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 12px; transition: all .3s; }
+.try li.done { border-color: var(--ok); background: rgba(32,201,151,.08); color: var(--ink); }
+.try li.done i { background: var(--ok); border-color: var(--ok); color: #fff; }
+.try ol { padding: 0; margin: 0; display: contents; }
+.trynote { margin-top: 10px; font-size: 13.5px; color: var(--ink2); }
+.mobile-only { display: none; }
+@media (max-width: 1100px) {
+  .hero .wrap { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .desk-only { display: none !important; } .mobile-only { display: block; }
+  .try { grid-template-columns: 1fr; }
+}
+
+/* ---------- the usual ways ---------- */
+.pains { margin-top: 48px; border-top: 1.5px solid var(--ink); }
+.pain { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1.25fr); gap: 20px; align-items: baseline; padding: 22px 0; border-bottom: 1px solid var(--rule); }
+.pain .was { font-weight: 700; font-size: 19px; }
+.pain .was small { display: block; font-weight: 500; font-size: 15px; color: var(--ink2); margin-top: 2px; }
+.pain .arrow { color: var(--ink2); }
+.pain .now { color: var(--ink2); }
+.pain .now b { color: var(--ink); }
+.painhead { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1.25fr); gap: 20px; padding-top: 12px; font-weight: 700; font-size: 14px; color: var(--ink2); }
+@media (max-width: 760px) { .pain, .painhead { grid-template-columns: 1fr; gap: 6px; } .pain .arrow, .painhead span:nth-child(2) { display: none; } .painhead { display: none; } .pain .now::before { content: 'VirCast: '; font-weight: 700; color: var(--violet); } }
+
+/* ---------- pairing steps (a real sequence) ---------- */
+.steps { margin-top: 56px; display: grid; grid-template-columns: 1fr 1.05fr 1.2fr; gap: clamp(20px, 3vw, 40px); align-items: start; counter-reset: s; }
+.step { position: relative; }
+.step .n { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--page); display: grid; place-items: center; font-weight: 800; }
+.step h3 { margin-top: 16px; }
+.step p { color: var(--ink2); margin-top: 6px; font-size: 16px; }
+.step figure { margin: 20px 0 0; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(22,24,29,.5); }
+.step .pcs { margin-top: 20px; display: flex; gap: 12px; }
+.step .pc { flex: 1; border-radius: 14px; background: var(--win); color: #c1c2c5; padding: 16px; font-size: 14px; font-weight: 600; box-shadow: 0 30px 60px -30px rgba(22,24,29,.5); }
+.step .pc b { display: block; color: #fff; font-size: 16px; margin-bottom: 10px; }
+.step .pc .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; box-shadow: 0 0 8px var(--ok); }
+@media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
+
+/* ---------- six lanes: the cable diagram ---------- */
+.lanesec { background: var(--win); color: #e9eaec; }
+.lanesec h2 { color: #fff; }
+.lanesec .lead { color: #a6a7ab; }
+.cables { margin-top: 48px; }
+.cables svg { width: 100%; height: auto; display: block; overflow: visible; }
+.cables .pcbox { fill: #25262b; stroke: #373a40; }
+.cables .pclabel { fill: #fff; font-family: var(--f); font-weight: 800; }
+.cables .pcsub { fill: #909296; font-family: var(--f); font-weight: 600; }
+.cables .port { stroke: #1a1b1e; stroke-width: 3; }
+.cable { cursor: pointer; }
+.cable .wire { stroke-width: 6; fill: none; stroke-linecap: round; transition: stroke .3s, opacity .3s; }
+.cable .flow { stroke-width: 6; fill: none; stroke-linecap: round; stroke: #fff; opacity: .55; stroke-dasharray: 2 26; animation: flow 1.1s linear infinite; }
+.cable.rx .flow { animation-direction: reverse; }
+.cables.paused .flow { animation-play-state: paused; }
+.cable .tag rect { fill: #1a1b1e; stroke-width: 2; }
+.cable .tag text { fill: #fff; font-family: var(--f); font-weight: 700; }
+.cable .tag .dir { fill: #909296; font-weight: 600; }
+.cable.muted .wire { stroke: #373a40 !important; }
+.cable.muted .flow { opacity: 0; }
+.cable.muted .tag text { fill: #5c5f66; }
+.cable:hover .tag rect, .cable:focus-visible .tag rect { fill: #25262b; }
+@keyframes flow { to { stroke-dashoffset: -28; } }
+.lanenote { margin-top: 18px; color: #a6a7ab; font-size: 15px; }
+.lanefacts { margin-top: 48px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+.lanefacts img { border-radius: 14px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); }
+.lanefacts ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; color: #c1c2c5; }
+.lanefacts li b { color: #fff; display: block; }
+@media (prefers-reduced-motion: reduce) { .cable .flow { animation: none; opacity: 0; } }
+@media (max-width: 860px) { .lanefacts { grid-template-columns: 1fr; } }
+
+/* ---------- features ---------- */
+.feat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.feat + .feat { margin-top: clamp(64px, 9vh, 110px); }
+.feat.flip > :first-child { order: 2; }
+.feat figure { margin: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -36px rgba(22,24,29,.55); }
+.feat ul { margin: 22px 0 0; padding-left: 20px; color: var(--ink2); display: grid; gap: 6px; }
+.feat.flip { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.feat .mini { background: var(--win); padding: clamp(10px, 1.4vw, 16px); border-radius: 16px; box-shadow: 0 40px 80px -36px rgba(22,24,29,.55); }
+.feat .mini img { border-radius: 10px; }
+.specs { margin-top: clamp(64px, 9vh, 110px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 40px; border-top: 1.5px solid var(--ink); }
+.specs div { padding: 20px 0; border-bottom: 1px solid var(--rule); }
+.specs dt { font-weight: 700; } .specs dd { margin: 4px 0 0; color: var(--ink2); font-size: 15.5px; }
+@media (max-width: 860px) { .feat, .feat.flip { grid-template-columns: 1fr; } .feat.flip > :first-child { order: 0; } .specs { grid-template-columns: 1fr; } }
+
+/* ---------- privacy + testers ---------- */
+.privacy { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+.privacy ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; border-top: 1.5px solid var(--ink); }
+.privacy li { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.privacy li b { display: block; }
+.privacy li span { color: var(--ink2); font-size: 15.5px; }
+@media (max-width: 860px) { .privacy { grid-template-columns: 1fr; } }
+.testers { background: var(--ink); color: #fff; border-radius: 28px; padding: clamp(36px, 6vw, 72px); display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; align-items: end; }
+.testers h2 { color: #fff; max-width: 14ch; }
+.testers p { color: #b8bcc6; margin-top: 16px; max-width: 46ch; }
+.testers .ctas { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.testers .btn-line { color: #fff; box-shadow: inset 0 0 0 1.5px #3a3f4a; }
+.testers .lanes6 { margin-bottom: 26px; }
+@media (max-width: 760px) { .testers { grid-template-columns: 1fr; } }
+footer { padding: 40px 0 60px; color: var(--ink2); font-size: 14.5px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 26px; align-items: center; }
+footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
+footer .copy { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<nav class="top" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="VirCast Direct, back to top"><img src="media/logo_sm.png" alt="">VirCast <span class="direct">Direct</span></a>
+    <div class="links"><a href="#pair">How it pairs</a><a href="#lanes">Lanes</a><a href="#features">Features</a><a href="#testers">Get it</a></div>
+    <a class="btn btn-go" href="https://discord.gg/MkJVue2Rr4">Join the testers</a>
+  </div>
+</nav>
+
+<section class="story" id="top" aria-label="How VirCast Direct connects two PCs">
+  <div class="stage">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="copy"><div class="wrap">
+      <div id="intro">
+        <div class="brand"><img src="media/logo.webp" alt="VirCast Direct logo"><span><small>PC audio link</small><b>VirCast <span class="direct">Direct</span></b></span></div>
+        <h1>Send audio from one PC to another.</h1>
+        <p class="lead">VirCast Direct links your gaming PC and your streaming PC over your home network. Six audio lanes, found and paired in one click. Free while we test it.</p>
+        <div class="ctas"><a class="btn btn-go" href="https://discord.gg/MkJVue2Rr4">Join the testers on Discord</a><a class="btn btn-line" href="#try">Skip to the live demo</a></div>
+      </div>
+      <div class="beat" data-a=".08" data-b=".28"><h2>Two PCs usually means a mess of cables.</h2><p>Line-in hum, virtual cables, and IP addresses typed by hand on both machines.</p></div>
+      <div class="beat" data-a=".3" data-b=".47"><h2>VirCast finds the other PC by name.</h2><p>Open it on both PCs and press Connect PC. There's nothing to type.</p></div>
+      <div class="beat" data-a=".49" data-b=".69"><h2>Six lanes, matched on both sides.</h2><p>Each color plugs into the same color on the other PC, with its own port.</p></div>
+      <div class="beat" data-a=".71" data-b=".9"><h2>Press play once. Both PCs go live.</h2><p>48 kHz audio with as little as 50 ms of delay, and a meter on every lane.</p></div>
+      <div class="beat" data-a=".91" data-b="1.2"><h2>Now try the real app.</h2><p>It's just below, running in your browser.</p><a class="btn btn-go" href="#try">Try the live demo</a></div>
+    </div></div>
+    <div class="hint" id="hint">Scroll to connect them<i></i></div>
+  </div>
+</section>
+
+<header class="hero" id="try">
+  <div class="wrap">
+    <div>
+      <h2>Try the real app.</h2>
+      <p class="lead">This is VirCast Direct's actual interface, running on a demo engine in your browser. Connect, start and mute all work, and no audio leaves your computer.</p>
+      <div class="ctas"><a class="btn btn-go" href="https://discord.gg/MkJVue2Rr4">Join the testers on Discord</a><a class="btn btn-line" href="#pair">See how it pairs</a></div>
+      <ul class="facts">
+        <li><b>6 lanes</b>send or receive, each with its own color</li>
+        <li><b class="tnum">50 ms</b>lowest delay setting</li>
+        <li><b>No typing IPs</b>it finds the other PC by name</li>
+        <li><b>Free</b>for Windows 10 and 11</li>
+      </ul>
+    </div>
+    <div>
+      <div class="appwin">
+        <div class="bar"><span>VirCast Direct</span><span class="ctl" aria-hidden="true"><span><svg viewBox="0 0 10 10"><path d="M0 5h10"/></svg></span><span><svg viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="9" height="9"/></svg></span><span><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10"/></svg></span></span></div>
+        <div class="stagebox desk-only" id="stage"><iframe id="demo" src="demo/index.html" title="Interactive VirCast Direct demo" loading="eager"></iframe></div>
+        <div class="stagebox mobile-only"><img src="media/app_live.webp" alt="VirCast Direct with six lanes live and connected to STREAM-PC"></div>
+      </div>
+      <ol class="try desk-only" aria-label="Try the demo">
+        <li id="t1"><i>1</i><span>Press <b>Connect PC</b> at the top. It finds STREAM-PC for you.</span></li>
+        <li id="t2"><i>2</i><span>Press <b>Start all</b> and watch every lane go live.</span></li>
+        <li id="t3"><i>3</i><span>Press <b>Mute</b> on a lane, or open <b>Effects</b>.</span></li>
+      </ol>
+            <p class="trynote mobile-only">On a computer, this window is the live app you can click through.</p>
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="wrap">
+    <h2>The usual ways of sending audio between PCs fight you.</h2>
+    <p class="lead">Every 2-PC streamer has tried at least one of these. Here's what goes wrong, and what VirCast does instead.</p>
+    <div class="painhead" aria-hidden="true"><span>The usual way</span><span></span><span>VirCast Direct</span></div>
+    <div class="pains">
+      <div class="pain"><div class="was">Line-in cable<small>A 3.5 mm cable from one PC's output to the other's input.</small></div><div class="arrow" aria-hidden="true">→</div><div class="now"><b>No ground-loop hum.</b> Audio travels digitally over your network, so there's no analog cable to pick up buzz.</div></div>
+      <div class="pain"><div class="was">VBAN and network mixers<small>Stream names and IP addresses typed on both PCs.</small></div><div class="arrow" aria-hidden="true">→</div><div class="now"><b>Nothing to type.</b> Press Connect PC and it finds the other PC by name, then matches every lane on both sides.</div></div>
+      <div class="pain"><div class="was">Virtual cables<small>A chain of virtual devices that only you understand.</small></div><div class="arrow" aria-hidden="true">→</div><div class="now"><b>Six named lanes.</b> Game audio, mic, Discord and music each get their own color, so you always know what goes where.</div></div>
+      <div class="pain"><div class="was">Drifting out of sync<small>Audio slowly slips behind the video over a long stream.</small></div><div class="arrow" aria-hidden="true">→</div><div class="now"><b>Stays locked.</b> A jitter buffer and clock-drift correction keep playback smooth for hours.</div></div>
+      <div class="pain"><div class="was">Breaks after updates<small>A Windows update or unplugged headset silently kills the route.</small></div><div class="arrow" aria-hidden="true">→</div><div class="now"><b>Recovers by itself.</b> Lanes that were running come back after device changes, and you get a warning if a stream stalls.</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pair" style="padding-top:0">
+  <div class="wrap">
+    <h2>Pairing takes three steps.</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Open VirCast on both PCs</h3><p>Same home network, any Windows 10 or 11 PC.</p>
+        <div class="pcs" aria-hidden="true"><div class="pc"><b>Gaming PC</b><span class="dot"></span>VirCast open</div><div class="pc"><b>Stream PC</b><span class="dot"></span>VirCast open</div></div></div>
+      <div class="step"><div class="n">2</div><h3>Press Connect PC</h3><p>It finds the other PC by name and recommends the right address.</p>
+        <figure><img src="media/pair.webp" alt="The Connect another PC panel, showing STREAM-PC found at 192.168.1.42" loading="lazy"></figure></div>
+      <div class="step"><div class="n">3</div><h3>Press Start on both</h3><p>One button starts the lane on this PC and the other one.</p>
+        <figure><img src="media/lane_game.webp" alt="A live Game Audio lane sending to the other PC, with Stop this PC and Stop on both buttons" loading="lazy"></figure></div>
+    </div>
+  </div>
+</section>
+
+<section class="lanesec" id="lanes">
+  <div class="wrap">
+    <h2>Six lanes. Each color plugs into the same color.</h2>
+    <p class="lead">Set each lane to send or receive, pick its device, and the matching lane on the other PC does the opposite. Tap a cable to mute it.</p>
+    <div class="cables" id="cables" role="group" aria-label="Six audio lanes between a gaming PC and a stream PC"></div>
+    <p class="lanenote">Signal on each cable flows in the direction that lane sends.</p>
+    <div class="lanefacts">
+      <img src="media/lane_mic.webp" alt="A Microphone lane receiving audio from the other PC into Wave Link Stream" loading="lazy">
+      <ul>
+        <li><b>Its own device per lane</b>Send system audio, a single output, or a mic. Receive into any output, including Wave Link.</li>
+        <li><b>Mute, mono and boost</b>Fix a one-sided mic with one press, or push a quiet source up.</li>
+        <li><b>A meter and live stats</b>See the level, data rate and any missing audio for every lane.</li>
+        <li><b>Listen test</b>Hear exactly what a lane is sending on your own headphones.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="feat">
+      <div><h2>A mic chain, built in.</h2><p class="lead">Run your microphone through VirCast's local mixer before it goes anywhere. Pick a preset or shape it yourself.</p>
+        <ul><li>Presets: Clean, Broadcast and Warm</li><li>EQ, background-noise gate, compressor and limiter</li><li>Reverb and echo when you want them</li><li>Changes play instantly, and Cancel restores what you had</li></ul></div>
+      <figure><img src="media/fx.webp" alt="The Microphone effects panel with tone, noise reduction, clipping protection and volume controls" loading="lazy"></figure>
+    </div>
+    <div class="feat flip">
+      <div><h2>Out of the way while you play.</h2><p class="lead">Shrink VirCast to a mini bar that stays on top of your game. Close the window and it tucks into the tray, and the audio keeps running.</p></div>
+      <div class="mini"><img src="media/mini.webp" alt="The VirCast mini bar with play controls for six lanes and the mic, connected and healthy" loading="lazy"></div>
+    </div>
+    <dl class="specs">
+      <div><dt>Audio</dt><dd>48 kHz, from any input, output or your whole system's sound.</dd></div>
+      <div><dt>Delay</dt><dd>Low (50 ms), balanced (100 ms) or most reliable (200 ms).</dd></div>
+      <div><dt>Profiles</dt><dd>Save setups like "Stream night" or "Podcast" and switch in one click.</dd></div>
+      <div><dt>Stream Deck</dt><dd>A plugin to start, stop and mute lanes from your deck.</dd></div>
+      <div><dt>Health warnings</dt><dd>Told right away if a lane stalls, drops audio or gets stuck.</dd></div>
+      <div><dt>Works with Wave Link</dt><dd>Send into or receive from Elgato's mixer like any other device.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap privacy">
+    <div><h2>It stays on your network.</h2><p class="lead">VirCast only talks to PCs in your home. There's no account, no cloud and nothing to upload.</p></div>
+    <ul>
+      <li><b>Local network only</b><span>Internet and public addresses are refused, so audio can't leave your house by accident.</span></li>
+      <li><b>No cloud, no tracking</b><span>There's no telemetry. The traffic numbers you see are counted on your PC and never sent anywhere.</span></li>
+      <li><b>Remembers your PC</b><span>A paired PC is trusted, and VirCast fixes the connection itself if your router hands out a new address.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="testers" style="padding-top:0">
+  <div class="wrap">
+    <div class="testers">
+      <div>
+        <img src="media/logo.webp" alt="" style="width:88px;margin-bottom:22px">
+        <h2>It's free, and we're looking for testers.</h2>
+        <p>Join the Discord to get VirCast Direct and tell us what your setup throws at it. Two PCs and a home network are all you need.</p>
+      </div>
+      <div class="ctas"><a class="btn btn-go" href="https://discord.gg/MkJVue2Rr4">Join the testers on Discord</a><a class="btn btn-line" href="#top">Try the demo again</a></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span><b style="color:var(--ink)">VirCast <span class="direct">Direct</span></b> by VirForge Software</span>
+    <a href="https://viritts.com">AiRi</a><a href="https://discord.gg/MkJVue2Rr4">Discord</a>
+    <span class="copy">© 2026 VirForge Software</span>
+  </div>
+</footer>
+
+<script src="hero.js"></script>
+<script src="site.js"></script>
+</body>
+</html>
