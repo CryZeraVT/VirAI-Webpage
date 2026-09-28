@@ -19,11 +19,21 @@
   addEventListener('resize', size); size();
 
   // scene layout: two monitors low in the frame, copy lives in the space above
-  function layout() {
+  function layout(k = 1) {
+    const S = stageLayout(); if (S.portrait) return S;
+    const m = ease(seg(k, .025, .12));          // 0 = teaser (stacked on the right), 1 = side-by-side stage
+    if (m >= 1) return S;
+    const mh0 = Math.min((H - 64 - 200) / 2.75, W * .2 * .66, 230), mw0 = mh0 / .66, gap0 = mh0 * .55;
+    const top0 = 64 + (H - 64 - (2 * mh0 + gap0)) / 2 - 10, x0 = Math.max(W * .6, W - mw0 - W * .2);
+    const T = { mw: mw0, mh: mh0, A: { x: x0, y: top0 }, B: { x: x0, y: top0 + mh0 + gap0 } };
+    return { mw: lerp(T.mw, S.mw, m), mh: lerp(T.mh, S.mh, m), A: { x: lerp(T.A.x, S.A.x, m), y: lerp(T.A.y, S.A.y, m) },
+      B: { x: lerp(T.B.x, S.B.x, m), y: lerp(T.B.y, S.B.y, m) }, portrait: false, loop: 1 - m };
+  }
+  function stageLayout() {
     const portrait = W / H < .9;
     if (portrait) {   // phones: Gaming PC above Stream PC, lanes loop around the right-hand side
       const mw = W * .58, mh = mw * .66, x = W * .07, top = H * .34;
-      return { mw, mh, A: { x, y: top }, B: { x, y: top + mh + Math.max(92, H * .12) }, portrait };
+      return { mw, mh, A: { x, y: top }, B: { x, y: top + mh + Math.max(92, H * .12) }, portrait, loop: 1 };
     }
     // keep the monitors below the headline area (nav + copy ~ 64px + 5vh + 210px), shrinking them on short screens
     const minTop = 64 + H * .05 + 210;
@@ -31,7 +41,7 @@
     const top = Math.max(H * .6 - mh / 2, minTop), room = H - top - 70;
     if (mh > room) { mh = Math.max(room, 90); mw = mh / .66; }
     const lx = W * .085, rx = W - lx - mw;
-    return { mw, mh, A: { x: lx, y: top }, B: { x: rx, y: top }, portrait };
+    return { mw, mh, A: { x: lx, y: top }, B: { x: rx, y: top }, portrait, loop: 0 };
   }
   // screen rect inside a monitor and the y of lane row i
   const screen = (m, L) => ({ x: m.x + L.mw * .035, y: m.y + L.mw * .035, w: L.mw * .93, h: L.mh - L.mw * .07 });
@@ -72,12 +82,15 @@
   }
   // ports: where each lane row leaves the monitor's inner edge
   const portA = (L, i) => ({ x: L.A.x + L.mw, y: rowY(screen(L.A, L), i) });
-  const portB = (L, i) => ({ x: L.portrait ? L.B.x + L.mw : L.B.x, y: rowY(screen(L.B, L), i) });
+  const portB = (L, i) => ({ x: L.B.x + L.mw * L.loop, y: rowY(screen(L.B, L), i) });
   // the path a lane cable takes: straight-ish across on desktop, a nested loop round the right side on phones
   function lanePath(L, i) {
     const a = portA(L, i), b = portB(L, i);
-    if (L.portrait) { const room = W - a.x, dx = room * (.3 + (5 - i) * .11); return [a, { x: a.x + dx, y: a.y }, { x: b.x + dx, y: b.y }, b]; }
-    const span = b.x - a.x, sag = L.mh * .05; return [a, { x: a.x + span * .3, y: a.y + sag }, { x: b.x - span * .3, y: b.y + sag }, b];
+    const room = Math.min(W * .97 - a.x, L.mw * .9), dx = room * (.3 + (5 - i) * .11);
+    const loopC = [{ x: a.x + dx, y: a.y }, { x: b.x + dx, y: b.y }];
+    const span = b.x - a.x, sag = L.mh * .05, flatC = [{ x: a.x + span * .3, y: a.y + sag }, { x: b.x - span * .3, y: b.y + sag }];
+    const t = L.loop, mix = (p, q) => ({ x: lerp(q.x, p.x, t), y: lerp(q.y, p.y, t) });
+    return [a, mix(loopC[0], flatC[0]), mix(loopC[1], flatC[1]), b];
   }
   const bez = (p0, c0, c1, p1, t) => { const u = 1 - t; return { x: u * u * u * p0.x + 3 * u * u * t * c0.x + 3 * u * t * t * c1.x + t * t * t * p1.x, y: u * u * u * p0.y + 3 * u * u * t * c0.y + 3 * u * t * t * c1.y + t * t * t * p1.y }; };
   function strokeBez(p0, c0, c1, p1, from, to, color, width, alpha = 1) {
@@ -96,13 +109,16 @@
   }
   function draw(k, time) {
     g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, H);
-    const rise = ease(seg(k, .015, .09)); if (rise <= 0) return;
+    const narrowScreen = W / H < .9;
+    const rise = narrowScreen ? ease(seg(k, .015, .09)) : 1; if (rise <= 0) return;
     g.globalAlpha = rise; g.translate(0, (1 - rise) * H * .25);
-    const L = layout(), lw = Math.max(3, L.mw * .012);
-    const found = seg(k, .38, .44), live = seg(k, .7, .76);
+    // teaser (wide screens, top of the page): already connected and live; it unplugs as the story begins
+    const teaser = narrowScreen ? 0 : 1 - seg(k, .012, .045);
+    const L = layout(k), lw = Math.max(3, L.mw * .012);
+    const found = Math.max(seg(k, .38, .44), teaser), live = Math.max(seg(k, .7, .76), teaser);
 
     // --- beat 0-1: the usual tangle, then it pulls back into the ports
-    const tangleIn = seg(k, 0, .06), unplug = ease(seg(k, .24, .34)), tangle = tangleIn * (1 - unplug);
+    const tangleIn = seg(k, .05, .11), unplug = ease(seg(k, .24, .34)), tangle = tangleIn * (1 - unplug);
     if (tangle > 0) {
       for (let c = 0; c < 7; c++) {
         const i = c % 6, j = (c * 4 + 1) % 6, a = portA(L, i), b = portB(L, j), mid = (a.x + b.x) / 2, span = b.x - a.x;
@@ -130,12 +146,12 @@
     }
     // --- beat 3: six lanes shoot across, one after another, and get their port numbers
     LANES.forEach((l, i) => {
-      const p = ease(seg(k, .48 + i * .03, .56 + i * .03)); if (p <= 0) return;
+      const p = Math.max(ease(seg(k, .48 + i * .03, .56 + i * .03)), teaser); if (p <= 0) return;
       const [a, c0, c1, b] = lanePath(L, i);
       strokeBez(a, c0, c1, b, 0, p, l.c, lw);
       [a, b].forEach((q, s) => { if (s === 1 && p < 1) return; g.fillStyle = l.c; g.beginPath(); g.arc(q.x, q.y, lw * 1.35, 0, 7); g.fill(); });
       const tagA = seg(k, .56 + i * .03, .6 + i * .03) * (1 - seg(k, .9, .96));
-      if (tagA > 0 && !L.portrait) text(':' + (4010 + i), b.x - 8, b.y - lw * 2.6, Math.max(11, L.mw * .026), 700, l.c, 'right', tagA);
+      if (tagA > 0 && !L.loop) text(':' + (4010 + i), b.x - 8, b.y - lw * 2.6, Math.max(11, L.mw * .026), 700, l.c, 'right', tagA);
       // --- beat 4: audio pulses along each lane, in the direction it sends
       if (live > 0) for (let q = 0; q < 3; q++) {
         let t = ((time * .45 + q / 3 + i * .13) % 1); if (!l.tx) t = 1 - t;
@@ -159,7 +175,7 @@
     }
 
     // --- beat 4: latency readout between the monitors
-    const lat = live * (1 - seg(k, .92, .98));
+    const lat = seg(k, .7, .76) * (1 - seg(k, .92, .98));   // story beat only, never over the opening headline
     if (lat > 0) {
       const x = L.portrait ? L.A.x + L.mw / 2 : W / 2, y = L.portrait ? L.B.y + L.mh * 1.3 + 58 : L.A.y + L.mh + L.mh * .28;
       g.save(); g.globalAlpha = lat; g.fillStyle = '#16181d'; rr(x - 86, y - 20, 172, 40, 20); g.fill(); g.restore();
@@ -178,7 +194,7 @@
     if (r.bottom > 0 && r.top < innerHeight) {
       copyBottom = 0; for (const el of [intro, ...beats]) if (+getComputedStyle(el).opacity > .05) copyBottom = Math.max(copyBottom, el.getBoundingClientRect().bottom);
       draw(REDUCED ? Math.max(kNow, .8) : kNow, REDUCED ? 1 : now / 1000);
-      const f = seg(kNow, .02, .09); intro.style.opacity = 1 - f; intro.style.transform = `translateY(${-24 * f}px)`; intro.style.pointerEvents = f > .5 ? 'none' : '';
+      const f = seg(kNow, .008, .045); intro.style.opacity = 1 - f; intro.style.transform = `translateY(${-24 * f}px)`; intro.style.pointerEvents = f > .5 ? 'none' : '';
       hint.style.opacity = 1 - seg(kNow, .01, .05);
       for (const b of beats) { const a = +b.dataset.a, e = +b.dataset.b; const o = Math.min(seg(kNow, a, a + .04), 1 - seg(kNow, e - .04, e)); b.style.opacity = o; b.style.transform = `translateY(${(1 - o) * 14}px)`; b.style.pointerEvents = o > .5 ? '' : 'none'; }
     }

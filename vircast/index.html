@@ -61,10 +61,13 @@ nav.top .btn { padding: 9px 16px; font-size: 14px; border-radius: 10px; }
 
 
 /* ---------- story hero: scroll plays the scene (hero.js) ---------- */
-.story { height: 520vh; position: relative; }
+.story { height: 520vh; position: relative; margin-top: -64px; padding: 0; }
 .story .stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
 #scene { position: absolute; inset: 0; width: 100%; height: 100%; }
 .story .copy { position: absolute; left: 0; right: 0; top: calc(64px + 5vh); }
+.story .introbox { position: absolute; left: 0; right: 0; top: 64px; bottom: 0; display: flex; align-items: center; }
+.story .introbox .wrap { width: 100%; }
+#intro { max-width: min(600px, 54vw); }
 .story .copy .wrap { position: relative; }
 #intro h1 { font-size: clamp(40px, 5.2vw, 78px); font-weight: 900; line-height: .98; letter-spacing: -.035em; margin-top: 16px; max-width: 13ch; }
 #intro .lead { margin-top: 18px; max-width: 46ch; }
@@ -75,6 +78,8 @@ nav.top .btn { padding: 9px 16px; font-size: 14px; border-radius: 10px; }
 .story .beat .btn { margin-top: 18px; }
 .story .hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); font-weight: 700; font-size: 14px; color: var(--ink2); display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .story .hint i { width: 2px; height: 26px; background: linear-gradient(var(--ink2), transparent); }
+@media (max-height: 720px) and (min-aspect-ratio: 9/10) { #intro h1 { font-size: clamp(34px, 3.8vw, 54px); } #intro .lead { font-size: 16px; margin-top: 12px; } #intro .ctas { margin-top: 16px; } .brand img { width: 60px !important; } }
+@media (max-aspect-ratio: 9/10) { .story .introbox { align-items: flex-start; padding-top: 3vh; } #intro { max-width: none; } }
 @media (max-width: 700px) { .story .copy { top: calc(58px + 3vh); } #intro .lead { font-size: 16px; } #intro .ctas .btn-line { display: none; } }
 
 /* ---------- try the real app ---------- */
@@ -213,13 +218,15 @@ footer .copy { margin-left: auto; }
 <section class="story" id="top" aria-label="How VirCast Direct connects two PCs">
   <div class="stage">
     <canvas id="scene" aria-hidden="true"></canvas>
-    <div class="copy"><div class="wrap">
+    <div class="introbox"><div class="wrap">
       <div id="intro">
         <div class="brand"><img src="media/logo.webp" alt="VirCast Direct logo"><span><small>PC audio link</small><b>VirCast <span class="direct">Direct</span></b></span></div>
         <h1>Send audio from one PC to another.</h1>
         <p class="lead">VirCast Direct links your gaming PC and your streaming PC over your home network. Six audio lanes, found and paired in one click. Free while we test it.</p>
         <div class="ctas"><a class="btn btn-go" href="https://discord.gg/MkJVue2Rr4">Join the testers on Discord</a><a class="btn btn-line" href="#try">Skip to the live demo</a></div>
       </div>
+    </div></div>
+    <div class="copy"><div class="wrap">
       <div class="beat" data-a=".08" data-b=".28"><h2>Two PCs usually means a mess of cables.</h2><p>Line-in hum, virtual cables, and IP addresses typed by hand on both machines.</p></div>
       <div class="beat" data-a=".3" data-b=".47"><h2>VirCast finds the other PC by name.</h2><p>Open it on both PCs and press Connect PC. There's nothing to type.</p></div>
       <div class="beat" data-a=".49" data-b=".69"><h2>Six lanes, matched on both sides.</h2><p>Each color plugs into the same color on the other PC, with its own port.</p></div>
